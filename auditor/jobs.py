@@ -88,6 +88,8 @@ class AuditJobs:
             db.execute("""CREATE TABLE IF NOT EXISTS sampled_obligations(
                 leaf TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES audit_jobs(job_id),
                 due INTEGER NOT NULL, missed INTEGER NOT NULL DEFAULT 0)""")
+            db.execute("""CREATE TABLE IF NOT EXISTS expired_sample_work(
+                        job_id TEXT PRIMARY KEY, resumed INTEGER NOT NULL DEFAULT 0)""")
             db.execute(
                 "CREATE INDEX IF NOT EXISTS sampled_by_job ON sampled_obligations(job_id)"
             )
@@ -113,18 +115,23 @@ class AuditJobs:
                             AND a.completed_us IS NOT NULL AND a.completed_us<sampled_obligations.due)""",
             (now,),
         )
-        # A missed sampled obligation persists even if a holder later supplies evidence for the same work.
+        # The public sample stays missed. A later holder may open a new proof attempt for the same job.
+        db.execute("""INSERT OR IGNORE INTO expired_sample_work(job_id)
+                SELECT DISTINCT a.job_id FROM audit_jobs a JOIN sampled_obligations s USING(job_id)
+                WHERE s.missed=1 AND a.state!='completed'
+                AND NOT EXISTS(SELECT 1 FROM challenge_handles h WHERE h.job_id=a.job_id)""")
         db.execute(
             """UPDATE audit_jobs SET state='completed',outcome='UNAVAILABLE',reason='deadline_missed',
-            lease=NULL,lease_until=NULL,completed_us=? WHERE state!='completed'
-            AND EXISTS(SELECT 1 FROM sampled_obligations s WHERE s.job_id=audit_jobs.job_id AND s.missed=1)
-            AND NOT EXISTS(SELECT 1 FROM challenge_handles h WHERE h.job_id=audit_jobs.job_id)""",
+            lease=NULL,lease_until=NULL,completed_us=? WHERE state!='completed' AND job_id IN (
+            SELECT job_id FROM expired_sample_work WHERE resumed=0)""",
             (now,),
         )
-
-        db.execute("""UPDATE audit_jobs SET state='pending',outcome=NULL,reason=NULL,completed_us=NULL
-            WHERE reason='deadline_missed' AND EXISTS(
-            SELECT 1 FROM challenge_handles h WHERE h.job_id=audit_jobs.job_id AND h.issued_us>=audit_jobs.completed_us)""")
+        db.execute("""UPDATE audit_jobs SET state='pending',outcome=NULL,reason=NULL,completed_us=NULL,
+                  spool_deadline_ns=NULL WHERE reason='deadline_missed' AND job_id IN (
+                  SELECT x.job_id FROM expired_sample_work x WHERE x.resumed=0 AND EXISTS(
+                  SELECT 1 FROM challenge_handles h WHERE h.job_id=x.job_id))""")
+        db.execute("""UPDATE expired_sample_work SET resumed=1 WHERE resumed=0 AND EXISTS(
+                      SELECT 1 FROM challenge_handles h WHERE h.job_id=expired_sample_work.job_id)""")
 
     def _sample(
         self,
@@ -380,6 +387,13 @@ class AuditJobs:
             raise ValueError("Proof statement differs from the claimed job")
         with self._tx() as db:
             row = self._owned(db, claim, _us(self._clock()))
+            resumed = db.execute(
+                "SELECT resumed FROM expired_sample_work WHERE job_id=?",
+                (claim.job_id,),
+            ).fetchone()
+            dispatch_id = (
+                claim.job_id + "/holder" if resumed and resumed[0] else claim.job_id
+            )
             stored = row["spool_deadline_ns"]
             if stored is None:
                 if type(deadline_ns) is not int or not 0 < deadline_ns < 1 << 63:
@@ -390,7 +404,7 @@ class AuditJobs:
                     (stored, claim.job_id),
                 )
         # A crash between the databases retries the same job, statement and frozen deadline.
-        return spool.submit(claim.job_id, expected, deadline_ns=stored)
+        return spool.submit(dispatch_id, expected, deadline_ns=stored)
 
     def complete(self, claim: Claim, outcome: str, reason: str | None = None) -> None:
         # Proof-bearing terminal outcomes enter through the independent verification and signing path.

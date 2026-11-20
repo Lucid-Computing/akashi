@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from nacl.public import PrivateKey
 
@@ -154,6 +154,10 @@ class AuditJobTests(unittest.TestCase):
     def test_sampled_deadline_and_demand_target_are_independent(self) -> None:
         job = self.sample()
         self.assertEqual(self.sample(), job)
+        first = self.claim()
+        spool = Mock(spec=SubmissionStore)
+        decision = Assessment("conformance", build_statement(first.prompt, first.reply))
+        self.jobs.dispatch(first, decision, spool, deadline_ns=10000)
         self.now += timedelta(hours=24)
         sample = self.jobs.sample_status(self.leaf)
         assert sample is not None
@@ -166,6 +170,12 @@ class AuditJobTests(unittest.TestCase):
         self.now += timedelta(minutes=16)
         new = self.claim()
         self.assertEqual(new.job_id, job)
+        self.jobs.dispatch(new, decision, spool, deadline_ns=20000)
+        self.assertNotEqual(
+            spool.submit.call_args_list[0].args[0],
+            spool.submit.call_args_list[1].args[0],
+        )
+        self.assertEqual(spool.submit.call_args.kwargs["deadline_ns"], 20000)
         state = self.jobs.status(handle["challenge_id"], handle["capability"])
         assert state is not None
         self.assertEqual(state["status"], "verifying")
