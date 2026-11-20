@@ -49,7 +49,7 @@ class PickupStore:
                 id TEXT PRIMARY KEY, binding TEXT NOT NULL, expires INTEGER NOT NULL,
                 nonce BLOB, ciphertext BLOB, CHECK((nonce IS NULL)=(ciphertext IS NULL)))""")
             db.execute("CREATE INDEX IF NOT EXISTS pickup_expiry ON pickups(expires)")
-            self._expire(db)
+            _, self.purged_on_open = self._expire(db)
 
     @contextmanager
     def _transaction(self) -> Iterator[sqlite3.Connection]:

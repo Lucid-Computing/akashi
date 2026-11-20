@@ -66,3 +66,16 @@ directories under a temporary root, checks the units with `systemd-analyze`
 and exercises allowed and denied loopback connections in a fresh network
 namespace. The unit syntax check substitutes a test executable for the
 host-supplied daemon and stop hook.
+
+## Run private retention
+
+Install the reviewed source checkout under root-owned `/opt/vig/source` and its locked environment under `/opt/vig/venv`. Install `vig-retention@.service` and the prover-specific drop-in alongside the role units. For each provisioned role create root-owned `/etc/vig/retention-ROLE.conf`. Set `VIG_RETENTION_INTERVAL_SECONDS` to the host's positive sweep interval and `VIG_RETENTION_PATHS` to the existing private paths in the table. Use the same absolute paths as the service that writes the data. Start the role and enable its cleanup worker with `systemctl enable --now vig-retention@ROLE.service`.
+
+| Role | Arguments after the role name | Data removed |
+| --- | --- | --- |
+| auditor | Challenge database | At verdict plus 30 days, erase the sealed transcript, private proof, statement and holder capabilities. Keep public verdicts and historical signing keys. |
+| engine | `/var/lib/vig-engine/engine-events.sqlite3` | Remove engine events at seven days. The engine records only validated telemetry. |
+| pickup | Pickup database | Remove reservations and ciphertext at the seven-day deadline. |
+| prover | Submission state directory, then native spool directory | Retire an expired job and remove temporary statement, nonce and proof copies. Keep a content-free job marker for retries. |
+
+For a one-shot check under the owning identity, run `python -m operations.retention ROLE PATHS` from the installed source with the locked interpreter. The worker outputs aggregate counts. A prover `pending_cleanup` count reports native files still in use. Let the process finish, or use the provisioned stop hook to quiesce it, then repeat the sweep. Keep the escrow role's existing deadline-driven `ExpiryWorker` running to erase unselected material at its separate five-minute cap. Scope backups and volume snapshots to the same private retention policy. [Retention policy](../../specs/retention.md#retention-policy)

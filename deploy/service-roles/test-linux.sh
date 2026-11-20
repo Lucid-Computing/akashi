@@ -24,7 +24,9 @@ prover_uid=$(stat -c %u "$stage/etc/vig/keys/prover")
 # the operator-supplied daemon. systemd-analyze does not launch services.
 units="$sandbox/units"
 mkdir "$units"
-cp vig@.service "$units/"
+cp vig@.service vig-retention@.service "$units/"
+cp -R vig-retention@prover.service.d "$units/"
+sed -i 's|/opt/vig/venv/bin/python|/usr/bin/python3|' "$units/vig-retention@.service"
 cp vig-engine-firewall.service "$units/"
 cp -R vig@*.service.d "$units/"
 sed -i 's|^ExecStart=/usr/local/libexec/vig/%i$|ExecStart=/usr/bin/true|' "$units/vig@.service"
@@ -32,7 +34,10 @@ sed -i 's|^ExecStop=/usr/local/libexec/vig/stop-prover$|ExecStop=/usr/bin/true|'
 for role in engine log proxy prover; do
     cp "$units/vig@.service" "$units/vig@$role.service"
 done
-SYSTEMD_UNIT_PATH="$units:" systemd-analyze verify "$units/vig-engine-firewall.service" "$units"/vig@{engine,log,proxy,prover}.service
+for role in auditor engine pickup prover; do
+    cp "$units/vig-retention@.service" "$units/vig-retention@$role.service"
+done
+SYSTEMD_UNIT_PATH="$units:" systemd-analyze verify "$units"/vig-retention@{auditor,engine,pickup,prover}.service "$units/vig-engine-firewall.service" "$units"/vig@{engine,log,proxy,prover}.service
 
 # Resolve the proxy's UID from the isolated account database before loading the
 # real rule into its own network namespace; host NSS contains no test accounts.
