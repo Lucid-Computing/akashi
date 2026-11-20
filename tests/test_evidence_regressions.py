@@ -4,7 +4,7 @@ import copy
 import unittest
 from typing import Any
 
-from redteam.evidence_regressions import summarize
+from redteam.evidence_regressions import _long_prompt_controls, summarize
 
 
 class EvidenceReportTests(unittest.TestCase):
@@ -41,3 +41,28 @@ class EvidenceReportTests(unittest.TestCase):
                 summarize([{**rejected, **wrong}], contract)
         with self.assertRaises(ValueError):
             summarize([row, row], contract)
+
+    def test_long_prompt_requires_authentic_selection_counts_and_short_controls(
+        self,
+    ) -> None:
+        fixed: dict[str, Any] = {
+            "scenario": "R18",
+            "trials": 20,
+            "selected_long": 20,
+            "short_controls": 20,
+            "short_conforms": 20,
+            "selection_divisor": 1,
+        }
+        checked: list[dict[str, object]] = [{"scenario": "R18", "passed": True}]
+        _long_prompt_controls([fixed], checked)
+        self.assertIs(checked[0]["passed"], True)
+        _long_prompt_controls([{**fixed, "short_conforms": 19}], checked)
+        self.assertIs(checked[0]["passed"], False)
+        for wrong in (
+            {"selected_long": 19},
+            {"selection_divisor": True},
+            {"short_controls": 0},
+            {"short_conforms": 21},
+        ):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                _long_prompt_controls([{**fixed, **wrong}], checked)

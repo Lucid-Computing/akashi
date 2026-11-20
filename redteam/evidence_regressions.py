@@ -1,10 +1,11 @@
-"""Validate synthetic receipt and monitor outcomes against the M3 source contract."""
+"""Validate isolated model, receipt and monitor outcomes against the M3 source contract."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
 import json
+import platform
 import subprocess
 import tempfile
 from pathlib import Path
@@ -80,39 +81,99 @@ def summarize(
     return summary
 
 
-def gate(output: Path) -> bool:
+MODEL_CONTRACT = {
+    f"R{i}": ("INCOMPLETE" if i == 8 else "DEVIATES", "CONFORMS")
+    for i in (*range(1, 10), 18)
+}
+
+
+def _long_prompt_controls(
+    rows: list[dict[str, Any]], checked: list[dict[str, object]]
+) -> None:
+    long = next(row for row in rows if row["scenario"] == "R18")
+    fields = (
+        "selected_long",
+        "short_controls",
+        "short_conforms",
+        "selection_divisor",
+    )
+    for key in fields:
+        if type(long[key]) is not int or long[key] < 0:
+            raise ValueError("Invalid long-prompt control count")
+    if (
+        long["selection_divisor"] != 1
+        or long["selected_long"] != long["trials"]
+        or long["short_controls"] < 20
+        or long["short_conforms"] > long["short_controls"]
+    ):
+        raise ValueError("Incomplete long-prompt selection evidence")
+    public = next(row for row in checked if row["scenario"] == "R18")
+    for key in fields:
+        public[key] = long[key]
+    public["passed"] = (
+        public["passed"] is True and long["short_controls"] == long["short_conforms"]
+    )
+
+
+def gate(output: Path, *, suite: str = "evidence") -> bool:
+    if suite not in {"evidence", "model"}:
+        raise ValueError("Unknown M3 suite")
+    model = suite == "model"
     report: dict[str, object] = {
         "schema_version": 1,
-        "scope": "R10-R17",
+        "scope": "R1-R9,R18" if model else "R10-R17",
+        "environment": {
+            "python": platform.python_version(),
+            "machine": platform.machine(),
+        },
         "status": "incomplete",
-        "execution": "offline synthetic receipt, proof-policy and history fixtures",
+        "execution": (
+            "offline synthetic reference choices, controlled completions and verifier policy"
+            if model
+            else "offline synthetic receipt, proof-policy and history fixtures"
+        ),
     }
     _write(output, report)
     stage = "fixture_provenance"
     try:
-        from redteam.history_cases import run_history_cases
-        from redteam.transcript_cases import run_cases
-
         report["source_revision"] = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
         ).strip()
         manifest_path = FIXTURES / "render-goldens/manifest.json"
-        manifest = json.loads(manifest_path.read_bytes())
-        public_inputs = [
-            manifest_path,
-            FIXTURES / "render-goldens/chat.jsonl",
-            ROOT / "redteam/history_cases.py",
-            ROOT / "redteam/transcript_cases.py",
-        ]
+        if model:
+            from redteam.model_cases import run_model_cases
+
+            public_inputs = [
+                FIXTURES / "model-outcomes-v1.jsonl",
+                FIXTURES / "model-f9-records-v1.json",
+                ROOT / "redteam/model_cases.py",
+                ROOT / "tests/test_beacon.py",
+                ROOT / "tests/test_proof_verification.py",
+            ]
+        else:
+            from redteam.history_cases import run_history_cases
+            from redteam.transcript_cases import run_cases
+
+            public_inputs = [
+                manifest_path,
+                FIXTURES / "render-goldens/chat.jsonl",
+                ROOT / "redteam/history_cases.py",
+                ROOT / "redteam/transcript_cases.py",
+            ]
         report["fixture_sha256"] = {
             p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in public_inputs
         }
         stage = "local_evidence_checks"
-        with tempfile.TemporaryDirectory() as tmp:
-            assets = _assets(Path(tmp), manifest)
-            rows = run_cases(assets) + run_history_cases()
-        checked = summarize(rows, CONTRACT)
+        if model:
+            rows = run_model_cases()
+            checked = summarize(rows, MODEL_CONTRACT)
+            _long_prompt_controls(rows, checked)
+        else:
+            with tempfile.TemporaryDirectory() as tmp:
+                assets = _assets(Path(tmp), json.loads(manifest_path.read_bytes()))
+                rows = run_cases(assets) + run_history_cases()
+            checked = summarize(rows, CONTRACT)
         report["scenarios"] = checked
         report["status"] = (
             "passed" if all(row["passed"] for row in checked) else "failed"
@@ -134,12 +195,14 @@ def gate(output: Path) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--output", type=Path, default=ROOT / "build/gates/m3-evidence.json"
+    parser.add_argument("--suite", choices=("evidence", "model"), default="evidence")
+    parser.add_argument("--output", type=Path)
+    args = parser.parse_args()
+    output = args.output or ROOT / f"build/gates/m3-{args.suite}.json"
+    passed = gate(output, suite=args.suite)
+    print(
+        f"{args.suite} regressions {'passed' if passed else 'incomplete'}. Evidence is in {output}"
     )
-    output = parser.parse_args().output
-    passed = gate(output)
-    print(f"R10–R17 {'passed' if passed else 'incomplete'}. Evidence is in {output}")
     return 0 if passed else 1
 
 
