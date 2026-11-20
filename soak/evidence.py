@@ -18,6 +18,109 @@ from soak.ledger import CASES, GOOD, WORKLOAD, require
 HEX = re.compile(r"^[0-9a-f]{64}$")
 
 
+def verified_record(
+    served: int,
+    shape: str,
+    holder: dict[str, Any],
+    row: dict[str, Any],
+    *,
+    head: dict[str, object],
+    chain: dict[str, Any],
+    lookup: Callable[[str, str], bytes],
+    now: datetime,
+) -> tuple[str, str, str, int, int]:
+    """Verify one archive row against the frozen, authenticated terminal head and holder."""
+    identity = str(head["log_id"])
+    size = head["tree_size"]
+    require(
+        holder["status"] in GOOD
+        and type(holder["leaf_index"]) is int
+        and holder["leaf_index"] == served,
+        "Holder leaf is not contiguous",
+    )
+    if type(size) is not int:
+        raise ValueError("Invalid signed tree size")
+    leaf = checked_public_leaf(row["leaf"], index=served, log_id=identity)
+    require(
+        leaf["commitment_id"] == COMMITMENT
+        and leaf["sampling_mode"] == "soak"
+        and holder["leaf_hash"] == leaf["leaf_hash"]
+        and holder["transcript_commitment"] == leaf["transcript_commitment"],
+        "Holder and signed history disagree",
+    )
+    verify_inclusion(
+        str(leaf["leaf_hash"]),
+        served,
+        size,
+        str(head["root_hash"]),
+        row["audit_path"],
+    )
+    transcript = str(leaf["transcript_commitment"])
+    chosen = evaluate(
+        served,
+        leaf,
+        mode="soak",
+        now=now,
+        chain_info=chain,
+        beacon=row["beacon"],
+        escrow_status="selected",
+    )
+    require(
+        chosen["selected"] is True
+        and chosen["divisor"] == 1
+        and chosen["status"] == "selected"
+        and all(row["selection"].get(key) == value for key, value in chosen.items()),
+        "Published selection disagrees with authenticated round",
+    )
+    result = verify_signed(row["sample_verdict"], lookup)
+    require(
+        result["transcript_commitment"] == transcript,
+        "Mismatched sampled verdict",
+    )
+    outcome = str(result["outcome"])
+    require(outcome in {"CONFORMS", "EXCUSED_RANGE"}, "Unexplained sampled outcome")
+    if holder["status"] == "excused_range":
+        require(
+            outcome == "EXCUSED_RANGE"
+            and holder["verdict_outcome"] == outcome
+            and holder["verdict_reason"] == result["reason"],
+            "Independent range outcome disagrees",
+        )
+    if holder["status"] == "conforms":
+        require(
+            outcome == "CONFORMS"
+            and result["proof_sha256"] == holder["proof_sha256"]
+            and result["statement_sha256"] == holder["statement_sha256"],
+            "Independent proof digest differs from sample",
+        )
+    prompt, reply, budget = (
+        holder["prompt_tokens"],
+        holder["reply_tokens"],
+        row["budget"],
+    )
+    require(
+        all(type(i) is int for i in (prompt, reply, budget))
+        and (prompt, budget) == WORKLOAD[shape]
+        and prompt == row["prompt_length"]
+        and 50 <= prompt <= 768
+        and 1 <= reply <= budget <= 256
+        and prompt + reply <= 1024,
+        "Unverified workload counts",
+    )
+
+    require(
+        leaf["params_digest"] == params_digest(budget),
+        "Budget differs from signed parameters",
+    )
+    return (
+        transcript,
+        str(result["challenge_id"]),
+        outcome,
+        reply,
+        1024 - prompt - reply,
+    )
+
+
 def reconcile(
     attempts: list[tuple[int, str, dict[str, Any]]],
     archive: dict[str, Any],
@@ -57,89 +160,27 @@ def reconcile(
             "Holder leaf is not contiguous",
         )
         row = archive["leaves"][served]
-        leaf = checked_public_leaf(row["leaf"], index=served, log_id=identity)
-        require(
-            leaf["commitment_id"] == COMMITMENT
-            and leaf["sampling_mode"] == "soak"
-            and holder["leaf_hash"] == leaf["leaf_hash"]
-            and holder["transcript_commitment"] == leaf["transcript_commitment"],
-            "Holder and signed history disagree",
-        )
-        verify_inclusion(
-            str(leaf["leaf_hash"]),
+        transcript, subject, outcome, reply, pad = verified_record(
             served,
-            size,
-            str(head["root_hash"]),
-            row["audit_path"],
-        )
-        transcript = str(leaf["transcript_commitment"])
-        require(transcript not in commitments, "Repeated salted transcript commitment")
-        commitments.add(transcript)
-        chosen = evaluate(
-            served,
-            leaf,
-            mode="soak",
+            shape,
+            holder,
+            row,
+            head=head,
+            chain=archive["chain"],
+            lookup=lookup,
             now=now,
-            chain_info=archive["chain"],
-            beacon=row["beacon"],
-            escrow_status="selected",
         )
         require(
-            chosen["selected"] is True
-            and chosen["divisor"] == 1
-            and chosen["status"] == "selected"
-            and all(
-                row["selection"].get(key) == value for key, value in chosen.items()
-            ),
-            "Published selection disagrees with authenticated round",
+            transcript not in commitments and subject not in signed_ids,
+            "Repeated sample identity",
         )
-        result = verify_signed(row["sample_verdict"], lookup)
-        require(
-            result["transcript_commitment"] == transcript
-            and result["challenge_id"] not in signed_ids,
-            "Mismatched sampled verdict",
-        )
-        signed_ids.add(str(result["challenge_id"]))
-        outcome = str(result["outcome"])
-        require(outcome in {"CONFORMS", "EXCUSED_RANGE"}, "Unexplained sampled outcome")
+        commitments.add(transcript)
+        signed_ids.add(subject)
         outcomes[outcome] += 1
-        if holder["status"] == "excused_range":
-            require(
-                outcome == "EXCUSED_RANGE"
-                and holder["verdict_outcome"] == outcome
-                and holder["verdict_reason"] == result["reason"],
-                "Independent range outcome disagrees",
-            )
-        if holder["status"] == "conforms":
-            require(
-                outcome == "CONFORMS"
-                and result["proof_sha256"] == holder["proof_sha256"]
-                and result["statement_sha256"] == holder["statement_sha256"],
-                "Independent proof digest differs from sample",
-            )
-            holder_checks += 1
-        prompt, reply, budget = (
-            holder["prompt_tokens"],
-            holder["reply_tokens"],
-            row["budget"],
-        )
-        require(
-            all(type(i) is int for i in (prompt, reply, budget))
-            and (prompt, budget) == WORKLOAD[shape]
-            and prompt == row["prompt_length"]
-            and 50 <= prompt <= 768
-            and 1 <= reply <= budget <= 256
-            and prompt + reply <= 1024,
-            "Unverified workload counts",
-        )
-
-        require(
-            leaf["params_digest"] == params_digest(budget),
-            "Budget differs from signed parameters",
-        )
+        holder_checks += int(holder["status"] == "conforms")
         cases[shape] += 1
         lengths.append(reply)
-        padding.append(1024 - prompt - reply)
+        padding.append(pad)
         served += 1
     require(
         served == size and all(cases.values()) and holder_checks > 0,

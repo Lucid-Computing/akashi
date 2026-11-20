@@ -58,6 +58,8 @@ def quicknet(route: str, *, timeout: float, cap: int) -> dict[str, Any]:
     try:
         conn.request("GET", f"/{CHAIN_HASH}/{route}")
         resp = conn.getresponse()
+        if resp.status in {408, 429, 500, 502, 503, 504}:
+            raise ConnectionError("Beacon temporarily unavailable")
         data = resp.read(cap + 1)
         require(resp.status == 200 and len(data) <= cap, "Beacon response unavailable")
         doc = json.loads(data)

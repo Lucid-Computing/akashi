@@ -51,7 +51,13 @@ class UnixConnection(http.client.HTTPConnection):
 
 
 def response(
-    origin: str, route: str, *, timeout: float, cap: int, data: object = None
+    origin: str,
+    route: str,
+    *,
+    timeout: float,
+    cap: int,
+    data: object = None,
+    decode_only_ok: bool = False,
 ) -> tuple[int, Any]:
     require(
         route.startswith("/")
@@ -94,6 +100,8 @@ def response(
             headers={"Content-Type": "application/json"},
         )
         raw = conn.getresponse()
+        if decode_only_ok and raw.status != 200:
+            return raw.status, None
         content = raw.read(cap + 1)
         require(len(content) <= cap, "Role response exceeds configured bound")
         return raw.status, json.loads(content) if content else {}

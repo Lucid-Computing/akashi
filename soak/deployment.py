@@ -16,6 +16,7 @@ import secrets
 import shutil
 import signal
 import socket
+import sqlite3
 import ssl
 import stat
 import subprocess
@@ -24,7 +25,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Mapping
-from contextlib import ExitStack
+from contextlib import ExitStack, closing
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -59,6 +60,7 @@ SECS = (
     "verification_timeout_seconds",
     "retention_interval_seconds",
     "shutdown_timeout",
+    "archive_drain_seconds",
 )
 COUNTS = (
     "retry_after",
@@ -841,6 +843,18 @@ def _clear_stale_socket(endpoint: Path) -> None:
     raise RuntimeError("Role listener already active")
 
 
+def _archive_recoverable(journal: Path, budget: float) -> bool:
+    if not journal.is_file():
+        return False
+    with closing(sqlite3.connect(journal.as_uri() + "?mode=ro", uri=True)) as db:
+        row = db.execute("SELECT end_ns FROM run WHERE id=1").fetchone()
+    return (
+        row is not None
+        and type(row[0]) is int
+        and time.monotonic_ns() < row[0] + budget * 1e9
+    )
+
+
 def supervise(
     root: Path, c: Json, p: Primary, ports: dict[str, int], stop: threading.Event
 ) -> int:
@@ -914,6 +928,7 @@ def supervise(
                     for k in (
                         "network_timeout",
                         "poll_seconds",
+                        "archive_drain_seconds",
                         "resource_poll_seconds",
                         "max_observation_gap_seconds",
                         "response_cap",
@@ -932,7 +947,17 @@ def supervise(
             children.check(stop)
             status = children.live["runner"].poll()
             if status is not None:
-                return status
+                if status >= 0 or not _archive_recoverable(
+                    t / "runner/journal.db", limits["archive_drain_seconds"]
+                ):
+                    return status
+                # A signalled collector may resume only the already-finished interval's GETs.
+                children.start(
+                    Command(
+                        "runner", "runner", (*runner.argv, "--archive-only"), runner.cwd
+                    ),
+                    t / "runner/collector.log",
+                )
             stop.wait(limits["poll_seconds"])
     finally:
         children.shutdown(limits["shutdown_timeout"])

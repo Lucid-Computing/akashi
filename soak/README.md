@@ -22,6 +22,16 @@ The upstream native prover disables dumpability to protect its key. When Linux d
 
 In this case `prover.fd_basis` is `exact_visible_plus_native_fdsize`. The report shows separate warm, observed peak and final values for `protected_fd_slots` (allocated slots in the native process's descriptor table) and `exact_fds_visible` (open descriptors in its readable descendants). The visible subtotal is JSON null when there is no readable contributing process. Coverage includes the minimum, maximum and final number of such processes. The gate checks final table capacity and visible counts against their respective warm peaks. It can detect table growth, but descriptor changes within the same allocation are unobservable. Sampling also leaves changes that occur entirely between observations unmeasured. [Resource collector](ledger.py)
 
+### Resume the signed archive
+
+Once the traffic interval finishes, the runner saves its end time and freezes the signed terminal tree head. It verifies and checkpoints each archive leaf against that head, the holder's saved request, its authentic quicknet round and its signed sampled verdict. The archive phase retries transient read failures within the operator's configured `limits.archive_drain_seconds`, measured from the original monotonic end time. A permanent evidence mismatch fails the phase. Its final read checks that the signed tree still has the same size and root.
+
+To resume an interrupted archive while the same evidence services are available, use the private runner configuration on the same boot. This command reads a completed journal, continues after the last committed leaf and publishes `archive.json` atomically. It sends no inference or challenge requests and leaves the original traffic duration unchanged.
+
+```sh
+python -m soak.runner --config /absolute/private/path/to/runner.json --archive-only
+```
+
 ## Check the result
 
 Run `make test-m4` for CPU checks of the holder, custody and evidence rules. The hardware gate reads the completed journal and signed history.
