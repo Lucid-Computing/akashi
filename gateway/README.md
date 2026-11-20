@@ -53,3 +53,11 @@ pinned public files into a temporary directory. For offline runs, set
 - `specs/parameters.md`: T, max_tokens_cap, Q_max
 - `specs/receipt-log.md`: Receipt format and promise protocol
 - `specs/hardening.md`: Security configuration
+
+## Request validation
+
+Run `make test-request-policy` from the repository root. The gateway validates
+bearer authentication and the configured body limit before rendering, checks the
+greedy-only allowlist, and resolves both budget aliases to one token count.
+Only the normalized engine fields proceed to dispatch.
+[Request policy](../specs/gateway-api.md#request-policy) · [Failure contract](../docs/spec/04-error-model.md#failure-contract)
