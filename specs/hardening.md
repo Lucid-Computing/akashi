@@ -108,7 +108,7 @@ MUST be disabled:
 
 ```bash
 # Stop prover with spool's stop file, never kill (F23)
-echo 1 > /prover/spool/stop
+(umask 077; set -C; : > /prover/spool/stop)
 
 # Wait for graceful shutdown
 wait_for_process_exit cp_prove
