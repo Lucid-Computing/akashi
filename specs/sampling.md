@@ -24,7 +24,7 @@ The request is receipted at `served_at` after the reply is validated, and that t
 Given:
 - `t` = transcript commitment (32 bytes)
 - `r` = beacon round number (8-byte big-endian)
-- `s` = public randomness (48 bytes SHA-512 signature from beacon round `r`)
+- `s` = the authenticated 48-byte quicknet signature for round `r`
 
 Compute:
 ```
@@ -33,38 +33,14 @@ k = first 4 bytes of h as big-endian uint32
 selected = (k mod N) == 0
 ```
 
-Where `N` is the sampling rate:
-- Live requests: N = 20 (5% selected)
-- Shadow requests: N = 1000 (0.1% selected)
+The signed mode determines the active divisor (20 for live, 1 for soak). The shadow divisor 1000 uses the same selection word over the same logged requests. Under an ideal uniform word, the exact probability is `ceil(2^32/N)/2^32`. [RFC-0005](../docs/rfcs/RFC-0005-beacon-escrow.md#proposed-design)
 
-A transcript is selected for proof with probability exactly 1/N (F9).
+## Escrow timeline
 
-## Shadow Requests
-
-The gateway seeds a public random stream of unpredictable shadow requests, each counted toward the threat models but not served to clients, to defeat selective compliance where the attacker checks whether `k mod N == 0` before deciding whether to deviate (F10).
-
-Shadow requests use `N = 1000`. Selected shadows are proved by the auditor.
-
-## Escrow Timeline
-
-For beacon round `r`:
-
-1. **Request receipted**: At `served_at`, gateway commits transcript commitment `t` and assigns `beacon_round = r`
-2. **Round opens**: At genesis + r × period, round `r` is published by drand
-3. **Escrow interval**: At genesis + r × period + 10 minutes (120 beacon rounds), audit protocol locks challenge set for round `r` (F12)
-4. **Challenge delivery**: Within escrow + 72 hours, auditor delivers conformance or deviation proofs (F13)
-
-```
-served_at
-    ↓
-    Receipt with beacon_round=r
-    ↓
-[0-3s] ← beacon round r opens
-    ↓
-[10 min] ← escrow: selection is final
-    ↓
-[72 hours] ← proofs delivered or audit fails
-```
+1. Before the log append, stage the private transcript under the recomputed public leaf hash. Bind its transcript commitment, signed sampling mode, assigned round and original `served_at`.
+2. Read that leaf from authenticated log history and recompute its hash. Check the assignment against the original timestamp. Verify the pinned quicknet signature for the fixed round before using the selection word.
+3. Erase unselected escrow as soon as selection resolves. For a selected leaf, use its hash as the durable handoff identity. The auditor inbox accepts that identity once even when the sender retries after losing an acknowledgment. The sender releases its outbox copy after the inbox durably acknowledges the same leaf. If the deadline passes first, a gap records the missing confirmation. The auditor may already hold a job whose acknowledgment was lost.
+4. At `served_at + W_escrow`, discard any undelivered private material and retain a redacted coverage gap. One expiry worker supervises each database. A role-private FIFO wakes it when any local process stages an earlier deadline. Startup and access checks also enforce the deadline. The v1 cap is five minutes. [Service parameters](parameters.md#service-parameters)
 
 ## Properties Achieved
 
@@ -76,38 +52,9 @@ From spec §3 security properties:
 
 ## Implementation
 
-### Gateway Side
+Run `make test-escrow` to exercise private custody, timed expiry, handoff replay and redacted gap records. Configure an operator-owned wrapping key and a separate auditor recipient key. Each service owns its database and key files. The sampler's `resolve_logged_leaf` accepts a verified public-log reader, the canonical receipt hasher and the quicknet round functions. Treat all three as trusted deployment dependencies.
 
-```python
-def compute_beacon_round(served_at: datetime) -> int:
-    genesis = 1692803367  # Unix timestamp
-    period = 3
-    elapsed = served_at.timestamp() - genesis
-    return int(elapsed / period)
-
-def is_selected(transcript_commitment: bytes, beacon_round: int, beacon_sig: bytes, rate: int) -> bool:
-    r_bytes = beacon_round.to_bytes(8, 'big')
-    h = sha256(transcript_commitment + r_bytes + beacon_sig)
-    k = int.from_bytes(h[:4], 'big')
-    return (k % rate) == 0
-```
-
-### Auditor Side
-
-1. Fetch all receipts from log for rounds `r_min` to `r_max`
-2. For each round `r`, fetch beacon signature: `GET https://api.drand.sh/52db9ba7.../public/{r}`
-3. Compute `k mod N` for each receipt
-4. Challenge every selected request
-5. Verify proofs or publish deviation verdict
-
-## Fallback
-
-If drand is unavailable at proof checking time (network partition, service degradation), the auditor:
-1. Waits up to 24 hours for beacon availability
-2. If still unavailable, logs an incident and skips that round's proofs
-3. Resumes from next available round
-
-This does not weaken security: the beacon round was determined at `served_at` and cannot change; unavailability only delays verification.
+Start `ExpiryWorker.run()` for each staging database and call `stop()` during shutdown. Disk erasure requires a running host. After downtime, the store purges overdue material when it opens. Protect the host clock and keep transient databases out of long-lived snapshots. The auditor's own retention starts from its separate job lifecycle.
 
 ## Related Specifications
 
@@ -115,3 +62,11 @@ This does not weaken security: the beacon round was determined at `served_at` an
 - `audit-protocol.md`: Challenge protocol using selection rule
 - `parameters.md`: Sampling rates N
 - `facts-register.md`: F7-F13 (beacon parameters and escrow timeline)
+
+## Public selection history
+
+`GET /audit/v1/selections` returns the signed monitor checkpoint, the number of indexed leaves, advertised configuration epochs and a page of public records. The proposed response fields include `epoch_start_index`, the active `divisor`, the fixed `beacon_round`, verified `beacon_signature`, `selected` and `shadow_selected`. The two decisions are null until the fixed quicknet signature verifies. To reproduce them, check the signed log head and leaf binding, verify the quicknet signature, then apply the selection rule above. Use the returned `next_cursor` as the inclusive starting leaf index on the next request. Revisit a pending index to read a later custody decision.
+
+The gateway operator advertises a mode epoch by its first leaf index. Every signed leaf must agree with its published epoch, and indexing never changes the mode for a historical request. The record's `status` distinguishes `pending`, `selected`, `unselected` and `gap`. A mathematically selected leaf remains pending during private handoff. A confirmed escrow expiry remains a gap if the beacon later becomes available. Both facts remain visible on that row.
+
+Use `Selections.activate` to provision the initial and subsequent epochs. Run `Selections.sync` against an independent `LogMonitor`, an authenticated lookup for the leaf's escrow status and the quicknet reader. A batch commits records alongside its signed checkpoint. Mount `SelectionsApp` with the deployment's page size. Run `make test-selections` to check indexed history, outage recovery and independent recomputation.

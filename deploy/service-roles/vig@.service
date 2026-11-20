@@ -1,0 +1,20 @@
+[Unit]
+Description=Verified inference gateway (%i)
+
+[Service]
+User=vig-%i
+Group=vig-%i
+UMask=0077
+StateDirectory=vig-%i
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/vig-%i
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ExecStartPre=/usr/bin/python3 -I /usr/local/libexec/vig/check-keys.py %i
+ExecStart=/usr/local/libexec/vig/%i
+
+[Install]
+WantedBy=multi-user.target

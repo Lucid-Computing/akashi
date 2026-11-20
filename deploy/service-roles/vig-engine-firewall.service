@@ -1,0 +1,13 @@
+[Unit]
+Description=Install the private inference engine firewall
+Requires=nftables.service
+After=nftables.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft -f /etc/vig/engine.nft
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes

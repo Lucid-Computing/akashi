@@ -1,0 +1,13 @@
+# Private credential directories; provision the files separately.
+d /etc/vig/keys 0711 root root -
+d /etc/vig/keys/gateway 0700 vig-gateway vig-gateway -
+d /etc/vig/keys/engine 0700 vig-engine vig-engine -
+d /etc/vig/keys/proxy 0700 vig-proxy vig-proxy -
+d /etc/vig/keys/log 0700 vig-log vig-log -
+d /etc/vig/keys/sampler 0700 vig-sampler vig-sampler -
+d /etc/vig/keys/escrow 0700 vig-escrow vig-escrow -
+d /etc/vig/keys/pickup 0700 vig-pickup vig-pickup -
+d /etc/vig/keys/auditor 0700 vig-auditor vig-auditor -
+d /etc/vig/keys/prover 0700 vig-prover vig-prover -
+d /etc/vig/keys/verifier 0700 vig-verifier vig-verifier -
+d /prover/keys 0700 vig-prover vig-prover -

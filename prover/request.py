@@ -7,6 +7,16 @@ from collections.abc import Sequence
 # specs/parameters.md fixes T, z and the vocabulary for the published commitment.
 WINDOW = 1024
 VOCABULARY_SIZE = 202048
+END_TOKENS = frozenset({200001, 200007, 200008})  # F37
+
+
+def reply_complete(tokens: Sequence[int], budget: int) -> bool:
+    """A nonempty reply stops at its first end token or exhausts the holder's budget."""
+    return (
+        1 <= len(tokens) <= budget
+        and END_TOKENS.isdisjoint(tokens[:-1])
+        and (tokens[-1] in END_TOKENS or len(tokens) == budget)
+    )
 
 
 def _token_ids(ids: Sequence[int]) -> tuple[int, ...]:

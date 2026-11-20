@@ -1,0 +1,11 @@
+# See specs/hardening.md, Service Accounts and Privileges.
+u vig-gateway - "VIG gateway" /var/lib/vig-gateway /usr/sbin/nologin
+u vig-engine - "VIG engine" /var/lib/vig-engine /usr/sbin/nologin
+u vig-proxy - "VIG proxy" /var/lib/vig-proxy /usr/sbin/nologin
+u vig-log - "VIG log" /var/lib/vig-log /usr/sbin/nologin
+u vig-sampler - "VIG sampler" /var/lib/vig-sampler /usr/sbin/nologin
+u vig-escrow - "VIG escrow" /var/lib/vig-escrow /usr/sbin/nologin
+u vig-pickup - "VIG pickup" /var/lib/vig-pickup /usr/sbin/nologin
+u vig-auditor - "VIG auditor" /var/lib/vig-auditor /usr/sbin/nologin
+u vig-prover - "VIG prover" /var/lib/vig-prover /usr/sbin/nologin
+u vig-verifier - "VIG verifier" /var/lib/vig-verifier /usr/sbin/nologin

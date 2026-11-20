@@ -108,7 +108,7 @@ MUST be disabled:
 
 ```bash
 # Stop prover with spool's stop file, never kill (F23)
-echo 1 > /prover/spool/stop
+(umask 077; set -C; : > /prover/spool/stop)
 
 # Wait for graceful shutdown
 wait_for_process_exit cp_prove
@@ -350,3 +350,11 @@ Before deployment:
 - `audit-protocol.md`: Proof handling F40
 - `observability.md`: Security logging and alerts
 - `redteam-suite-spec.md`: Attack vectors R1-R19
+
+## Validating service boundaries
+
+Run `make test-service-boundaries` with HAProxy, the OpenSSL CLI, Node.js and uv on PATH. Set `HAPROXY` to use a specific installed binary. The tests use temporary certificates, a loopback HTTP backend and a disposable public-key archive. Linux deployment files live in [deploy/service-roles](../deploy/service-roles/) and the [engine proxy configuration](../deploy/engine-proxy/).
+
+Keep one public-key archive per trusted deployment in an operator-owned directory. Before switching the log or auditor signer, call `PublicKeyArchive.rotate(role, new_id, raw_public_key, replaces=previous_id)`, publish the snapshot, then activate the signer. For the first key, omit `replaces`. The operator can retry a completed rotation with the same ID and public key. Back up the archive with public checkpoints. Historical verification selects both the signing role and the key ID.
+
+Generate the public file with `python -m operations.publish_keys base-discovery.json verification.sqlite3 public/.well-known/vig.json`. Use the gateway's trusted discovery descriptor for the base and serve the resulting file at `/.well-known/vig.json`. The implementation adds a proposed `verification_keys` array of public role, key ID, key bytes (hex) and active status, and updates the existing current-key fields. Holders authenticate the descriptor through their configured trust source before accepting its keys.

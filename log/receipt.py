@@ -186,3 +186,19 @@ def public_leaf(receipt: Mapping[str, object], leaf_index: int) -> dict[str, obj
         **{name: fields[name] for name in _PUBLIC_FIELDS},
         "leaf_index": _uint(leaf_index, 64, "leaf_index"),
     }
+
+
+def checked_public_leaf(
+    value: Mapping[str, object], *, index: int, log_id: str
+) -> dict[str, object]:
+    """Authenticate the shape and digest before a reader persists public log metadata."""
+    fields = dict(value)
+    if (
+        fields.keys() != set(_PUBLIC_FIELDS) | {"leaf_index"}
+        or type(fields["leaf_index"]) is not int
+        or fields["leaf_index"] != _uint(index, 64, "leaf_index")
+        or fields["log_id"] != log_id
+        or fields["leaf_hash"] != leaf_hash(fields)
+    ):
+        raise ValueError("Invalid public log leaf")
+    return fields

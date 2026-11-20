@@ -21,3 +21,11 @@ test-request-policy:
 
 test-discovery:
 	uv run --no-project --python 3.13.18 python -m unittest -v tests.test_discovery
+
+.PHONY: test-serving
+test-serving:
+	uv run --locked python -m unittest -v tests.test_serving tests.test_delivery_commit
+
+.PHONY: test-streaming
+test-streaming:
+	VIG_REQUIRE_STREAM_ASSETS=1 $(UV) run --locked python -m unittest -v tests.test_streaming tests.test_stream_http

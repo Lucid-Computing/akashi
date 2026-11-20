@@ -120,35 +120,7 @@ Disadvantages:
 
 ### Pattern 2: Sealed Pickup (Opaque Router)
 
-Client fetches receipt after serving:
-
-```
-GET /receipts/v1/pickup/{request_id}
-```
-
-Where `request_id` is from the completion's `id` field (OpenAI-compatible).
-
-Returns:
-
-```json
-{
-  "receipt": { <same receipt> },
-  "prompt_token_ids": [...],
-  "reply_token_ids": [...],
-  "pickup_id": "<32-byte hex>"
-}
-```
-
-`pickup_id` proves the package is authentic (gateway operator sealed it with a secret).
-
-Advantages:
-- Works with any router (no special forwarding)
-- Client opt-in to verification
-- Smaller response bodies
-
-Disadvantages:
-- Additional API call
-- 30-day retention window
+The holder opts in by putting a fresh pickup secret in the request's `user` field. The router preserves the field, messages, resolved budget and displayed reply. After serving, the holder derives the opaque pickup ID, retrieves the encrypted envelope within `W_pickup` and independently verifies the recovered receipt. Forwarding compatibility is assessed per route. [Sealed pickup contract](retention.md#sealed-pickup)
 
 ### Pattern 3: Router Verification Service
 
@@ -242,20 +214,19 @@ if verification:
     # Verify as in verifier-kit.md
 ```
 
-For opaque routers:
+For opaque routers, the holder retains the secret generated before submission. Recovery uses the original chat, budget, displayed reply and trusted descriptor.
 
 ```python
-response = requests.post("https://router.example/v1/chat/completions", ...)
-request_id = response.json()["id"]
+from pickup.crypto import lookup_id, open as open_pickup
 
-# Fetch receipt
-well_known = requests.get("https://gateway.example/.well-known/vig.json").json()
-pickup_url = well_known["pickup_url"]
-pickup = requests.get(f"{pickup_url}{request_id}").json()
-
-receipt = pickup["receipt"]
-# Verify as in verifier-kit.md
+pickup_id = lookup_id(messages, budget, reply_text, holder_secret)
+url = trusted_descriptor["pickup_url"].rstrip("/") + "/" + pickup_id
+response = requests.get(url)
+response.raise_for_status()
+verification = open_pickup(response.json(), holder_secret, messages, budget, reply_text)
 ```
+
+Pass the recovered verification and original inputs to the [holder verifier](verifier-kit.md).
 
 ## Provider Dashboard
 
