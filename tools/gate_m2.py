@@ -46,6 +46,8 @@ def prerequisite(path: Path, milestone: str) -> str:
             and type(doc["batch_size"]) is int
             and doc["batch_size"] == 1
             and doc["platform"]["flashprove_revision"] == REVISION
+            and doc["platform"]["serving_eligibility_scope"] == "primary_engine_only"
+            and bool(_DIGEST.fullmatch(doc["platform"]["eligible_startup_sha256"]))
             and type(doc["proofs_verified"]) is int
             and doc["proofs_verified"] == len(pinned) == len(doc["replies"]) == 16
             and doc["workload_sha256"]
@@ -54,6 +56,7 @@ def prerequisite(path: Path, milestone: str) -> str:
         for case, row in zip(pinned, doc["replies"], strict=True):
             _require(
                 row["id"] == case["id"]
+                and bool(_DIGEST.fullmatch(row["evidence_sha256"]))
                 and all(
                     type(row[key]) is int and row[key] > 0
                     for key in (
@@ -120,6 +123,7 @@ def checked_flow(doc: dict[str, Any], *, elapsed: bool = False) -> dict[str, obj
         _require(doc[key] is True)
     for key in (
         "proof_sha256",
+        "eligible_startup_sha256",
         "original_statement_sha256",
         "substitute_statement_sha256",
     ):
@@ -202,10 +206,11 @@ def gate(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
         ).strip()
         stage = "previous_milestones"
-        report["milestone_evidence_sha256"] = {
+        prerequisite_hashes = {
             "M0": prerequisite(m0, "M0"),
             "M1": prerequisite(m1, "M1"),
         }
+        report["milestone_evidence_sha256"] = prerequisite_hashes
         stage = "independent_challenge_and_holder_verification"
         with tempfile.TemporaryDirectory(dir=work) as folder:
             result = Path(folder) / "result.json"
@@ -229,9 +234,29 @@ def gate(
                 stderr=subprocess.DEVNULL,
                 check=True,
             )
-            report["checks"] = checked_flow(
-                json.loads(result.read_bytes()), elapsed=elapsed
+            flow = json.loads(result.read_bytes())
+            checks = checked_flow(flow, elapsed=elapsed)
+            raw_m0 = m0.read_bytes()
+            _require(hashlib.sha256(raw_m0).hexdigest() == prerequisite_hashes["M0"])
+            baseline = json.loads(raw_m0)
+            originals = [
+                r for r in baseline["replies"] if r["id"] == "arithmetic-apples"
+            ]
+            evidence = hashlib.sha256(
+                b"vig/m0/whole-reply/1"
+                + bytes.fromhex(flow["original_statement_sha256"])
+                + bytes.fromhex(flow["proof_sha256"])
+            ).hexdigest()
+            _require(
+                flow["eligible_startup_sha256"]
+                == baseline["platform"]["eligible_startup_sha256"]
+                and len(originals) == 1
+                and originals[0]["evidence_sha256"] == evidence
             )
+            report["checks"] = {
+                **checks,
+                "eligible_primary_and_original_proof_bound": True,
+            }
         report["status"] = "passed"
     except (
         AttributeError,

@@ -101,6 +101,8 @@ def settings(config: dict[str, Any]) -> tuple[dict[str, Any], NativeVerifier]:
 
 def captured(
     config: dict[str, Any],
+    *,
+    ready_bytes: bytes | None = None,
 ) -> tuple[list[dict[str, str]], tuple[int, ...], tuple[int, ...], CandidateProof]:
     folder = Path(config["capture"])
     inputs = read(folder / "inputs-16.json")
@@ -112,7 +114,11 @@ def captured(
     require(len(indices) == 1, "expected one captured case")
     index = indices[0]
     candidate = read(folder / "unproven-candidates.json")
-    ready = read(folder / "ready.json")
+    ready = (
+        json.loads(ready_bytes)
+        if ready_bytes is not None
+        else read(folder / "ready.json")
+    )
     cases = candidate["canaries"]
     require(
         isinstance(cases, list)
@@ -381,7 +387,8 @@ def audit(
     verdicts = importlib.import_module("auditor.verdicts")
     from prover.scoring import assess
 
-    _, prompt, reply, candidate = captured(config)
+    ready_bytes = (Path(config["capture"]) / "ready.json").read_bytes()
+    _, prompt, reply, candidate = captured(config, ready_bytes=ready_bytes)
     original = build_statement(prompt, reply)
     substitute = MockEngine().generate(prompt, 1).tokens
     altered = build_statement(prompt, substitute)
@@ -575,6 +582,7 @@ def audit(
         "original_statement_sha256": sha(original),
         "substitute_statement_sha256": sha(altered),
         "proof_sha256": sha(candidate.proof),
+        "eligible_startup_sha256": sha(ready_bytes),
         "distinct_prover_verifier_hosts": True,
         "distinct_rx_verifier_hosts": True,
         "batch_size": 1,

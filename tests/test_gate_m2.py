@@ -63,6 +63,7 @@ def _flow() -> dict[str, Any]:
         "original_matches_proof": True,
         "reference_trace_bound": True,
         "proof_sha256": _DIGEST,
+        "eligible_startup_sha256": "23" * 32,
         "original_statement_sha256": "a8" * 32,
         "substitute_statement_sha256": "74" * 32,
         "challenge_clock": "controlled_plus_three_days",
@@ -102,7 +103,7 @@ class M2GateTests(unittest.TestCase):
             # file with the same fields emitted by the real M0 workload.
             cases = [
                 {
-                    "id": f"case-{i}",
+                    "id": f"case-{i}" if i else "arithmetic-apples",
                     "messages": [{"role": "user", "content": "test"}],
                     "max_tokens": 1,
                     "prompt_tokens": 7,
@@ -120,7 +121,11 @@ class M2GateTests(unittest.TestCase):
                     "commitment_id": COMMITMENT,
                     "batch_size": 1,
                     "proofs_verified": len(cases),
-                    "platform": {"flashprove_revision": REVISION},
+                    "platform": {
+                        "flashprove_revision": REVISION,
+                        "serving_eligibility_scope": "primary_engine_only",
+                        "eligible_startup_sha256": "23" * 32,
+                    },
                     "workload_sha256": hashlib.sha256(
                         workload.read_bytes()
                     ).hexdigest(),
@@ -130,6 +135,10 @@ class M2GateTests(unittest.TestCase):
                             "caller_budget": case["max_tokens"],
                             "prompt_tokens": case["prompt_tokens"],
                             "reply_tokens": 1,
+                            "evidence_sha256": hashlib.sha256(
+                                b"vig/m0/whole-reply/1"
+                                + bytes.fromhex("a8" * 32 + _DIGEST)
+                            ).hexdigest(),
                             "proof_bytes": 123,
                             "proof_ns": 25,
                             "verify_ns": 12,
@@ -181,6 +190,20 @@ class M2GateTests(unittest.TestCase):
         for secret in (_PRIVATE, str(self.root), self.config.name):
             self.assertNotIn(secret, text)
         return passed, json.loads(text)
+
+    def test_rejects_different_startup_or_proof_even_with_the_same_platform(
+        self,
+    ) -> None:
+        for key in (
+            "eligible_startup_sha256",
+            "proof_sha256",
+            "original_statement_sha256",
+        ):
+            with self.subTest(field=key):
+                good, report = self.run_gate({**_flow(), key: "ad" * 32})
+                self.assertFalse(good)
+                self.assertEqual(report["status"], "incomplete")
+                self.assertNotIn("checks", report)
 
     def test_real_m1_report_shape_and_fixed_mock_observations(self) -> None:
         self.assertEqual(
