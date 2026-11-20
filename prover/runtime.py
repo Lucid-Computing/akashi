@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import os
@@ -11,12 +10,11 @@ import stat
 import subprocess
 import threading
 import time
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
+from prover.artifacts import sha256_stream, trusted_file
 from prover.submission import (
     COMMITMENT,
     SpoolError,
@@ -83,31 +81,6 @@ def _host(gpu: int) -> None:
         raise RuntimeUnavailable("Configured proving device is not the measured H100")
 
 
-@contextmanager
-def _file(path: Path) -> Iterator[BinaryIO]:
-    # The operator provisions the artifact and manifest outside group/other-writable directories.
-    with trusted_directory(path.parent) as parent:
-        fd = os.open(
-            path.name, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW, dir_fd=parent
-        )
-    with os.fdopen(fd, "rb") as stream:
-        info = os.fstat(fd)
-        if (
-            not stat.S_ISREG(info.st_mode)
-            or info.st_uid not in (0, os.geteuid())
-            or info.st_mode & 0o022
-        ):
-            raise RuntimeUnavailable("Untrusted prover artifact")
-        yield stream
-
-
-def _digest(stream: BinaryIO) -> str:
-    h = hashlib.sha256()
-    while block := stream.read(1024 * 1024):
-        h.update(block)
-    return h.hexdigest()
-
-
 def _pin(binary: BinaryIO, config: RuntimeConfig) -> None:
     def unique(pairs: list[tuple[str, object]]) -> dict[str, object]:
         fields = dict(pairs)
@@ -115,7 +88,7 @@ def _pin(binary: BinaryIO, config: RuntimeConfig) -> None:
             raise RuntimeUnavailable("Duplicate prover build field")
         return fields
 
-    with _file(config.build_manifest) as manifest:
+    with trusted_file(config.build_manifest) as manifest:
         doc = json.load(manifest, object_pairs_hook=unique)
     if (
         not isinstance(doc, dict)
@@ -124,13 +97,13 @@ def _pin(binary: BinaryIO, config: RuntimeConfig) -> None:
         or doc.get("flashprove_revision") != REVISION
         or doc.get("commitment_id") != COMMITMENT
         or doc.get("cp_prove_sha256")
-        != _digest(binary)
+        != sha256_stream(binary)
     ):
         raise RuntimeUnavailable(
             "Prover build attestation does not match this executable"
         )
-    with _file(config.public_seed) as seed:
-        if _digest(seed) != SEED_SHA256:
+    with trusted_file(config.public_seed) as seed:
+        if sha256_stream(seed) != SEED_SHA256:
             raise RuntimeUnavailable("Wrong published Maverick seed")
 
 
@@ -222,7 +195,7 @@ class ProverProcess:
                 "HOME": str(config.home),
                 "TMPDIR": str(config.temp),
             }
-            with guarded_spool(config.spool) as spool, _file(config.binary) as binary:
+            with guarded_spool(config.spool) as spool, trusted_file(config.binary) as binary:
                 _pin(binary, config)
                 # Execute the verified inode even if the deployment pathname is swapped.
                 fd = binary.fileno()

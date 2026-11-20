@@ -2,6 +2,8 @@
 
 A zero-knowledge proof system for verifiable LLM inference serving using FlashProve.
 
+For development setup and supported environments, see the [contributor guide](CONTRIBUTING.md#getting-started). Report vulnerabilities through the [private security channel](SECURITY.md#security-reporting).
+
 ## Local router demo
 
 Run `make setup demo-router` to send synthetic chat requests through a local Mode R router. The holder recovers a sealed receipt after the router strips verification and checks the signed log. [Demo and proxy commands](router/README.md)
