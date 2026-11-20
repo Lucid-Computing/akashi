@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sqlite3
+import stat
 import struct
 import subprocess
 import sys
@@ -47,6 +48,21 @@ def require(ok: object, reason: str) -> None:
 
 def read(path: Path) -> Any:
     return json.loads(path.read_bytes())
+
+
+def private_config(path: Path) -> dict[str, Any]:
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(descriptor, "rb") as file:
+        metadata = os.fstat(file.fileno())
+        require(
+            stat.S_ISREG(metadata.st_mode)
+            and metadata.st_uid == os.geteuid()
+            and not metadata.st_mode & 0o077,
+            "private configuration file required",
+        )
+        data = json.load(file)
+    require(isinstance(data, dict), "invalid configuration")
+    return cast(dict[str, Any], data)
 
 
 def save(path: Path, data: object) -> None:
@@ -88,6 +104,30 @@ def captured(
 ) -> tuple[list[dict[str, str]], tuple[int, ...], tuple[int, ...], CandidateProof]:
     folder = Path(config["capture"])
     inputs = read(folder / "inputs-16.json")
+    require(
+        isinstance(inputs, list) and all(isinstance(row, dict) for row in inputs),
+        "invalid captured case rows",
+    )
+    indices = [i for i, row in enumerate(inputs) if row.get("id") == _CASE]
+    require(len(indices) == 1, "expected one captured case")
+    index = indices[0]
+    candidate = read(folder / "unproven-candidates.json")
+    ready = read(folder / "ready.json")
+    cases = candidate["canaries"]
+    require(
+        isinstance(cases, list)
+        and index < len(cases)
+        and isinstance(cases[index], dict),
+        "original case does not match captured cases",
+    )
+    taken = cases[index]
+    require(
+        ready["phase"] == "eligible"
+        and ready["same_process_f21"] is True
+        and ready["commitment_id"] == candidate["commitment_id"] == COMMITMENT
+        and taken in ready["canaries"],
+        "missing eligible primary capture",
+    )
     workload = [
         json.loads(line)
         for line in (
@@ -96,18 +136,9 @@ def captured(
         .read_bytes()
         .splitlines()
     ]
-    original = next(row for row in workload if row["id"] == _CASE)
-    index = next(i for i, v in enumerate(inputs) if v["id"] == _CASE)
-    candidate = read(folder / "unproven-candidates.json")
-    ready = read(folder / "ready.json")
-    taken = candidate["canaries"][index]
-    require(
-        ready["phase"] == "eligible"
-        and ready["same_process_f21"] is True
-        and ready["commitment_id"] == candidate["commitment_id"] == COMMITMENT
-        and taken in ready["canaries"],
-        "missing eligible primary capture",
-    )
+    originals = [row for row in workload if row["id"] == _CASE]
+    require(len(originals) == 1, "expected one published case")
+    original = originals[0]
     msgs = original["messages"]
     prompt = ChatRenderer(Path(config["assets"])).render(msgs)
     reply = tuple(taken["expected"])
@@ -530,20 +561,22 @@ def main() -> int:
     parser.add_argument("--elapsed", action="store_true")
     args = parser.parse_args()
     os.umask(0o077)
-    args.work.mkdir(mode=0o700, exist_ok=True)
-    stat = args.work.lstat()
-    if (
-        not args.work.is_dir()
-        or args.work.is_symlink()
-        or stat.st_uid != os.geteuid()
-        or stat.st_mode & 0o077
-    ):
-        parser.exit(1, "M2 requires an owner-only ordinary work directory\n")
     result: dict[str, Any] = {"schema_version": 1, "status": "incomplete"}
-    save(args.output, result)
     try:
-        config = read(args.config)
-        require(config["schema_version"] == 1, "unknown configuration schema")
+        save(args.output, result)
+        args.work.mkdir(mode=0o700, exist_ok=True)
+        metadata = args.work.lstat()
+        require(
+            stat.S_ISDIR(metadata.st_mode)
+            and metadata.st_uid == os.geteuid()
+            and not metadata.st_mode & 0o077,
+            "private work directory required",
+        )
+        config = private_config(args.config)
+        require(
+            type(config["schema_version"]) is int and config["schema_version"] == 1,
+            "unknown configuration schema",
+        )
         with (args.work / ".lock").open("ab") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             retained = prepare(config, args.work)
@@ -556,7 +589,12 @@ def main() -> int:
             else:
                 result = audit(config, retained, args.elapsed)
     except (
+        AttributeError,
+        IndexError,
         OSError,
+        OverflowError,
+        StopIteration,
+        struct.error,
         ValueError,
         KeyError,
         TypeError,
@@ -566,7 +604,10 @@ def main() -> int:
         subprocess.SubprocessError,
     ) as exc:
         result["reason"] = type(exc).__name__
-    save(args.output, result)
+    try:
+        save(args.output, result)
+    except OSError:
+        parser.exit(1, "M2 could not write the result\n")
     return 0 if result["status"] in ("passed", "prepared") else 1
 
 
