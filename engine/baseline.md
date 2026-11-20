@@ -1,5 +1,7 @@
 # Recheck a real-model M0 run
 
+The 2026-11-20 run independently verified all 16 real whole replies on the eligible primary H100. The secondary refused startup twice, differed on all three primary cases and changed on its own first-case replay. The archived report includes each request’s prefill, decode, proof and verification measurements, the streaming result and both host configurations. [Measured M0 report](evidence/maverick-m0.json)
+
 Run the CPU replay on the x86-64 Linux verifier host after a successful commitment rebuild, real engine startup and singleton proving run. The verifier needs the pinned F4 public verification files, the native binary, its release manifest, the public tokenizer assets and private artifacts from those runs. The fixed synthetic workload contains eight short chat requests and eight requests spanning 200 through 768 rendered prompt tokens. Each row specifies the original messages and caller budget. [M0 exit tests](../specs/build-plan.md#m0-bring-up) · [Workload](../tests/fixtures/m0-workload.jsonl)
 
 Set `VIG_M0_CONFIG` to a private JSON configuration and run the gate from the repository root.

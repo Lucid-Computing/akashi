@@ -14,7 +14,18 @@ From specification section 21. These are unresolved technical questions to be cl
 
 **Context**: Engine decode time is measured (0.60-0.62 s/token per F22), but prefill time for the integer-model plug-in is not. Need this to calculate accurate throughput.
 
-**Status**: Open, to be measured at M0.
+**Measured on 2026-11-20.** The following prefill times are the vLLM counter deltas for one isolated request at each rendered prompt length on the primary H100. [M0 hardware report](../engine/evidence/maverick-m0.json)
+
+| Prompt tokens | Prefill seconds |
+| ---: | ---: |
+| 200 | 4.003 |
+| 256 | 4.135 |
+| 320 | 4.290 |
+| 384 | 4.493 |
+| 448 | 3.964 |
+| 512 | 4.351 |
+| 640 | 4.695 |
+| 768 | 5.410 |
 
 ### OQ2: Streaming Token IDs
 
@@ -24,7 +35,7 @@ From specification section 21. These are unresolved technical questions to be cl
 
 **Context**: If not, gateway must stream from a non-streaming engine call.
 
-**Status**: Open, to be tested at M0.
+**Measured on 2026-11-20.** vLLM 0.29.0 returned incremental token IDs for the fixed `science-rain` request. Its 2 native SSE frames carried all 3 reply IDs in the same order as the independently proved non-streaming response. [M0 hardware report](../engine/evidence/maverick-m0.json)
 
 ### OQ3: Router Header Forwarding
 
@@ -54,7 +65,7 @@ From specification section 21. These are unresolved technical questions to be cl
 
 **Context**: FlashProve reports 58.8 s for next-token proofs (F23). Whole-reply exact match assumed similar but not measured.
 
-**Status**: Open, to be measured at M0.
+**Measured on 2026-11-20.** The persistent H100 prover processed 16 exact whole replies, one request per batch. Dispatch to proof publication took 21.29 to 22.73 seconds with a median of 21.94 seconds. Launch to the first request took 82.13 seconds. Independent x86-64 CPU verification passed all 16 and took 20.81 to 25.25 seconds per proof. [M0 hardware report](../engine/evidence/maverick-m0.json)
 
 ### OQ6: Batch Privacy Under Published Seed
 
@@ -111,7 +122,7 @@ pinned digests. [Rebuild report](../engine/evidence/maverick-commitment.json)
 
 **Context**: FlashProve conditions exactness on the float64 check (F20) and reports agreement from H100 runs only (F35). Need to verify that engine and prover always agree on greedy choices.
 
-**Status**: Open, verify with canary (three fixed prompts, golden token IDs) at engine start-up.
+**Measured on 2026-11-20.** The primary NVIDIA H100 80GB HBM3 matched all three independently F4-verified golden replies. The separate NVIDIA H100 NVL refused startup twice. Its diagnostic replay disagreed with all three primary replies for the same prompts and budgets. The first canary also returned a different reply when repeated on the same healthy NVL process after its startup refusal. The cause remains unknown. The NVL configuration remains ineligible for serving or soak until a fresh startup passes its gates. The report records each host’s driver and runtime versions. These results cover the two measured configurations. [M0 hardware report](../engine/evidence/maverick-m0.json)
 
 ## Summary
 
@@ -119,15 +130,15 @@ All nine questions (OQ1-OQ9) are from specification section 21. They will be clo
 
 | Question | Closes At | Method |
 |----------|-----------|--------|
-| OQ1: Prefill time | M0 | Measure |
-| OQ2: Streaming token IDs | M0 | Test |
+| OQ1: Prefill time | M0 | Measured eight prompt lengths on the primary H100. |
+| OQ2: Streaming token IDs | M0 | Native SSE IDs matched the proved reply. |
 | OQ3: Router header forwarding | M4 | Test |
 | OQ4: Router message rewriting | M4 | Test |
-| OQ5: Whole-reply proof time | M0 | Measure |
+| OQ5: Whole-reply proof time | M0 | Timed and independently verified 16 singleton proofs. |
 | OQ6: Batch privacy | Before M2 | Ask FlashProve maintainers |
 | OQ7: Commitment remake | M0 | Resolved. Calibration and hardware rebuild match F4. |
 | OQ8: Range failure rate | M4 | Soak data |
-| OQ9: Prover-engine agreement | M0+ | Canary at every start-up |
+| OQ9: Prover-engine agreement | M0+ | The secondary refused startup twice, differed on all three primary cases and changed on its own first-case replay. Recheck at each startup. |
 
 ## Related Documentation
 
