@@ -34,20 +34,15 @@ From spec § 10.1:
 
 ## Automated Sampling
 
-From spec § 10.5:
+The receipt fixes the first quicknet round strictly after delivery time plus
+MMD and the beacon margin. Verify the round's signature with the pinned
+quicknet key before computing the selection word from the transcript
+commitment, the round number and the raw signature. Live and shadow rates use
+that same word. [Beacon and escrow contract](../docs/rfcs/RFC-0005-beacon-escrow.md#proposed-design)
 
-- Fetch STH every 60 seconds
-- For each receipt past escrow + 10 minutes:
-  - Fetch beacon signature
-  - Compute selection (k mod N)
-  - Submit challenge if selected
-
-## Testing
-
-```bash
-cd auditor/
-pytest tests/ -v
-```
+Run `make test-beacon` from the repository root. The tests include an authentic
+historical quicknet round and can run offline once the locked dependencies are
+installed. [Pinned quicknet chain information](https://api.drand.sh/52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971/info)
 
 ## Related Specifications
 
