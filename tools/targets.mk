@@ -23,3 +23,7 @@ gate-m1:
 .PHONY: docs-check
 docs-check:
 	$(UV) run --locked python -m tools.check_docs
+
+.PHONY: gate-m2
+gate-m2:
+	$(UV) run --locked python -m tools.gate_m2 $(M2_ARGS)
