@@ -61,3 +61,18 @@ bearer authentication and the configured body limit before rendering, checks the
 greedy-only allowlist, and resolves both budget aliases to one token count.
 Only the normalized engine fields proceed to dispatch.
 [Request policy](../specs/gateway-api.md#request-policy) · [Failure contract](../docs/spec/04-error-model.md#failure-contract)
+
+## Model discovery
+
+Mount `gateway.discovery.DiscoveryApp(config)` in the gateway WSGI stack.
+`GET /v1/models` returns the operator's model name, owner and creation time.
+`GET /.well-known/vig.json` publishes the window, token cap, commitment,
+render profiles, beacon chain, public verification identities and service
+addresses. Use the same `ServiceConfig` for request admission so the served
+model name and limit agree with the descriptor.
+
+The descriptor retains the chat `render_profile` object. The proposed additive
+`render_profiles` list also identifies `raw-ids/1` and its digest. Configure
+public verification keys and service URLs at deployment. Check the discovery
+routes with `make test-discovery`.
+[Descriptor fields](../specs/gateway-api.md#service-descriptor) · [Raw profile](../specs/canonical-rendering.md#raw-ids1)
