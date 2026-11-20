@@ -1,0 +1,30 @@
+{
+  "commitment_id": "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46",
+  "install_environment": "fresh_venv_in_clean_chroot",
+  "installed_runtime_sha256": {
+    "config/KL.bin": "df29bd823d62431945c3124138ed52e1f677db9224c4196505a91663ac48ab1a",
+    "config/layout.txt": "a99b964bbd3648d6e3b4007fc9370b5c70c7e9668848daa039820bc9e03e8f80",
+    "config/policy.txt": "91803480b032dc993722b50d552703024f2e78a991c7a239852855177772ee0d",
+    "cp_verify": "7f9efc1e86a848a3715c6cc870e465ac2a1c5e8fd1eac09e4809023de7604394",
+    "ivk/key.bin": "178d8814def56f88fae45f273c7f70152dac887ddc9075b6aca2f895c24c7c38",
+    "ivk/leaf/0.bin": "e9dea311bb78bba70e6ec5db0196d5c4eba57498b0e8e4321d313025896c8dd0"
+  },
+  "m0_evidence_sha256": "1f000dff86b6a4ad3141b5f6db065bc77c7b351d03fcd30811abe17a79367c6d",
+  "m0_report_sha256": "a1eea29bffbc082e883dc3943cefb9986dab0eb716b3b1265e00dc19c6592201",
+  "original": {
+    "exit_code": 0,
+    "outcome": "CONFORMS"
+  },
+  "platform": "Linux x86_64",
+  "requirements_sha256": "b08ca3a6b298abdc11ca858260e459be0fd1aef73685bf0a8c24ca505efc93bb",
+  "runtime_configuration": "operator_bounds_only",
+  "schema_version": 1,
+  "single_bit_altered_proof": {
+    "exit_code": 20,
+    "outcome": "PROOF_REJECTED"
+  },
+  "status": "passed",
+  "verification_network": "disabled",
+  "wheel_sha256": "b3a49ff02c4d1538c74d3d53d4ed7ca7d3ccf0597bada137ffdc37585a027187",
+  "workload_case": "arithmetic-apples"
+}

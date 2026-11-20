@@ -14,8 +14,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from prover.artifacts import sha256_stream, trusted_file
-from prover.submission import COMMITMENT, SpoolError, trusted_directory
+from prover.artifacts import SpoolError, sha256_stream, trusted_directory, trusted_file
+from prover.request import COMMITMENT
 from tools.check_hardware import check_verifier_cpu
 from verifier.native_output import Outcome
 
