@@ -70,11 +70,28 @@ From specification section 21. These are unresolved technical questions to be cl
 
 **Question**: Remaking the published commitment needs the calibration set, built from WikiText-2 and the Llama 2 and Llama 4 tokenizers; do the ungated copies with matching SHA-256 suffice by hash?
 
-**How to close**: Confirm at M0
+**Status**: Resolved by the M0 hardware rebuild.
 
 **Context**: The published commitment (C = `c7982f8a...1f46`) was made under a published seed (F4), so anyone with the weight files and calibration set can remake it and verify the ID matches.
 
-**Status**: Open, confirm at M0 that ungated dataset copies work.
+**Calibration result**: Confirmed with the unmodified F4 FlashProve generator,
+Python 3.13.15, NumPy 2.3.5, PyArrow 23.0.1 and tokenizers 0.22.2.
+The generator accepted all three SHA-256 pins and exited 0.
+The 128 draws hashed to `8cd63f617d474124a50ee052eae2fd0be603ea45f191ec8ccb4f443f676fb58c`.
+An independent SHA-256 read of the 131,200-byte calibration file returned
+`a2ce04bd55b1b6fa2b9148744e087f5a2a484c1b3d525ea9fb2fc1ab8c6c2c02`, the published digest.
+[Pinned generator and reference digests](https://github.com/anthropics/FlashProve/blob/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c/scales/make_calibration_set.py#L80-L122)
+
+**Hardware result.** The 2026-11-20 H100 rebuild used that calibration digest
+and all five checksummed GGUF shards. Its generated commitment matched the full
+F4 identifier. The verification key and first verification leaf also matched the
+pinned digests. [Rebuild report](../engine/evidence/maverick-commitment.json)
+
+**Inputs used**, in generator argument order:
+
+1. [WikiText-2 raw training split](https://huggingface.co/datasets/Salesforce/wikitext/blob/b08601e04326c79dfdd32d625aee71d232d685c3/wikitext-2-raw-v1/train-00000-of-00001.parquet)
+2. [Hugging Face Tokenizers' public Llama 2 test fixture](https://huggingface.co/datasets/hf-internal-testing/tokenizers-test-data/blob/e20ac5914f5ada06874e4f9d45e49b31a049904e/llama-2.json)
+3. [F37 Llama 4 tokenizer](https://huggingface.co/unsloth/Llama-4-Maverick-17B-128E-Instruct/blob/86c5ecb6f2fbddf604c60120125fb202e09f2556/tokenizer.json)
 
 ### OQ8: Range Failure Rate and Padding
 
@@ -108,7 +125,7 @@ All nine questions (OQ1-OQ9) are from specification section 21. They will be clo
 | OQ4: Router message rewriting | M4 | Test |
 | OQ5: Whole-reply proof time | M0 | Measure |
 | OQ6: Batch privacy | Before M2 | Ask FlashProve maintainers |
-| OQ7: Commitment remake | M0 | Confirm |
+| OQ7: Commitment remake | M0 | Resolved. Calibration and hardware rebuild match F4. |
 | OQ8: Range failure rate | M4 | Soak data |
 | OQ9: Prover-engine agreement | M0+ | Canary at every start-up |
 

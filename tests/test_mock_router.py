@@ -1,6 +1,7 @@
 """Mode R HTTP forwarding and transport controls on loopback."""
 
 import json
+import socket
 import threading
 import unittest
 from collections.abc import Callable, Iterator
@@ -169,6 +170,31 @@ class MockRouterTests(unittest.TestCase):
                         result.endswith(b'data: {"choices":[]}\n\ndata: [DONE]\n\n')
                     )
         self.assertEqual(list(_events([b"data: [DONE]\n"], False)), [])
+
+    def test_size_error_arrives_before_upload_and_socket_accepts_in_flight_body(
+        self,
+    ) -> None:
+        fixture = Mock()
+        with (
+            serve(ThreadingHTTPServer(("127.0.0.1", 0), handler(fixture))) as upstream,
+            serve(MockRouter(f"http://127.0.0.1:{upstream}", 0, "opaque", 3)) as port,
+            socket.create_connection(("127.0.0.1", port), timeout=3) as client,
+        ):
+            length = 256 * 1024 + 1
+            client.sendall(
+                f"POST /v1/chat/completions HTTP/1.1\r\nHost: localhost\r\nContent-Length: {length}\r\n\r\n".encode()
+            )
+            response = bytearray()
+            while block := client.recv(8192):
+                response.extend(block)
+            self.assertIn(b" 413 ", response.split(b"\r\n", 1)[0])
+            self.assertEqual(
+                json.loads(response.split(b"\r\n\r\n", 1)[1])["error"]["code"],
+                "mock_router_error",
+            )
+            client.sendall(b"x" * length)
+            client.shutdown(socket.SHUT_WR)
+            fixture.assert_not_called()
 
     def test_disallowed_method_routes_and_error_status(self) -> None:
         fixture = Mock(

@@ -16,7 +16,7 @@ def output(*command: str) -> str:
     ).strip()
 
 
-def check_hardware() -> None:
+def check_verifier_cpu() -> None:
     if (platform.system(), platform.machine()) != ("Linux", "x86_64"):
         raise ValueError("requires x86-64 Linux")
 
@@ -25,6 +25,10 @@ def check_hardware() -> None:
     )
     if not flags or any("sha_ni" not in row.split() for row in flags):
         raise ValueError("requires x86 SHA extensions")
+
+
+def check_hardware() -> None:
+    check_verifier_cpu()
     if sys.version_info[:2] != (3, 13):
         raise ValueError("requires Python 3.13")
 
