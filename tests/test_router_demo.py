@@ -12,11 +12,26 @@ from unittest.mock import patch
 
 from log.store import MerkleLog
 from pickup.crypto import open as open_pickup
-from tests.router_demo import DemoError, main, run_demo
+from tests.router_demo import DemoError, _stream, main, run_demo
 from tools.gate_m1 import FIXTURES, _assets
 
 
 class RouterDemoOutputTests(unittest.TestCase):
+    def test_opaque_holder_requires_finishing_event_and_done(self) -> None:
+        delta = b'data: {"choices":[{"finish_reason":null,"delta":{"content":"fixture"}}]}\n\n'
+        finish = b'data: {"choices":[{"finish_reason":"stop","delta":{}}]}\n\n'
+        for tail in (finish, b"data: {}\n\ndata: [DONE]\n\n"):
+            response = (
+                200,
+                {"content-type": "text/event-stream"},
+                b": keepalive\n\n" + delta + tail,
+            )
+            with (
+                patch("tests.router_demo.call", return_value=response),
+                self.assertRaises(DemoError),
+            ):
+                _stream(0, {"user": "fixture-holder"}, transparent=False)
+
     def test_failure_report_is_redacted(self) -> None:
         output = io.StringIO()
         with (
@@ -53,11 +68,14 @@ class RouterHolderTests(unittest.TestCase):
                 "schema_version": 1,
                 "status": "passed",
                 "engine": "mock",
-                "logged": 3,
+                "logged": 6,
                 "mode": "R",
                 "nonneutral_sampling_rejected": True,
                 "opaque_pickup_verified": True,
-                "pickup_store": "in-memory fixture",
+                "pickup_store": "sqlite",
+                "direct_receipt_verified": True,
+                "transparent_stream_verified": True,
+                "opaque_stream_pickup_verified": True,
                 "rewritten_messages_unrecoverable": True,
                 "transparent_receipt_verified": True,
                 "wrong_secret_refused": True,

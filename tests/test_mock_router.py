@@ -6,16 +6,18 @@ import unittest
 from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager
 from http.client import HTTPConnection
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from unittest.mock import Mock
 
 from gateway.discovery import DiscoveryApp, ServiceConfig
+from gateway.http import ServingApp
 from router.mock import MockRouter, Mode, _events, origin
+from tests.m1_flow import _loopback
 from tests.test_discovery import CONFIG, MODEL
 
 
 @contextmanager
-def serve(server: ThreadingHTTPServer) -> Iterator[int]:
+def serve(server: HTTPServer) -> Iterator[int]:
     with server:
         thread = threading.Thread(
             target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
@@ -90,6 +92,29 @@ class MockRouterTests(unittest.TestCase):
             {"temperature", "max_tokens", "seed"}.issubset(feed["supported_parameters"])
         )
         self.assertNotIn("secret", str(data))
+
+    def test_live_feed_advertises_stream_only_when_enabled(self) -> None:
+        serving = Mock(config=ServiceConfig(**CONFIG))
+        for heartbeat in (None, 0.1):
+            app = ServingApp(
+                serving,
+                request_timeout=1,
+                retry_after_seconds=1,
+                stream_heartbeat_seconds=heartbeat,
+            )
+            with (
+                _loopback(app) as upstream,
+                serve(
+                    MockRouter(f"http://127.0.0.1:{upstream}", 0, "opaque", 2)
+                ) as router,
+            ):
+                status, _, body = call(router, "/router/models", None)
+                self.assertEqual(status, 200)
+                feed = json.loads(body)["models"][0]
+                self.assertEqual(feed["id"], MODEL)
+                self.assertEqual(
+                    "stream" in feed["supported_parameters"], heartbeat is not None
+                )
 
     def test_opaque_and_transparent_modes_forward_original_chat_octets(self) -> None:
         body = b'{ "messages": [{"role":"user","content":"test"}], "user":"fixture", "max_tokens":2 }'

@@ -1,8 +1,9 @@
-"""Loopback Mode R proof-of-concept with a separate router, toy engine and volatile pickup."""
+"""Loopback Mode R proof-of-concept with a separate router, toy engine and durable sealed pickup."""
 
 from __future__ import annotations
 
 import base64
+import io
 import json
 import os
 import secrets
@@ -10,9 +11,8 @@ import selectors
 import subprocess
 import sys
 import tempfile
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -26,6 +26,7 @@ from gateway.discovery import ServiceConfig
 from gateway.http import ServingApp
 from gateway.renderer import CHAT_PROFILE_DIGEST, ChatRenderer
 from gateway.serving import Serving
+from gateway.stream_reader import terminal_evidence
 from log.http import LogApp
 from log.receipt import (
     checked_public_leaf,
@@ -38,9 +39,12 @@ from log.store import MerkleLog
 from log.verification import verify_head, verify_inclusion
 from pickup.crypto import PickupError, lookup_id
 from pickup.crypto import open as open_pickup
+from pickup.http import PerIPLimit, PickupApp, make_pickup_server
+from pickup.store import PickupStore
 from prover.request import reply_complete
 from tests.m1_flow import _Clock, _http, _lookup, _loopback, _public
 from tests.test_discovery import CONFIG, MODEL
+from tests.test_mock_router import call, serve
 from tools.gate_m1 import FIXTURES, _assets
 
 _CHAT = [{"role": "user", "content": "Count to two."}]
@@ -57,51 +61,54 @@ def require(ok: bool) -> None:
         raise DemoError("Local router check failed")
 
 
-class _PickupFixture:
-    """Test-only volatile sink with a GET-only ciphertext view."""
+def _pickup(port: int, digest: str) -> dict[str, str] | None:
+    code, headers, raw = call(port, _BASE + digest, None)
+    require(headers.get("cache-control") == "no-store")
+    if code == 404:
+        require(not raw)
+        return None
+    require(code == 200)
+    envelope: dict[str, str] = json.loads(raw)
+    require(envelope.keys() == {"version", "nonce", "ciphertext"})
+    return envelope
 
-    def __init__(self) -> None:
-        self.reserved: dict[str, tuple[str, datetime]] = {}
-        self.envelopes: dict[str, dict[str, str]] = {}
 
-    def reserve(self, pickup_id: str, leaf_hash: str, expires_at: datetime) -> None:
-        require(
-            self.reserved.setdefault(pickup_id, (leaf_hash, expires_at))
-            == (leaf_hash, expires_at)
-        )
-
-    def publish(
-        self,
-        pickup_id: str,
-        leaf_hash: str,
-        envelope: dict[str, str],
-        expires_at: datetime,
-    ) -> None:
-        require(self.reserved[pickup_id] == (leaf_hash, expires_at))
-        self.envelopes.setdefault(pickup_id, dict(envelope))
-
-    def __call__(
-        self,
-        env: Mapping[str, object],
-        start: Callable[[str, list[tuple[str, str]]], object],
-    ) -> list[bytes]:
-        path = str(env.get("PATH_INFO", ""))
-        found = (
-            self.envelopes.get(path[len(_BASE) :]) if path.startswith(_BASE) else None
-        )
-        body: dict[str, str]
-        if env.get("REQUEST_METHOD") != "GET":
-            status, body = "405 Method Not Allowed", {}
-        elif found is None:
-            status, body = "404 Not Found", {}
-        else:
-            status, body = "200 OK", found
-        data = json.dumps(body).encode()
-        start(
-            status,
-            [("Content-Type", "application/json"), ("Content-Length", str(len(data)))],
-        )
-        return [data]
+def _stream(
+    port: int, body: dict[str, Any], *, transparent: bool
+) -> tuple[str, dict[str, Any] | None]:
+    code, headers, data = call(
+        port,
+        "/v1/chat/completions",
+        json.dumps({**body, "stream": True}).encode(),
+        {"Content-Type": "application/json", "Authorization": "Bearer m1-toy"},
+    )
+    require(
+        code == 200
+        and headers.get("content-type", "").split(";")[0] == "text/event-stream"
+    )
+    require("x-vig-receipt" not in headers and str(body["user"]).encode() not in data)
+    # Our buffered gateway emits a comment, one display delta and one finishing
+    # event. Refuse recovery from a disconnected or unwarranted stream.
+    wire = data.splitlines()
+    require(any(line.startswith(b":") for line in wire))
+    fields = [
+        line.removeprefix(b"data: ") for line in wire if line.startswith(b"data: ")
+    ]
+    require(len(fields) == 3 and fields[-1] == b"[DONE]" and data.endswith(b"\n\n"))
+    first, final = (json.loads(field) for field in fields[:2])
+    require(
+        "verification" not in first
+        and first["choices"][0]["finish_reason"] is None
+        and isinstance(final.get("choices"), list)
+        and len(final["choices"]) == 1
+        and final["choices"][0].get("finish_reason") in ("stop", "length")
+    )
+    text = first["choices"][0]["delta"]["content"]
+    require(isinstance(text, str))
+    if transparent:
+        return text, terminal_evidence(io.BytesIO(data))
+    require("verification" not in final)
+    return text, None
 
 
 @contextmanager
@@ -204,9 +211,14 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
         **{**CONFIG, "log_public_key": signer.public_key().public_bytes_raw().hex()}
     )
     clock = _Clock()
-    pickup = _PickupFixture()
     with tempfile.TemporaryDirectory(prefix="vig-router-") as directory:
-        root = Path(directory)
+        root = Path(directory).resolve()
+        pickup = PickupStore(root / "pickup.db", clock=clock)
+        # Independent reader connection exercises the on-disk handoff.
+        reader = PickupStore(root / "pickup.db", clock=clock)
+        lookup_app = PickupApp(
+            reader, limiter=PerIPLimit(requests=32, period_seconds=60, max_peers=2)
+        )
         escrow = EscrowStore(
             root / "escrow.db",
             wrapping_key=secrets.token_bytes(32),
@@ -236,12 +248,23 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
             ),
             request_timeout=10,
             retry_after_seconds=1,
+            stream_heartbeat_seconds=0.05,
         )
         with (
             _loopback(app) as upstream,
             _loopback(LogApp(log, gateway_identity="router-demo")) as log_port,
-            _loopback(pickup) as pickup_port,
+            serve(make_pickup_server(lookup_app, port=0)) as pickup_port,
         ):
+            direct = {"model": MODEL, "messages": _CHAT, "max_tokens": _BUDGET}
+            code, header, result = _http(upstream, "/v1/chat/completions", direct)
+            require(code == 200 and header is not None)
+            _verify(
+                result["verification"],
+                result["choices"][0]["message"]["content"],
+                renderer,
+                config,
+                log_port,
+            )
             for mode in (
                 "transparent",
                 "opaque",
@@ -257,6 +280,29 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
                 }
                 with _router(upstream, mode) as router:
                     status, header, result = _http(router, "/v1/chat/completions", body)
+                    if mode in ("opaque", "transparent"):
+                        stream_secret = secrets.token_bytes(32)
+                        stream_body = {
+                            **body,
+                            "user": "vig-pickup/1:" + stream_secret.hex(),
+                        }
+                        displayed, evidence = _stream(
+                            router, stream_body, transparent=mode == "transparent"
+                        )
+                        digest = lookup_id(_CHAT, _BUDGET, displayed, stream_secret)
+                        sealed = _pickup(pickup_port, digest)
+                        if sealed is None:
+                            raise DemoError("Missing sealed stream receipt")
+                        recovered = cast(
+                            "dict[str, Any]",
+                            open_pickup(
+                                sealed, stream_secret, _CHAT, _BUDGET, displayed
+                            ),
+                        )
+                        require(recovered["pickup_id"] == digest)
+                        _verify(recovered, displayed, renderer, config, log_port)
+                        if mode == "transparent":
+                            require(evidence == recovered)
                 require(secret.hex() not in json.dumps(result))
                 if mode == "inject-sampling":
                     require(
@@ -269,14 +315,12 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
                 require(status == 200)
                 text = result["choices"][0]["message"]["content"]
                 digest = lookup_id(_CHAT, _BUDGET, text, secret)
-                found, _, envelope = _http(pickup_port, _BASE + digest)
+                envelope = _pickup(pickup_port, digest)
                 if mode == "rewrite-messages":
-                    require(found == 404)
+                    require(envelope is None)
                     continue
-                require(
-                    found == 200
-                    and envelope.keys() == {"version", "nonce", "ciphertext"}
-                )
+                if envelope is None:
+                    raise DemoError("Missing sealed receipt")
                 opened = cast(
                     "dict[str, Any]",
                     open_pickup(envelope, secret, _CHAT, _BUDGET, text),
@@ -299,10 +343,8 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
                     )
                     wrong = bytes([secret[0] ^ 1]) + secret[1:]
                     require(
-                        _http(
-                            pickup_port, _BASE + lookup_id(_CHAT, _BUDGET, text, wrong)
-                        )[0]
-                        == 404
+                        _pickup(pickup_port, lookup_id(_CHAT, _BUDGET, text, wrong))
+                        is None
                     )
                     try:
                         open_pickup(envelope, wrong, _CHAT, _BUDGET, text)
@@ -310,19 +352,22 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
                         pass
                     else:
                         raise DemoError("Wrong holder secret opened the envelope")
-            require(log.head()["tree_size"] == 3 and len(pickup.envelopes) == 3)
+            require(log.head()["tree_size"] == 6)
     return {
         "schema_version": 1,
         "status": "passed",
         "mode": "R",
         "engine": "mock",
-        "pickup_store": "in-memory fixture",
+        "pickup_store": "sqlite",
+        "direct_receipt_verified": True,
+        "transparent_stream_verified": True,
+        "opaque_stream_pickup_verified": True,
         "transparent_receipt_verified": True,
         "opaque_pickup_verified": True,
         "wrong_secret_refused": True,
         "rewritten_messages_unrecoverable": True,
         "nonneutral_sampling_rejected": True,
-        "logged": 3,
+        "logged": 6,
     }
 
 

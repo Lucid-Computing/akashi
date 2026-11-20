@@ -155,7 +155,7 @@ class ServiceConfig:
 
 
 class DiscoveryApp:
-    def __init__(self, config: ServiceConfig) -> None:
+    def __init__(self, config: ServiceConfig, *, streaming: bool = False) -> None:
         model = {
             "id": config.model,
             "object": "model",
@@ -170,7 +170,12 @@ class DiscoveryApp:
             "max_context_length": model["window"],
             "max_completion_tokens": config.max_tokens_cap,
             "max_length": config.max_tokens_cap,
-            "supported_parameters": ["max_tokens", "temperature", "seed"],
+            "supported_parameters": [
+                "max_tokens",
+                "temperature",
+                *(["stream"] if streaming else []),
+                "seed",
+            ],
             "constraints": {"temperature": [0], "top_p": [1], "n": [1]},
             "description": "Greedy integer-model inference. See /.well-known/vig.json for verification.",
         }
