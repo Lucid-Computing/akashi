@@ -174,8 +174,6 @@ def captured(
 
 def prepare(config: dict[str, Any], work: Path) -> Path:
     target = work / "delivery"
-    if target.is_dir():
-        return target
     messages, prompt, reply, proof = captured(config)
     runtime, checker = settings(config)
     require(
@@ -193,6 +191,43 @@ def prepare(config: dict[str, Any], work: Path) -> Path:
         len(changed) == 1 and changed != reply,
         "substitute did not change the served reply",
     )
+    if target.exists() or target.is_symlink():
+        metadata = target.lstat()
+        require(
+            stat.S_ISDIR(metadata.st_mode)
+            and metadata.st_uid == os.geteuid()
+            and not metadata.st_mode & 0o077,
+            "invalid retained delivery directory",
+        )
+        source = read(target / "provenance.json")
+        require(
+            source["commitment_id"] == COMMITMENT
+            and source["flashprove_revision"] == REVISION
+            and source["proof_source_host"] == config["proof_source_host"]
+            and source["verifier_host"] == host_id()
+            and source["original_statement_sha256"] == sha(proof.statement)
+            and source["substitute_statement_sha256"]
+            == sha(build_statement(prompt, changed))
+            and source["proof_sha256"] == sha(proof.proof)
+            and read(target / "native-runtime.json") == runtime,
+            "retained delivery belongs to a different capture",
+        )
+        for name, tokens in (("original", reply), ("substitute", changed)):
+            bundle_path = target / (name + ".json")
+            retained = read(bundle_path)
+            require(
+                retained["input"] == messages
+                and retained["max_tokens"] == 1
+                and retained["text"] == renderer.decode(tokens)
+                and tuple(retained["verification"]["prompt_token_ids"]) == prompt
+                and tuple(retained["verification"]["reply_token_ids"]) == tokens
+                and holder(
+                    bundle_path, target, Path(config["assets"]), receipt_only=True
+                )
+                == (30, "RECEIPT_VERIFIED"),
+                "retained historical delivery failed verification",
+            )
+        return target
     with tempfile.TemporaryDirectory(dir=work, prefix=".delivery-") as tmp:
         folder = Path(tmp)
         issued_at = datetime.now(timezone.utc)
