@@ -9,19 +9,11 @@ import struct
 import time
 from collections.abc import Callable
 from contextlib import ExitStack
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
+from prover.request import CandidateProof as CandidateProof  # noqa: PLC0414 -- preserve the existing public import
 from prover.submission import Submission, SubmissionStore, check_spool, guarded_spool
-
-
-@dataclass(frozen=True)
-class CandidateProof:
-    """Only the verifier can turn these private bytes into evidence of conformance."""
-
-    statement: bytes = field(repr=False)
-    y: bytes = field(repr=False)
-    proof: bytes = field(repr=False)
 
 
 @dataclass(frozen=True)

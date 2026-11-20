@@ -19,10 +19,9 @@ from log.receipt import (
     verify_promise,
 )
 from log.verification import verify_consistency, verify_head, verify_inclusion
+from prover.request import COMMITMENT as COMMITMENT  # noqa: PLC0414 -- preserve the existing public import
 from prover.request import END_TOKENS, WINDOW, reply_complete
 from verifier.holder_proof import check_proof
-
-COMMITMENT = "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46"
 
 
 @dataclass(frozen=True)
