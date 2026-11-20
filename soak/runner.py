@@ -17,7 +17,7 @@ from typing import Any
 
 from gateway.renderer import ChatRenderer
 from soak.gateway_service import quicknet
-from soak.ledger import CASES, DURATION, GOOD, WORKLOAD, Journal, require
+from soak.ledger import CASES, DURATION, GOOD, WORKLOAD, Journal, NativeProcess, require
 from soak.settings import digest, primary_host_matches, private, response
 from tools.gate_m1 import ROOT, _write
 
@@ -136,7 +136,11 @@ def collect(config: dict[str, Any]) -> None:
     )
     case_path = Path(config.get("holder_case_path", state / "holder-case.json"))
     require(case_path.is_absolute(), "Absolute private holder case path required")
+    native = NativeProcess(**config["native_prover"])
+    native.check()
+    require(config["processes"]["prover"] == [native.pid], "Unbound native prover role")
     binding = {
+        "native_prover": config["native_prover"],
         "fixture_sha256": digest(CORPUS),
         "primary_startup_sha256": digest(Path(config["primary_startup"])),
         "active_startup_sha256": digest(Path(config["active_startup"])),
@@ -181,15 +185,18 @@ def collect(config: dict[str, Any]) -> None:
     stop = threading.Event()
     errors = []
 
+    def observe() -> None:
+        journal.observe(config["processes"], config["gpus"], native=native)
+
     def sample() -> None:
-        while not stop.is_set():
+        while not stop.wait(period):
             try:
-                journal.observe(config["processes"], config["gpus"])
+                observe()
             except (OSError, ValueError, sqlite3.Error) as exc:
                 errors.append(type(exc).__name__)
                 return
-            stop.wait(period)
 
+    observe()
     thread = threading.Thread(target=sample)
     thread.start()
     try:
@@ -260,7 +267,7 @@ def collect(config: dict[str, Any]) -> None:
                 "Unexplained or ambiguous traffic event",
             )
         require(not errors, "Role resource monitoring stopped")
-        journal.observe(config["processes"], config["gpus"])
+        observe()
         journal.finish()
     finally:
         stop.set()

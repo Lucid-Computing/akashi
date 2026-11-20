@@ -267,6 +267,15 @@ def settle_one(
                 candidate = worker.wait(corrected.job_id, poll_seconds=poll)
         verdicts.settle(claim, candidate)
         return True
+    except TimeoutError as exc:
+        # The retention-capable spool authenticates retirement from its persisted job.
+        retired = getattr(
+            importlib.import_module("prover.submission"), "RetiredSubmission", ()
+        )
+        if not isinstance(exc, retired) or getattr(exc, "reason", None) != "deadline":
+            raise
+        verdicts.settle(claim, Unavailable("deadline"))
+        return True
     finally:
         scorer.last = None
 

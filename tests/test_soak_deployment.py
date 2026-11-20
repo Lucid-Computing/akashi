@@ -27,6 +27,7 @@ from nacl.public import PrivateKey
 
 from prover.submission import COMMITMENT
 from soak import deployment as deploy
+from soak.ledger import NativeProcess
 from soak.settings import digest, private
 from tools.gate_m1 import _write
 
@@ -135,6 +136,7 @@ class DeploymentTest(unittest.TestCase):
                 "schema_version": 1,
                 "phase": "spool_open",
                 "native_pid": 456,
+                "start_ticks": 5566,
                 "cgroup": "0::/two",
                 "commitment_id": COMMITMENT,
                 "batch": 1,
@@ -157,7 +159,7 @@ class DeploymentTest(unittest.TestCase):
             self.previous,
             self.fresh,
             123,
-            456,
+            NativeProcess(456, 5566, "0::/two"),
             self.gpus,
             self.ep,
             self.verifier,
@@ -181,6 +183,8 @@ class DeploymentTest(unittest.TestCase):
         def text(path: Path) -> str:
             if path == Path("/proc/123/cgroup"):
                 return "0::/one"
+            if path == Path("/proc/456/stat"):
+                return "456 (cp_prove) " + " ".join(["S"] + ["0"] * 18 + ["5566"])
             if path == Path("/proc/456/cgroup"):
                 return "0::/two"
             return original(path)

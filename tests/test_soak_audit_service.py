@@ -15,7 +15,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.public import PrivateKey
@@ -214,6 +214,39 @@ class SoakAuditTests(unittest.TestCase):
                 [args[0][0] for args in spool.handoff.call_args_list],
                 ["a", "a/corrected"],
             )
+
+    def test_restart_settles_only_a_persisted_prover_deadline(self) -> None:
+        from prover import submission
+
+        class TestRetirement(TimeoutError):
+            def __init__(self, reason: str) -> None:
+                self.reason = reason
+
+        retirement = getattr(submission, "RetiredSubmission", TestRetirement)
+        with patch.object(submission, "RetiredSubmission", retirement, create=True):
+            for exception, terminal in (
+                (retirement("deadline"), True),
+                (retirement("handed_off"), False),
+                (TimeoutError("deadline"), False),
+                (ValueError("invalid submission"), False),
+            ):
+                with self.subTest(kind=type(exception).__name__, terminal=terminal):
+                    jobs, verdicts, worker = Mock(), Mock(), Mock()
+                    claim = jobs.claim.return_value
+                    claim.prompt, claim.reply, claim.budget = (7,), (8,), 1
+                    claim.incomplete = False
+                    jobs.dispatch.side_effect = exception
+                    args = (jobs, verdicts, Mock(), worker, LazyScorer({}), Mock())
+                    if terminal:
+                        self.assertTrue(settle_one(*args, lease=4, deadline=1, poll=1))
+                        verdicts.settle.assert_called_once_with(
+                            claim, Unavailable("deadline")
+                        )
+                    else:
+                        with self.assertRaises(type(exception)):
+                            settle_one(*args, lease=4, deadline=1, poll=1)
+                        verdicts.settle.assert_not_called()
+                    worker.wait.assert_not_called()
 
     def test_private_bounds_and_loopback(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

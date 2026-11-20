@@ -41,7 +41,7 @@ from gateway.discovery import ServiceConfig
 from log.verification import verify_head
 from pickup.http import PerIPLimit
 from prover.submission import COMMITMENT, guarded_spool
-from soak.ledger import DURATION, jcs, require
+from soak.ledger import DURATION, NativeProcess, jcs, require
 from soak.settings import digest, primary_host_matches, private, public_keys, response
 from tools.gate_m1 import _write
 
@@ -123,11 +123,15 @@ class Primary:
     previous: Path
     fresh: Path
     engine: int
-    prover: int
+    native: NativeProcess
     gpus: dict[str, str]
     endpoint: Json
     verifier: Path
     spool: Path
+
+    @property
+    def prover(self) -> int:
+        return self.native.pid
 
 
 def _gpu(path: Path, pattern: str) -> str:
@@ -235,6 +239,8 @@ def physical(root: Path, config: Json, env: Mapping[str, str]) -> Primary:
         cgroups[0] != cgroups[1] and cgroups[1] == ready["cgroup"],
         "Physical roles lack distinct active cgroups",
     )
+    native = NativeProcess(prover, ready["start_ticks"], ready["cgroup"])
+    native.check()
     gpus = {
         "engine": _gpu(root / "control/gpu-assignment", rf"[0-9]+,\s*({GPU})"),
         "prover": _gpu(root / "prover/gpu-assignment", rf"({GPU}),\s*[0-9]+"),
@@ -242,9 +248,9 @@ def physical(root: Path, config: Json, env: Mapping[str, str]) -> Primary:
     require(len(set(gpus.values())) == 2, "Physical roles share a GPU")
     with guarded_spool(spool):
         pass
-    native = json.loads((verifier / "verified.json").read_bytes())
+    verifier_attestation = json.loads((verifier / "verified.json").read_bytes())
     require(
-        native
+        verifier_attestation
         == {
             "schema_version": 1,
             "native_published_example": "VERIFIED",
@@ -252,7 +258,7 @@ def physical(root: Path, config: Json, env: Mapping[str, str]) -> Primary:
         },
         "Published native verifier example has not passed",
     )
-    return Primary(previous, fresh, engine, prover, gpus, endpoint, verifier, spool)
+    return Primary(previous, fresh, engine, native, gpus, endpoint, verifier, spool)
 
 
 def _raw(path: Path, content: bytes) -> None:
@@ -551,7 +557,7 @@ def provision(root: Path, c: Json, p: Primary) -> dict[str, int]:
                 digest(p.previous),
                 p.endpoint,
                 p.engine,
-                p.prover,
+                asdict(p.native),
                 p.gpus,
                 str(p.verifier),
                 digest(p.verifier / "manifest.json"),
@@ -898,6 +904,7 @@ def supervise(
                 ],
                 assets=c["assets"],
                 processes=procs,
+                native_prover=asdict(p.native),
                 gpus=p.gpus,
                 log_origin=f"http://127.0.0.1:{ports['log']}",
                 audit_origin=f"http://127.0.0.1:{ports['audit']}",
