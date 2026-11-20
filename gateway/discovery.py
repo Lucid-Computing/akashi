@@ -164,7 +164,18 @@ class DiscoveryApp:
             "window": 1024,
             "max_tokens_cap": config.max_tokens_cap,
         }
+        feed = {
+            "id": config.model,
+            "quantization": "int4",
+            "max_context_length": model["window"],
+            "max_completion_tokens": config.max_tokens_cap,
+            "max_length": config.max_tokens_cap,
+            "supported_parameters": ["max_tokens", "temperature", "seed"],
+            "constraints": {"temperature": [0], "top_p": [1], "n": [1]},
+            "description": "Greedy integer-model inference. See /.well-known/vig.json for verification.",
+        }
         self._routes = {
+            "/router/models": json.dumps({"models": [feed]}).encode(),
             "/v1/models": json.dumps({"object": "list", "data": [model]}).encode(),
             "/.well-known/vig.json": json.dumps(config.descriptor()).encode(),
         }
