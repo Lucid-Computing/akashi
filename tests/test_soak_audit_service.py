@@ -31,6 +31,7 @@ from soak.audit_service import (
     LazyScorer,
     PublicReader,
     QuietUnixServer,
+    SpoolReceipts,
     accept_carrier,
     private_file,
     private_handler,
@@ -189,6 +190,31 @@ class SoakAuditTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 sampled_verdict(jobs, store, leaf)
 
+    def test_restart_retires_spool_only_after_durable_verdict(self) -> None:
+        with closing(sqlite3.connect(":memory:")) as db:
+            jobs, spool = Mock(), Mock()
+            jobs._tx.return_value = nullcontext(db)
+            db.execute("CREATE TABLE audit_jobs(job_id,state)")
+            db.execute("INSERT INTO audit_jobs VALUES('a','verifying')")
+            receipts = SpoolReceipts(jobs, spool)
+            receipts.remember("a", "a")
+            receipts.remember("a", "a/corrected")
+            receipts.recover(2)
+            spool.handoff.assert_not_called()
+            db.execute("UPDATE audit_jobs SET state='completed' WHERE job_id='a'")
+            spool.handoff.side_effect = OSError("interrupted")
+            with self.assertRaises(OSError):
+                receipts.recover(1)
+            spool.handoff.reset_mock(side_effect=True)
+            restart = SpoolReceipts(jobs, spool)
+            restart.recover(1)
+            restart.recover(2)
+            restart.recover(2)
+            self.assertEqual(
+                [args[0][0] for args in spool.handoff.call_args_list],
+                ["a", "a/corrected"],
+            )
+
     def test_private_bounds_and_loopback(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -244,7 +270,15 @@ class SoakAuditTests(unittest.TestCase):
         spool.submit.return_value.job_id = "one/corrected"
         self.assertTrue(
             settle_one(
-                jobs, verdicts, spool, worker, scorer, lease=5, deadline=2, poll=0.1
+                jobs,
+                verdicts,
+                spool,
+                worker,
+                scorer,
+                Mock(),
+                lease=5,
+                deadline=2,
+                poll=0.1,
             )
         )
         spool.submit.assert_called_once_with(
@@ -277,6 +311,7 @@ class SoakAuditTests(unittest.TestCase):
                         spool,
                         worker,
                         scorer,
+                        Mock(),
                         lease=5,
                         deadline=2,
                         poll=0.1,

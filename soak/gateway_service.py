@@ -305,6 +305,7 @@ def run(config: dict[str, Any]) -> None:
                 },
             )
             while not stop.wait(config["poll_seconds"]):
+                pickup.sweep()
                 require(
                     engine.ready and all(t.is_alive() for t in threads),
                     "Required serving role stopped",

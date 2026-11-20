@@ -181,12 +181,52 @@ class LazyScorer:
         return result
 
 
+class SpoolReceipts:
+    """Retire a private spool copy only after its CH job's durable terminal outcome."""
+
+    def __init__(self, jobs: Any, spool: Any):
+        self.jobs, self.spool = jobs, spool
+        if not callable(getattr(spool, "handoff", None)):
+            raise TypeError("Spool retention implementation required")
+        with jobs._tx() as db:
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS soak_spool_receipts(dispatch TEXT PRIMARY KEY, job TEXT NOT NULL)"
+            )
+
+    def remember(self, job: str, dispatch: str) -> None:
+        with self.jobs._tx() as db:
+            db.execute(
+                "INSERT OR IGNORE INTO soak_spool_receipts VALUES(?,?)", (dispatch, job)
+            )
+            require(
+                db.execute(
+                    "SELECT job FROM soak_spool_receipts WHERE dispatch=?", (dispatch,)
+                ).fetchone()[0]
+                == job
+            )
+
+    def recover(self, limit: int) -> None:
+        with self.jobs._tx() as db:
+            ready = db.execute(
+                """SELECT r.dispatch FROM soak_spool_receipts r JOIN audit_jobs a
+                ON a.job_id=r.job WHERE a.state='completed' ORDER BY r.dispatch LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        for (dispatch,) in ready:
+            self.spool.handoff(dispatch)
+            with self.jobs._tx() as db:
+                db.execute(
+                    "DELETE FROM soak_spool_receipts WHERE dispatch=?", (dispatch,)
+                )
+
+
 def settle_one(
     jobs: Any,
     verdicts: Any,
     spool: SubmissionStore,
     worker: ProofWorker,
     scorer: LazyScorer,
+    receipts: SpoolReceipts,
     *,
     lease: float,
     deadline: float,
@@ -206,6 +246,7 @@ def settle_one(
             spool,
             deadline_ns=time.time_ns() + int(deadline * 1e9),
         )
+        receipts.remember(claim.job_id, active.job_id)
         candidate = worker.wait(active.job_id, poll_seconds=poll)
         if isinstance(candidate, Unavailable) and candidate.reason == "spool_failure":
             diagnosis = assess(
@@ -222,6 +263,7 @@ def settle_one(
                     diagnosis.statement,
                     deadline_ns=active.deadline_ns,
                 )
+                receipts.remember(claim.job_id, corrected.job_id)
                 candidate = worker.wait(corrected.job_id, poll_seconds=poll)
         verdicts.settle(claim, candidate)
         return True
@@ -485,13 +527,16 @@ def assembly(c: dict[str, Any], mode: str) -> None:
         if mode == "worker":
             spool = SubmissionStore(Path(c["submission_state"]), Path(c["spool"]))
             worker = ProofWorker(spool, max_proof_bytes=v["max_proof_bytes"])
+            receipts = SpoolReceipts(jobs, spool)
             while not stopped.is_set():
+                receipts.recover(c["page_size"])
                 if not settle_one(
                     jobs,
                     verdicts,
                     spool,
                     worker,
                     scorer,
+                    receipts,
                     lease=c["lease_seconds"],
                     deadline=c["proof_deadline_seconds"],
                     poll=poll,
