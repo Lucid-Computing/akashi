@@ -54,3 +54,10 @@ jobs:
           name: m3-regression-evidence
           path: build/gates/m3.json
           if-no-files-found: error
+      - run: make test-operational-alerts
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: operational-alert-evidence
+          path: build/gates/operational-alerts.json
+          if-no-files-found: error
