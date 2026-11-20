@@ -3,19 +3,9 @@
 from dataclasses import dataclass
 from typing import Literal
 
+from engine.adapter import EngineIntegrityError, EngineResult, EngineUnavailable
 
-class EngineIntegrityError(RuntimeError):
-    """The execution failed its integrity window."""
-
-
-class EngineUnavailable(RuntimeError):
-    """The adapter could not execute a request."""
-
-
-@dataclass(frozen=True)
-class EngineResult:
-    tokens: tuple[int, ...]
-    integrity_window_closed: bool
+__all__ = ["EngineIntegrityError", "EngineResult", "EngineUnavailable", "MockEngine"]
 
 
 @dataclass(frozen=True)
