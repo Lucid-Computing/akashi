@@ -321,7 +321,7 @@ def cross_platform(
         )
         return {"cross_host": record["reason"]}
     require(
-        record["status"] in ("measured", "mismatch")
+        record["status"] in ("measured", "mismatch", "inconsistent_runs")
         and all(
             isinstance(record[k], str) and re.fullmatch(r"[a-f0-9]{64}", record[k])
             for k in ("primary_host", "secondary_host")
@@ -331,10 +331,8 @@ def cross_platform(
         and len(record["canaries"]) == len(ready["canaries"]) == 3,
         "invalid cross-host observations",
     )
-    mismatches = []
-    for index, (expected, observed) in enumerate(
-        zip(ready["canaries"], record["canaries"], strict=True)
-    ):
+
+    def matches(expected: dict[str, Any], observed: dict[str, Any]) -> bool:
         tokens = observed["expected"]
         require(
             expected["prompt"] == observed["prompt"]
@@ -347,23 +345,63 @@ def cross_platform(
             and reply_complete(tokens, observed["max_tokens"]),
             "secondary canary differs from canonical request or is incomplete",
         )
-        if tokens != expected["expected"]:
-            mismatches.append(index)
+        return bool(tokens == expected["expected"])
+
+    gold = ready["canaries"]
+    observed = record["canaries"]
+    mismatches = [i for i in range(3) if not matches(gold[i], observed[i])]
     matched = 3 - len(mismatches)
-    mismatch = record["status"] == "mismatch"
+    mismatch = record["status"] in ("mismatch", "inconsistent_runs")
     require(
         (matched < 3) == mismatch, "cross-host outcome contradicts observed replies"
     )
+    comparison: dict[str, object] = {
+        "matched": not mismatch,
+        "startup_refused": mismatch,
+        "canaries_compared": 3,
+        "canaries_matching": matched,
+    }
+    label = {
+        "measured": "matched_three_canaries",
+        "mismatch": "canary_mismatch",
+        "inconsistent_runs": "inconsistent_runs",
+    }[record["status"]]
     result: dict[str, object] = {
-        "cross_host": "canary_mismatch" if mismatch else "matched_three_canaries",
-        "cross_host_comparison": {
-            "matched": not mismatch,
-            "startup_refused": mismatch,
-            "canaries_compared": 3,
-            "canaries_matching": matched,
-        },
+        "cross_host": label,
+        "cross_host_comparison": comparison,
     }
     if mismatch:
+        attempts = record["startup_attempts"]
+        require(
+            isinstance(attempts, list) and 1 <= len(attempts) <= 3,
+            "missing refused startup canary observations",
+        )
+        startup_mismatches = [
+            i for i, row in enumerate(attempts) if not matches(gold[i], row)
+        ]
+        repeat_mismatches = [
+            i for i, row in enumerate(attempts) if not matches(observed[i], row)
+        ]
+        prior = record["prior_attempt"]
+        require(
+            startup_mismatches == [len(attempts) - 1]
+            and record["startup_mismatch_indices"] == startup_mismatches
+            and prior["startup_refused"] is True
+            and prior["gate_failure"] == "canary_token_mismatch"
+            and bool(repeat_mismatches) == (record["status"] == "inconsistent_runs")
+            and record["same_secondary_replay"] is (not repeat_mismatches)
+            and record["secondary_repeat_mismatch_indices"] == repeat_mismatches,
+            "normal startup refusals and secondary replay observations disagree with reported outcome",
+        )
+        comparison.update(
+            primary_mismatch_indices=mismatches,
+            startup_mismatch_indices=startup_mismatches,
+            secondary_repeat_mismatch_indices=repeat_mismatches,
+            same_secondary_replay=not repeat_mismatches,
+            secondary_repeat_cases=len(attempts),
+            startup_refusals=2,
+        )
+
         require(
             record["commitment_id"] == ready["commitment_id"] == COMMITMENT
             and record["dtype"] == ready["dtype"]
@@ -373,11 +411,14 @@ def cross_platform(
             and record["secondary_eligible"] is False
             and all(
                 type(index) is int
-                for key in ("compared_mismatch_indices", "startup_mismatch_indices")
+                for key in (
+                    "compared_mismatch_indices",
+                    "startup_mismatch_indices",
+                    "secondary_repeat_mismatch_indices",
+                )
                 for index in record[key]
             )
             and record["compared_mismatch_indices"] == mismatches
-            and record["startup_mismatch_indices"] == mismatches[:1]
             and record["gate_failure"] == "canary_token_mismatch"
             and record["same_process_f21"] is True
             and type(record["float64_cases_passed"]) is int

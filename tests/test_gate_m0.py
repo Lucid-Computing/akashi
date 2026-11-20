@@ -110,6 +110,13 @@ class BaselineGateTests(unittest.TestCase):
             "matched": False,
             "compared_mismatch_indices": [1],
             "startup_mismatch_indices": [1],
+            "startup_attempts": observed[:2],
+            "prior_attempt": {
+                "startup_refused": True,
+                "gate_failure": "canary_token_mismatch",
+            },
+            "same_secondary_replay": True,
+            "secondary_repeat_mismatch_indices": [],
         }
         result = m0.cross_platform(record, ready, "1f" * 32)
         self.assertEqual(result["cross_host"], "canary_mismatch")
@@ -120,6 +127,12 @@ class BaselineGateTests(unittest.TestCase):
                 "startup_refused": True,
                 "canaries_compared": 3,
                 "canaries_matching": 2,
+                "primary_mismatch_indices": [1],
+                "startup_mismatch_indices": [1],
+                "secondary_repeat_mismatch_indices": [],
+                "same_secondary_replay": True,
+                "secondary_repeat_cases": 2,
+                "startup_refusals": 2,
             },
         )
         public = json.dumps(result)
@@ -128,7 +141,7 @@ class BaselineGateTests(unittest.TestCase):
             "primary_host",
             "ad" * 32,
             "prompt",
-            "startup_mismatch_indices",
+            "prior_attempt",
         ):
             self.assertNotIn(secret, public)
         for change in (
@@ -150,6 +163,39 @@ class BaselineGateTests(unittest.TestCase):
         ):
             with self.subTest(change=change), self.assertRaises(m0.EvidenceError):
                 m0.cross_platform({**record, **change}, ready, "1f" * 32)
+        inconsistent = {
+            **record,
+            "status": "inconsistent_runs",
+            "same_secondary_replay": False,
+            "secondary_repeat_mismatch_indices": [1],
+            "startup_attempts": [observed[0], {**observed[1], "expected": [85]}],
+        }
+        measured = m0.cross_platform(inconsistent, ready, "1f" * 32)
+        self.assertEqual(measured["cross_host"], "inconsistent_runs")
+        comparisons = result["cross_host_comparison"]
+        assert isinstance(comparisons, dict)
+        self.assertEqual(
+            measured["cross_host_comparison"],
+            {
+                **comparisons,
+                "same_secondary_replay": False,
+                "secondary_repeat_mismatch_indices": [1],
+            },
+        )
+        invalid: dict[str, Any]
+        for invalid in (
+            {"status": "mismatch"},
+            {"secondary_repeat_mismatch_indices": []},
+            {"startup_attempts": []},
+            {
+                "prior_attempt": {
+                    "startup_refused": False,
+                    "gate_failure": "canary_token_mismatch",
+                }
+            },
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(m0.EvidenceError):
+                m0.cross_platform({**inconsistent, **invalid}, ready, "1f" * 32)
         positive = m0.cross_platform(
             {
                 **record,
