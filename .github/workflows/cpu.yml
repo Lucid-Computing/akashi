@@ -21,3 +21,10 @@ jobs:
       - run: make setup
       - run: make test-unit
       - run: make lint
+      - run: make gate-m1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: m1-cpu-evidence
+          path: build/gates/m1.json
+          if-no-files-found: error

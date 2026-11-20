@@ -208,7 +208,11 @@ class Serving:
             response: dict[str, object] = {
                 "id": f"{prefix}-{attempt.request_id}",
                 "object": "chat.completion" if mode == "chat" else "text_completion",
-                "created": int(datetime.fromisoformat(attempt.served_at).timestamp()),
+                "created": int(
+                    datetime.fromisoformat(
+                        attempt.served_at.replace("Z", "+00:00")
+                    ).timestamp()
+                ),
                 "model": req.model,
                 "choices": [choice],
                 "usage": {
