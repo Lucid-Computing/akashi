@@ -36,3 +36,10 @@ jobs:
           name: transcript-history-evidence
           path: build/gates/m3-evidence.json
           if-no-files-found: error
+      - run: make test-model-regressions
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: model-outcome-evidence
+          path: build/gates/m3-model.json
+          if-no-files-found: error
