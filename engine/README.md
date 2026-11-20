@@ -43,3 +43,11 @@ pytest tests/test_integrity.py -v
 
 - `specs/parameters.md`: T=1024, engine parameters
 - `specs/hardening.md`: Security configuration (no --trust-remote-code, reverse proxy, mTLS)
+
+## CPU mock
+
+Use the deterministic token adapter in `engine.mock` for M1 integration tests.
+The fixtures cover a completed integrity window, an engine integrity fault and
+an unavailable engine. Select the fixture when constructing the adapter. The
+mock requires no model files or accelerator. Run `make test-mock-engine` at
+the repository root. [Engine boundary](../docs/rfcs/RFC-0001-engine-integrity.md#proposed-design)
