@@ -38,12 +38,14 @@ From spec § 9.3:
 - `GET /proof/{leaf_index}` - Merkle audit path
 - `GET /consistency?from={old}&to={new}` - Consistency proof
 
-## Testing
+## Validate receipt bytes
 
-```bash
-cd log/
-pytest tests/ -v
-```
+Run `make test-receipts` from the repository root. The target installs the
+locked Ed25519 implementation and checks fixed commitment, leaf and promise
+vectors. The holder recomputes the framed transcript commitment with the
+private salt. Public readers can reconstruct the leaf and check the promise
+using their trusted log identity and verification key.
+[Wire types and binding rules](../docs/spec/03-data-model.md#binding-invariants)
 
 ## Related Specifications
 
