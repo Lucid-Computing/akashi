@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import math
 import os
 import sqlite3
+import stat
 import subprocess
+import sys
 import time
 from contextlib import closing
 from dataclasses import dataclass
@@ -16,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from operations.private_db import private_database_file
+from soak.fd_probe import UNSUPPORTED
 
 DURATION = 72 * 3600
 ROLES = ("engine", "prover", "gateway", "auditor")
@@ -41,6 +45,66 @@ def jcs(data: object) -> str:
 
 
 PROC = Path("/proc")
+
+
+class ObservationFailure(RuntimeError):
+    """A bounded diagnostic safe to propagate from the resource thread."""
+
+    def __init__(self, role: str, error: BaseException) -> None:
+        category = next(
+            (
+                kind.__name__
+                for kind in (
+                    PermissionError,
+                    ProcessLookupError,
+                    FileNotFoundError,
+                    OSError,
+                    subprocess.TimeoutExpired,
+                    subprocess.CalledProcessError,
+                    sqlite3.Error,
+                    ValueError,
+                    IndexError,
+                )
+                if isinstance(error, kind)
+            ),
+            "Exception",
+        )
+        code = (
+            errno.errorcode.get(error.errno or 0, "unknown")
+            if isinstance(error, OSError)
+            else "none"
+        )
+        super().__init__(
+            f"Resource observation failed (role={role if role in ROLES else 'collector'}, class={category}, errno={code})"
+        )
+
+
+def aggregate_fd_counts(timeout: float) -> bool:
+    """Probe the same procfs namespace before the sampling thread or traffic starts."""
+    if sys.platform != "linux":
+        return False
+    try:
+        outcome = subprocess.run(
+            [sys.executable, "-I", "-S", str(Path(__file__).with_name("fd_probe.py"))],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            timeout=timeout,
+            check=False,
+        )
+        require(outcome.returncode in (0, UNSUPPORTED), "FD count calibration failed")
+        return outcome.returncode == 0
+    except Exception as exc:  # noqa: BLE001 -- only bounded diagnostics leave the observer.
+        raise ObservationFailure("collector", exc) from None
+
+
+def _gone(directory: Path) -> bool:
+    try:
+        directory.stat()
+    except (FileNotFoundError, ProcessLookupError):
+        return True
+    return False
 
 
 def _birth(root: Path) -> int:
@@ -95,7 +159,11 @@ def _identity(births: list[tuple[int, int]]) -> int:
 
 
 def role_sample(
-    roots: list[int], gpu: str | None, *, native: NativeProcess | None = None
+    roots: list[int],
+    gpu: str | None,
+    *,
+    native: NativeProcess | None = None,
+    aggregate_fds: bool = False,
 ) -> list[int | None]:
     """Sample exact open descriptors wherever observable and the protected native table separately."""
     require(
@@ -127,25 +195,37 @@ def role_sample(
                 "SC_PAGE_SIZE"
             )
             opened: int | None
-            try:
-                opened = len(list((proc / "fd").iterdir()))
-            except PermissionError:
-                if native is None or pid != native.pid or birth != native.start_ticks:
-                    raise
-                protected_slots = _fd_slots(proc)
-                opened = None
+            if aggregate_fds:
+                detail = (proc / "fd").stat()
+                require(
+                    stat.S_ISDIR(detail.st_mode) and detail.st_size >= 0,
+                    "Invalid FD count",
+                )
+                opened = detail.st_size
+            else:
+                try:
+                    opened = len(list((proc / "fd").iterdir()))
+                except PermissionError:
+                    if (
+                        native is None
+                        or pid != native.pid
+                        or birth != native.start_ticks
+                    ):
+                        raise
+                    protected_slots = _fd_slots(proc)
+                    opened = None
             children: set[int] = set()
             for task in (proc / "task").iterdir():
                 try:
                     children.update(
                         int(v) for v in (task / "children").read_text().split()
                     )
-                except FileNotFoundError:
-                    if task.exists():
+                except (FileNotFoundError, ProcessLookupError):
+                    if not _gone(task):
                         raise
             same = _birth(proc) == birth
-        except FileNotFoundError:
-            if required or proc.exists():
+        except (FileNotFoundError, ProcessLookupError):
+            if required or not _gone(proc):
                 raise
             return
         require(same, "Process changed during observation")
@@ -227,6 +307,7 @@ class Journal:
         gpus: dict[str, str],
         *,
         native: NativeProcess | None = None,
+        aggregate_fds: bool = False,
     ) -> None:
         require(
             set(processes) == set(ROLES)
@@ -236,12 +317,17 @@ class Journal:
         )
         all_roots = [pid for roots in processes.values() for pid in roots]
         require(len(set(all_roots)) == len(all_roots), "Role process is shared")
-        values = {
-            role: role_sample(
-                roots, gpus.get(role), native=native if role == "prover" else None
-            )
-            for role, roots in processes.items()
-        }
+        values = {}
+        for role in ROLES:
+            try:
+                values[role] = role_sample(
+                    processes[role],
+                    gpus.get(role),
+                    native=native if role == "prover" else None,
+                    aggregate_fds=aggregate_fds,
+                )
+            except Exception as exc:  # noqa: BLE001 -- role, class and errno only.
+                raise ObservationFailure(role, exc) from None
         with closing(sqlite3.connect(self.path)) as db, db:
             db.execute("BEGIN IMMEDIATE")
             prior = db.execute(
@@ -347,6 +433,11 @@ def measurements(
         "SELECT start_ns,start_utc,end_ns,end_utc,config FROM run"
     ).fetchone()
     binding = json.loads(binding_json)
+    fd_measurement = binding.get("fd_measurement")
+    require(
+        fd_measurement in (None, "procfs_fd_count", "enumeration_with_native_fdsize"),
+        "Invalid descriptor measurement source",
+    )
     native = (
         NativeProcess(**binding["native_prover"])
         if "native_prover" in binding
@@ -388,6 +479,18 @@ def measurements(
             )
             birth, rss, fds, gpu = row[:4]
             protected, visible = (None, None) if len(row) == 4 else row[4:]
+            if fd_measurement is not None:
+                require(
+                    len(row) == 6
+                    and (fd_measurement != "procfs_fd_count" or protected is None),
+                    "Descriptor measurement source differs from calibration",
+                )
+            if native is not None and role == "prover":
+                require(
+                    binding["processes"]["prover"] == [native.pid]
+                    and birth == _identity([(native.pid, native.start_ticks)]),
+                    "Unbound native prover observation",
+                )
             require(
                 all(type(i) is int and i > 0 for i in (birth, rss))
                 and type(gpu) is int
@@ -412,9 +515,7 @@ def measurements(
                         type(protected) is int
                         and protected > 0
                         and role == "prover"
-                        and native is not None
-                        and binding["processes"]["prover"] == [native.pid]
-                        and birth == _identity([(native.pid, native.start_ticks)]),
+                        and native is not None,
                         "Unbound protected descriptor measurement",
                     )
                 counts = process_counts.setdefault(role, [visible, visible, visible])

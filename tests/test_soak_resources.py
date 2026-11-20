@@ -1,9 +1,12 @@
 """Synthetic procfs and durable journal coverage for the protected cp_prove process."""
 
+import errno
 import json
 import os
 import sqlite3
+import subprocess
 import tempfile
+import threading
 import time
 import unittest
 from collections.abc import Iterator
@@ -11,9 +14,9 @@ from contextlib import closing
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
-from soak import ledger
+from soak import fd_probe, ledger, runner
 from soak.ledger import (
     DURATION,
     ROLES,
@@ -116,6 +119,135 @@ class ResourceTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             role_sample([123], None, native=self.native)
 
+    def test_calibration_requires_counts_including_zero_and_rejects_constant_capacity(
+        self,
+    ) -> None:
+        for counts, expected in (
+            ([3, 4, 3, 0], True),
+            ([64], False),
+            ([3, 3], False),
+            ([3, 4, 4], False),
+            ([3, 4, 3, 64], False),
+        ):
+            directory = Mock(spec=Path)
+            directory.stat.side_effect = [Mock(st_size=count) for count in counts]
+            with self.subTest(counts=counts), patch.object(os, "close") as closer:
+                self.assertEqual(fd_probe.probe(directory), expected)
+                self.assertEqual(closer.call_count, 3 if len(counts) == 4 else 0)
+        with (
+            patch("sys.platform", "linux"),
+            patch.object(
+                subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], fd_probe.UNSUPPORTED),
+            ) as run,
+        ):
+            self.assertFalse(ledger.aggregate_fd_counts(5))
+            self.assertTrue(run.call_args.kwargs["close_fds"])
+            self.assertEqual(run.call_args.kwargs["timeout"], 5)
+            run.return_value = subprocess.CompletedProcess([], 1)
+            with self.assertRaisesRegex(ledger.ObservationFailure, "collector"):
+                ledger.aggregate_fd_counts(5)
+
+    def test_exact_kernel_count_includes_nondumpable_root_and_descendant(self) -> None:
+        self.denied.add(self.proc / "456/fd")
+        original = Path.stat
+
+        def count(path: Path) -> os.stat_result:
+            info = original(path)
+            if path in self.denied:
+                fields = list(info)
+                fields[6] = 5 if path == self.proc / "123/fd" else 0
+                return os.stat_result(fields)
+            return info
+
+        with patch.object(Path, "stat", count):
+            self.assertEqual(
+                role_sample([123], None, native=self.native, aggregate_fds=True)[2:],
+                [5, 0, None, 2],
+            )
+            with self.assertRaises(PermissionError):
+                role_sample([123], None, native=self.native)
+        with (
+            patch.object(
+                Path, "stat", side_effect=PermissionError(errno.EACCES, "private path")
+            ),
+            self.assertRaises(PermissionError),
+        ):
+            role_sample([123], None, native=self.native, aggregate_fds=True)
+
+    def test_only_gone_tasks_and_optional_children_can_disappear(self) -> None:
+        proc = self.proc / "123"
+        read = Path.read_text
+        vanished = proc / "task/789"
+        for error in (ProcessLookupError, FileNotFoundError):
+            vanished.mkdir()
+
+            def retreat(path: Path, error: type[OSError] = error) -> str:
+                if path == vanished / "children":
+                    vanished.rmdir()
+                    raise error()
+                if path == self.proc / "456/statm":
+                    (self.proc / "456").rename(self.proc / "departed")
+                    raise error()
+                return read(path)
+
+            with self.subTest(error=error), patch.object(Path, "read_text", retreat):
+                self.assertEqual(
+                    role_sample([123], None, native=self.native)[2:], [None, 0, 64, 0]
+                )
+            (self.proc / "departed").rename(self.proc / "456")
+
+            def present(path: Path, error: type[OSError] = error) -> str:
+                if (
+                    path == self.proc / "456/statm"
+                    or path == proc / "task/123/children"
+                ):
+                    raise error()
+                return read(path)
+
+            with patch.object(Path, "read_text", present), self.assertRaises(error):
+                role_sample([123], None, native=self.native)
+            with self.assertRaises(FileNotFoundError):
+                role_sample([999], None)
+
+    def test_background_failure_surfaces_bounded_role_class_errno(self) -> None:
+        for pid in (201, 202, 203):
+            self.process(pid, pid, [], 2)
+        roles = {"engine": [201], "prover": [123], "gateway": [202], "auditor": [203]}
+        gpus = {"engine": "GPU-engine", "prover": "GPU-prover"}
+        journal = Journal(self.base / "failure.db")
+        self.denied.add(self.proc / "203/fd")
+        reject = PermissionError(errno.EACCES, "sensitive-path-and-filename")
+        with patch.object(subprocess, "check_output", return_value="5"):
+
+            def observe() -> None:
+                journal.observe(roles, gpus, native=self.native)
+
+            errors: list[ledger.ObservationFailure] = []
+            runner._observe_periodically(threading.Event(), 0, observe, errors)
+            with self.assertRaisesRegex(
+                ledger.ObservationFailure, "role=auditor, class=PermissionError"
+            ):
+                runner._observation_health(errors)
+        for exc, message in (
+            (reject, "class=PermissionError, errno=EACCES"),
+            (IndexError("private"), "class=IndexError"),
+            (SystemExit("private"), "class=Exception"),
+            (subprocess.CalledProcessError(3, ["private"]), "class=CalledProcessError"),
+        ):
+            errors = []
+            runner._observe_periodically(
+                threading.Event(), 0, Mock(side_effect=exc), errors
+            )
+            with self.assertRaisesRegex(ledger.ObservationFailure, message) as caught:
+                runner._observation_health(errors)
+            self.assertNotIn("private", str(caught.exception))
+        with closing(sqlite3.connect(journal.path)) as db:
+            self.assertEqual(
+                db.execute("select count(*) from observations").fetchone(), (0,)
+            )
+
     def test_live_journal_refuses_basis_change_before_another_sample_commits(
         self,
     ) -> None:
@@ -170,6 +302,23 @@ class ResourceTests(unittest.TestCase):
             self.assertIsNone(result["prover"]["final_exact_fds_visible"])
             self.assertNotIn("final_fds", result["prover"])
             self.assertEqual(result["gateway"]["final_fds"], 8)
+            # Old exact/partial reports remain readable. A new calibrated run binds
+            # its exact measurement source and the native birth even without FDSize.
+            db.execute(
+                "UPDATE run SET config=?",
+                (json.dumps(dict(binding, fd_measurement="procfs_fd_count")),),
+            )
+            with self.assertRaisesRegex(ValueError, "differs from calibration"):
+                checked()
+            exact_values = dict(values, prover=[*values["prover"][:2], 5, 64, None, 1])
+            db.execute("UPDATE observations SET roles=?", (json.dumps(exact_values),))
+            self.assertEqual(checked()["prover"]["final_fds"], 5)
+            exact_values["prover"][0] = 999
+            db.execute("UPDATE observations SET roles=?", (json.dumps(exact_values),))
+            with self.assertRaisesRegex(ValueError, "Unbound native"):
+                checked()
+            db.execute("UPDATE run SET config=?", (json.dumps(binding),))
+            db.execute("UPDATE observations SET roles=?", (json.dumps(values),))
             initial = values["prover"]
             for end, message in (
                 ([*initial[:4], 128, 0], "growth"),

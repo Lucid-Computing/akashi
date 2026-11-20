@@ -36,6 +36,8 @@ from soak.ledger import (
     WORKLOAD,
     Journal,
     NativeProcess,
+    ObservationFailure,
+    aggregate_fd_counts,
     jcs,
     require,
 )
@@ -341,6 +343,27 @@ def _archive_rows(
         db.execute("UPDATE archive_pin SET archive_sha256=? WHERE id=1", (checksum,))
 
 
+def _observe_periodically(
+    stop: threading.Event,
+    period: float,
+    observe: Callable[[], None],
+    failures: list[ObservationFailure],
+) -> None:
+    # A terminated observer must also stop the foreground run.
+    try:
+        while not stop.wait(period):
+            observe()
+    except ObservationFailure as exc:
+        failures.append(exc)
+    except BaseException as exc:  # noqa: BLE001
+        failures.append(ObservationFailure("collector", exc))
+
+
+def _observation_health(failures: list[ObservationFailure]) -> None:
+    if failures:
+        raise failures[0] from None
+
+
 def collect(config: dict[str, Any], *, archive_only: bool = False) -> None:
     os.umask(0o077)
     state = Path(config["state"])
@@ -373,12 +396,19 @@ def collect(config: dict[str, Any], *, archive_only: bool = False) -> None:
     )
     case_path = Path(config.get("holder_case_path", state / "holder-case.json"))
     require(case_path.is_absolute(), "Absolute private holder case path required")
+    aggregate_fds = aggregate_fd_counts(gap)
     native = NativeProcess(**config["native_prover"])
-    native.check()
+    try:
+        native.check()
+    except Exception as exc:  # noqa: BLE001 -- omit proc paths on a missing role.
+        raise ObservationFailure("prover", exc) from None
     require(config["processes"]["prover"] == [native.pid], "Unbound native prover role")
     binding = {
         "archive_drain_seconds": config["archive_drain_seconds"],
         "native_prover": config["native_prover"],
+        "fd_measurement": "procfs_fd_count"
+        if aggregate_fds
+        else "enumeration_with_native_fdsize",
         "fixture_sha256": digest(CORPUS),
         "primary_startup_sha256": digest(Path(config["primary_startup"])),
         "active_startup_sha256": digest(Path(config["active_startup"])),
@@ -421,25 +451,29 @@ def collect(config: dict[str, Any], *, archive_only: bool = False) -> None:
     binding["same_physical_primary"] = True
     journal.begin(binding)
     stop = threading.Event()
-    errors = []
+    errors: list[ObservationFailure] = []
 
     def observe() -> None:
-        journal.observe(config["processes"], config["gpus"], native=native)
-
-    def sample() -> None:
-        while not stop.wait(period):
-            try:
-                observe()
-            except (OSError, ValueError, sqlite3.Error) as exc:
-                errors.append(type(exc).__name__)
-                return
+        try:
+            journal.observe(
+                config["processes"],
+                config["gpus"],
+                native=native,
+                aggregate_fds=aggregate_fds,
+            )
+        except ObservationFailure:
+            raise
+        except Exception as exc:  # noqa: BLE001 -- SQLite and unexpected failures stay redacted.
+            raise ObservationFailure("collector", exc) from None
 
     observe()
-    thread = threading.Thread(target=sample)
+    thread = threading.Thread(
+        target=_observe_periodically, args=(stop, period, observe, errors)
+    )
     thread.start()
     try:
         while journal.elapsed() < DURATION or journal.in_flight():
-            require(not errors, "Role resource monitoring stopped")
+            _observation_health(errors)
             seq, shape = journal.reserve()
             row = corpus[shape]
             _write(
@@ -504,12 +538,12 @@ def collect(config: dict[str, Any], *, archive_only: bool = False) -> None:
                 reply["status"] in GOOD | {"unwarranted"},
                 "Unexplained or ambiguous traffic event",
             )
-        require(not errors, "Role resource monitoring stopped")
-        observe()
-        journal.finish()
     finally:
         stop.set()
         thread.join()
+    _observation_health(errors)
+    observe()
+    journal.finish()
     archive(config, journal)
 
 
@@ -518,4 +552,8 @@ if __name__ == "__main__":
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--archive-only", action="store_true")
     args = parser.parse_args()
-    collect(private(args.config), archive_only=args.archive_only)
+    try:
+        collect(private(args.config), archive_only=args.archive_only)
+    except ObservationFailure as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from None
