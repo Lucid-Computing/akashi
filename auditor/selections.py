@@ -268,10 +268,11 @@ class SelectionsApp:
             headers.append(("Allow", "GET"))
         else:
             try:
-                params = parse_qs(
-                    str(env.get("QUERY_STRING", "")),
-                    keep_blank_values=True,
-                    strict_parsing=True,
+                query = str(env.get("QUERY_STRING", ""))
+                params = (
+                    parse_qs(query, keep_blank_values=True, strict_parsing=True)
+                    if query
+                    else {}
                 )
                 values = params.get("cursor", ["0"])
                 raw = values[0]

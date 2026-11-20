@@ -15,3 +15,7 @@ lint:
 
 check-hardware:
 	$(UV) run --locked python -m tools.check_hardware
+
+.PHONY: gate-m1
+gate-m1:
+	$(UV) run --locked python -m tools.gate_m1

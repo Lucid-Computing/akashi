@@ -81,7 +81,9 @@ class LogMonitor:
             public_key=self.lookup_key("log", key),
         )
         witness = {k: v for k, v in receipt.items() if k != "salt"}
-        due = datetime.fromisoformat(str(receipt["served_at"])) + timedelta(seconds=10)
+        due = datetime.fromisoformat(
+            str(receipt["served_at"]).replace("Z", "+00:00")
+        ) + timedelta(seconds=10)
         with closing(sqlite3.connect(self._path)) as db, db:
             db.execute(
                 "INSERT OR IGNORE INTO promises VALUES(?,?,?)",
@@ -159,7 +161,8 @@ class LogMonitor:
         observed = self.clock()
         if (
             observed.utcoffset() is None
-            or datetime.fromisoformat(new["timestamp"]) > observed
+            or datetime.fromisoformat(new["timestamp"].replace("Z", "+00:00"))
+            > observed
         ):
             raise ValueError("Signed checkpoint lies beyond observation time")
         with closing(sqlite3.connect(self._path)) as db, db:
@@ -271,7 +274,8 @@ class LogMonitor:
                     continue
                 kind = (
                     "omitted_promise"
-                    if datetime.fromisoformat(new["timestamp"]) >= deadline
+                    if datetime.fromisoformat(new["timestamp"].replace("Z", "+00:00"))
+                    >= deadline
                     else "overdue_checkpoint"
                 )
                 self._alert(

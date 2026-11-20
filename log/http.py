@@ -33,7 +33,9 @@ def _uint(text: object) -> int:
 
 
 def _params(query: str, *fields: str) -> dict[str, int]:
-    values = parse_qs(query, keep_blank_values=True, strict_parsing=True)
+    values = (
+        parse_qs(query, keep_blank_values=True, strict_parsing=True) if query else {}
+    )
     if set(values) != set(fields) or any(len(items) != 1 for items in values.values()):
         raise ValueError("unexpected query parameters")
     return {k: _uint(items[0]) for k, items in values.items()}
