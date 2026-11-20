@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from concurrent.futures import CancelledError
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from threading import Lock
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
+
+if TYPE_CHECKING:
+    from operations.role_metrics import EngineMetrics
 
 _COMMITMENT = "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46"  # F4
 _END = frozenset({200001, 200007, 200008})  # F37
@@ -152,10 +156,13 @@ class Engine:
         generate_tokens: Callable[[tuple[int, ...], int], tuple[int, ...]],
         begin_window: Callable[[], Cursor],
         finish_window: Callable[[Cursor], Window],
+        *,
+        metrics: EngineMetrics | None = None,
     ) -> None:
         self._generate_tokens = generate_tokens
         self._begin_window = begin_window
         self._finish_window = finish_window
+        self._metrics = metrics
         self._slot = Lock()
         self._gates = GateStatus()
         self._quarantined = False
@@ -182,7 +189,7 @@ class Engine:
 
     def start(self, evidence: StartupEvidence, canaries: tuple[Canary, ...]) -> None:
         """Run host-attested gates and three exact canaries before any client work."""
-        with self._slot:
+        with self._slot, self._metrics.startup() if self._metrics else nullcontext():
             self._gates = GateStatus()
             if (
                 not isinstance(evidence, StartupEvidence)
@@ -235,7 +242,8 @@ class Engine:
         with self._slot:
             if not self.ready:
                 raise EngineUnavailable("Engine gates are closed")
-            return self._dispatch(prompt, max_tokens)
+            with self._metrics.dispatch() if self._metrics else nullcontext():
+                return self._dispatch(prompt, max_tokens)
 
     def _dispatch(self, prompt: tuple[int, ...], budget: int) -> EngineResult:
         """Called with the slot held, including during startup canaries."""

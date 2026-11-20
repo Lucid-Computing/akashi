@@ -25,6 +25,21 @@ the real-model runs specified in the [build plan](specs/build-plan.md).
 
 For the CPU milestone integration run, use `make gate-m1`. It fetches and checks the pinned public rendering assets or uses `VIG_RENDER_ASSETS` for an offline run. The report is written to `build/gates/m1.json`. Use `make demo-router` to exercise the holder through the local mock router. [Milestone evidence](docs/spec/07-testing-strategy.md#release-gates) · [Router demo](router/README.md)
 
+## Build and check the verifier wheel
+
+From the repository root, use the pinned uv and the development environment installed by `make setup`.
+
+```sh
+make setup
+make test-package
+```
+
+The gate builds the Linux x86-64 `vig-verify` 0.0.0 development wheel and checks its explicit file list, package metadata, native inputs and wheel RECORD. It installs the locked dependencies and the wheel in a fresh environment, then invokes the installed `vig` command on the signed raw-ID fixture and a changed-signature control. A cross-installed Linux wheel on macOS can run those receipt checks. Native proof qualification runs on a compatible Linux CPU. [Platform and build provenance](distribution/verifier/README.md#native-executable)
+
+The gate writes the wheel, hash-locked `requirements.txt` and `verifier-install-v1.json` to `build/package/`. Its report at `build/gates/package.json` records their SHA-256 values, the source revision, the installed dependency and license inventory, and the receipt outcomes. Pair that report with the Linux clean-install proof run for the same wheel digest. Preserve the exact candidate hashes when preparing release evidence. [Holder installation and fixture](verifier/README.md#install-the-development-wheel) · [Release policy](docs/spec/09-release-and-versioning.md#distribution)
+
+When changing the native bundle, compare a clean build of the pinned FlashProve executable with its measured SHA-256 and reconcile every fitted input with the F4 provenance. Review the wheel's file mappings and license list together. Keep F37 tokenizer assets external and hash-pinned. [Measured public input inventory](distribution/verifier/README.md#public-verification-inputs) · [Wheel build metadata](distribution/verifier/pyproject.toml)
+
 ## Compatibility
 
 | Change | Evidence to include |

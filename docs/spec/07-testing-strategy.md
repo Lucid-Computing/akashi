@@ -22,3 +22,9 @@ Unit-test policy edges, byte layouts, deadline equalities, status maps and lifec
 Run `make setup gate-m1` from a repository checkout. The gate fetches the two immutable public renderer files and checks their digests. For a provisioned or offline runner, set `VIG_RENDER_ASSETS` to the directory containing both files. Every vector suite must run with zero skips. The gate exercises one isolated Mode D service, a separate public selection reader and the CPU proof fixture. Its fixed workload covers selected, unselected and expired custody alongside two engine failure controls.
 
 The command writes `build/gates/m1.json` with the commit, working-tree status, runtime versions, public vector digests, test counts, and expected and observed fixture outcomes. A failed gate replaces any earlier result and exits nonzero. CPU CI uploads this file as `m1-cpu-evidence`. M2 promotion additionally requires the real M0 evidence described in the [build plan](../../specs/build-plan.md#m0-bring-up).
+
+## Running the M3 regression gate
+
+Run `make setup gate-m3`. It runs R1–R19 with isolated synthetic fixtures on the CPU, including the independent holder, monitor and challenge admission paths. Set `VIG_RENDER_ASSETS` for offline use, as for M1. The real-model conformance and historical challenge measurements are recorded by M0 and M2.
+
+The aggregate at `build/gates/m3.json` records the source revision, working-tree status, environment, combined fixture digest and SHA-256 of each component report. It checks the specified outcome and every honest control for each scenario. R18 also reports selected long prompts and short controls. R19 reports both quota boundaries and the durable work checks. A failed rerun replaces earlier passing evidence. CPU CI archives all four reports. [Scenario outcomes](../../specs/redteam-suite.md) · [Release evidence requirements](../rfcs/RFC-0011-release-gates.md#proposed-design)

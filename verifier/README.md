@@ -27,6 +27,80 @@ From spec § 11.3:
 | 30 | no verdict (`cp_verify` 2-5, 14, 15; missing files) |
 | 64 | usage |
 
+## Install the development wheel
+
+`vig-verify` 0.0.0 is a local development candidate. On x86-64 Linux with Python 3.10 or newer, obtain the wheel, `requirements.txt` and `verifier-install-v1.json` from the candidate build. Use a separately trusted copy of its package report to check the wheel, lock and fixture SHA-256 values before installation. The qualified native host runs Ubuntu 24.04 with SHA extensions, glibc 2.39 and the documented C++ runtime. [Candidate build instructions](../CONTRIBUTING.md#build-and-check-the-verifier-wheel) · [ELF requirements and input digests](../distribution/verifier/README.md#native-executable)
+
+Run these commands in the directory containing those three candidate files. Set `VIG_PACKAGE_REPORT` to the trusted report path. Choose a fresh, user-owned directory for the environment.
+
+```sh
+set -e
+python3 - "$VIG_PACKAGE_REPORT" <<'PYVERIFY'
+import hashlib, json, pathlib, sys
+
+report = json.loads(pathlib.Path(sys.argv[1]).read_bytes())
+if (report["schema_version"], report["gate"], report["status"]) != (1, "package", "passed"):
+    raise SystemExit("expected a passing package report")
+for filename, field in [
+    ("vig_verify-0.0.0-py3-none-linux_x86_64.whl", "wheel_sha256"),
+    ("requirements.txt", "lock_sha256"),
+    ("verifier-install-v1.json", "fixture_sha256"),
+]:
+    if hashlib.sha256(pathlib.Path(filename).read_bytes()).hexdigest() != report[field]:
+        raise SystemExit("candidate digest mismatch: " + filename)
+PYVERIFY
+uv venv --no-project --python python3 .venv
+uv pip install --python .venv/bin/python --require-hashes --only-binary :all: -r requirements.txt
+uv pip install --python .venv/bin/python --no-deps ./vig_verify-0.0.0-py3-none-linux_x86_64.whl
+uv pip check --python .venv/bin/python
+.venv/bin/vig verify --help
+```
+
+For an offline installation, stage the matching dependency wheels for your Python and platform, and add `--no-index --find-links /path/to/wheelhouse` to the requirements installation command. Verification itself reads local files.
+
+### Check the public installation fixture
+
+The synthetic raw-ID fixture contains a signed receipt, its public descriptor and a trusted checkpoint. It tests the installed CLI's input binding and signed history. It needs neither a tokenizer nor a proof. The successful receipt-only outcome is `RECEIPT_VERIFIED` with exit 30. The package gate also checks that an altered signature yields exit 10. [Public fixture](../tests/fixtures/verifier-install-v1.json)
+
+```sh
+.venv/bin/python - <<'PYFIXTURE'
+import json, pathlib, subprocess
+
+sample = json.loads(pathlib.Path("verifier-install-v1.json").read_bytes())
+for field in ("bundle", "descriptor", "checkpoint"):
+    pathlib.Path("fixture-" + field + ".json").write_text(json.dumps(sample[field]))
+result = subprocess.run([
+    ".venv/bin/vig", "verify", "fixture-bundle.json", "--descriptor", "fixture-descriptor.json",
+    "--checkpoint", "fixture-checkpoint.json", "--observed-at", sample["observed_at"], "--receipt-only",
+], capture_output=True, text=True)
+print(result.stdout, end="")
+if result.returncode != 30 or json.loads(result.stdout)["outcome"] != "RECEIPT_VERIFIED":
+    raise SystemExit("receipt fixture failed")
+PYFIXTURE
+```
+
+### Verify a private chat reply with the installed native checker
+
+Obtain the descriptor through a trusted channel, use the original holder input and provide the saved signed checkpoint when available. Stage the two F37 files from revision `86c5ecb6f2fbddf604c60120125fb202e09f2556` of `unsloth/Llama-4-Maverick-17B-128E-Instruct` in the same local directory. The renderer verifies each file before use. [Pinned tokenizer files](https://huggingface.co/unsloth/Llama-4-Maverick-17B-128E-Instruct/tree/86c5ecb6f2fbddf604c60120125fb202e09f2556) · [Canonical rendering](../specs/canonical-rendering.md)
+
+| File | SHA-256 |
+|---|---|
+| `tokenizer.json` | `172c9eb4beafc72601690da3ccfcede5c2e6806a8d5ec1fca33e22acea8023a4` |
+| `tokenizer_config.json` | `2c56f1b600f928762c235c1b7a9349dc50c3574031f396a35ab25d3ad3ca425d` |
+
+With the wheel installed, a trusted `--runtime` JSON object containing only the positive `timeout_seconds`, `memory_bytes` and `max_proof_bytes` selects its bundled native checker and F4 files. For example, the CPU qualification uses the following host limits.
+
+```json
+{"timeout_seconds":180,"memory_bytes":8589934592,"max_proof_bytes":33554432}
+```
+
+```sh
+.venv/bin/vig verify holder.json --descriptor trusted-vig.json \
+  --checkpoint previous-sth.json --assets /path/to/f37 --runtime verifier-runtime.json
+```
+
+A verified whole-reply conformance proof returns `CONFORMS` and exit 0. The CLI reports `PROOF_REJECTED` with exit 20 for a rejected proof and `DEVIATES` with exit 21 for a verified divergence. Use the receipt-only example above to check installation without private proof material. [Proof contract](../docs/rfcs/RFC-0006-proof-runtime.md) · [Holder outcomes](../docs/rfcs/RFC-0008-holder-verification.md)
+
 ## Source checkout
 
 Run `make setup test-receipts test-merkle-log` from the repository root for the signed-receipt and log evidence checks. Native proof verification requires the pinned binary and F4 public inputs on a compatible x86-64 Linux CPU. [Contributor setup](../CONTRIBUTING.md#getting-started) · [Distribution policy](../docs/spec/09-release-and-versioning.md#distribution)

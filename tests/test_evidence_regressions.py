@@ -1,0 +1,94 @@
+"""Fail closed on inconsistent counts and keep diagnostics out of the public report."""
+
+import copy
+import unittest
+from typing import Any
+
+from redteam.evidence_regressions import (
+    _admission_controls,
+    _long_prompt_controls,
+    summarize,
+)
+
+
+class EvidenceReportTests(unittest.TestCase):
+    def test_contract_counts_omit_unexpected_private_diagnostics(self) -> None:
+        contract = {"R16": ("omitted_promise", "included")}
+        row: dict[str, Any] = {
+            "scenario": "R16",
+            "trials": 20,
+            "caught": 20,
+            "honest_controls": 20,
+            "honest_passed": 20,
+            "expected": "omitted_promise",
+            "honest_expected": "included",
+            "observed": {"omitted_promise": 20},
+            "honest_observed": {"included": 20},
+        }
+        self.assertTrue(summarize([row], contract)[0]["passed"])
+        rejected = copy.deepcopy(row)
+        rejected.update(
+            caught=19, observed={"omitted_promise": 19, "private-marker": 1}
+        )
+        public = summarize([rejected], contract)
+        self.assertIs(public[0]["passed"], False)
+        self.assertNotIn("private-marker", repr(public))
+        for wrong in (
+            {"caught": 20},
+            {"trials": True},
+            {"honest_controls": 0},
+            {"trials": 19},
+            {"honest_observed": {"included": False}},
+            {"expected": "private-marker"},
+        ):
+            with self.subTest(field=next(iter(wrong))), self.assertRaises(ValueError):
+                summarize([{**rejected, **wrong}], contract)
+        with self.assertRaises(ValueError):
+            summarize([row, row], contract)
+
+    def test_long_prompt_requires_authentic_selection_counts_and_short_controls(
+        self,
+    ) -> None:
+        fixed: dict[str, Any] = {
+            "scenario": "R18",
+            "trials": 20,
+            "selected_long": 20,
+            "short_controls": 20,
+            "short_conforms": 20,
+            "selection_divisor": 1,
+        }
+        checked: list[dict[str, object]] = [{"scenario": "R18", "passed": True}]
+        _long_prompt_controls([fixed], checked)
+        self.assertIs(checked[0]["passed"], True)
+        _long_prompt_controls([{**fixed, "short_conforms": 19}], checked)
+        self.assertIs(checked[0]["passed"], False)
+        for wrong in (
+            {"selected_long": 19},
+            {"selection_divisor": True},
+            {"short_controls": 0},
+            {"short_conforms": 21},
+        ):
+            with self.subTest(wrong=wrong), self.assertRaises(ValueError):
+                _long_prompt_controls([{**fixed, **wrong}], checked)
+
+    def test_rate_limit_subchecks_are_required_and_bounded(self) -> None:
+        counts: dict[str, object] = dict.fromkeys(
+            (
+                "holder_boundaries",
+                "transcript_boundaries",
+                "retry_after_verified",
+                "durable_queue_verified",
+                "dedup_verified",
+                "rollovers_verified",
+            ),
+            20,
+        )
+        counts["trials"] = 20
+        public: dict[str, object] = {"passed": True}
+        _admission_controls(counts, public)
+        self.assertIs(public["passed"], True)
+        _admission_controls({**counts, "rollovers_verified": 19}, public)
+        self.assertIs(public["passed"], False)
+        for invalid in (True, -1, 21):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                _admission_controls({**counts, "dedup_verified": invalid}, public)
