@@ -29,24 +29,28 @@ jobs:
           name: m1-cpu-evidence
           path: build/gates/m1.json
           if-no-files-found: error
-      - run: make test-evidence-regressions
+      - run: make gate-m3
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: transcript-history-evidence
           path: build/gates/m3-evidence.json
           if-no-files-found: error
-      - run: make test-model-regressions
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: model-outcome-evidence
           path: build/gates/m3-model.json
           if-no-files-found: error
-      - run: make test-admission-regressions
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: challenge-admission-evidence
           path: build/gates/m3-admission.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: m3-regression-evidence
+          path: build/gates/m3.json
           if-no-files-found: error
