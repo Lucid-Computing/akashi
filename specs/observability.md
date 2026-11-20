@@ -233,6 +233,20 @@ Response:
 }
 ```
 
+### Run the M1 checks
+
+Mount `operations.health.HealthApp` on the private monitoring listener. Supply
+startup, engine and log probes that inspect the running service and the
+metrics exporter for that same service. Liveness reports process health.
+Readiness reevaluates the gates and required dependencies on each request.
+A failed probe yields a bounded check status. Its exception text stays private.
+
+Use `operations.telemetry` for structured events, stage timing and metrics.
+The shared collector accepts bounded labels and issues its own internal
+correlation IDs. Run `make test-telemetry` from the repository root for the
+health, privacy and metric checks.
+[Operational telemetry contract](../docs/spec/05-observability.md#telemetry-contract)
+
 ## Monitor Scripts
 
 A simple log monitor (200-line script in the repository):
