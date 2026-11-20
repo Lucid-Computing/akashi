@@ -4,37 +4,25 @@ Thank you for your interest in contributing to this project. This document outli
 
 ## Getting Started
 
-### Prerequisites
+Install Git, Make and uv 0.13.6. From a clean checkout, run the CPU profile:
 
-- Python 3.10 or later
-- Rust 1.70 or later (for prover integration)
-- Git for version control
-- Familiarity with LLM inference and zero-knowledge proofs is helpful
-
-### Development Setup
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd verified-inference-gateway
+```sh
+make setup
+make test-unit
+make lint
 ```
 
-2. Install dependencies:
-```bash
-# Python dependencies
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements-dev.txt
+uv selects the CPython patch in `.python-version` and installs the resolved
+artifacts from `uv.lock` into `.venv`. The commands reject stale locks.
+Declare runtime dependencies with exact versions in `pyproject.toml`, then
+regenerate the lock with `uv lock`. CI checks both base and optional runtime
+requirements and runs Ruff and strict mypy over the checkout.
 
-# Rust dependencies
-cd prover
-cargo build
-```
-
-3. Run tests to verify setup:
-```bash
-make test
-```
+For a serving or proving host, run the separate `make check-hardware` preflight.
+The hardware requirements and upstream runtime pins are in
+[the facts register](specs/facts-register.md#hardware-requirements) and
+[parameters](specs/parameters.md#version-pinning). Milestone evidence requires
+the real-model runs specified in the [build plan](specs/build-plan.md).
 
 ## Contribution Process
 
@@ -171,28 +159,6 @@ For significant design decisions, create an ADR:
 5. Include in your PR
 
 ## Testing
-
-### Running Tests
-
-```bash
-# All tests
-make test
-
-# Unit tests only
-make test-unit
-
-# Integration tests
-make test-integration
-
-# Red team suite
-make test-redteam
-
-# Specific test file
-pytest tests/test_renderer.py
-
-# With coverage
-make test-coverage
-```
 
 ### Writing Tests
 
