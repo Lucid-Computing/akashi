@@ -38,3 +38,7 @@ For a live delivery, a holder can record when it received the signed promise and
 ## Model outcomes
 
 Run `make test-model-regressions` for R1–R9 and R18. The fixed CPU corpus supplies synthetic completions and reference choices for each scenario. The checks exercise completion policy and identify the first differing token through the reference scorer interface. R18 additionally checks short prompts and selection at N=1. The report at `build/gates/m3-model.json` records counts, corpus digests and the source revision. Real Maverick proof measurements are recorded in the M0 and M2 gates. [M3 criteria](../specs/build-plan.md#m3-red-team)
+
+## Challenge admission
+
+Run `make test-admission-regressions` for R19. Each fixed trial uses a fresh private test ledger and signed receipts. Two callers compete for the last available quota slot. The fixture checks the reported retry interval, counts the surviving challenge handles and work rows after reopening SQLite, and submits a separate eligible control. The command writes `build/gates/m3-admission.json`. [Challenge limits](../specs/parameters.md#rate-limits) · [M3 criteria](../specs/build-plan.md#m3-red-team)

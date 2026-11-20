@@ -4,7 +4,11 @@ import copy
 import unittest
 from typing import Any
 
-from redteam.evidence_regressions import _long_prompt_controls, summarize
+from redteam.evidence_regressions import (
+    _admission_controls,
+    _long_prompt_controls,
+    summarize,
+)
 
 
 class EvidenceReportTests(unittest.TestCase):
@@ -66,3 +70,25 @@ class EvidenceReportTests(unittest.TestCase):
         ):
             with self.subTest(wrong=wrong), self.assertRaises(ValueError):
                 _long_prompt_controls([{**fixed, **wrong}], checked)
+
+    def test_rate_limit_subchecks_are_required_and_bounded(self) -> None:
+        counts: dict[str, object] = dict.fromkeys(
+            (
+                "holder_boundaries",
+                "transcript_boundaries",
+                "retry_after_verified",
+                "durable_queue_verified",
+                "dedup_verified",
+                "rollovers_verified",
+            ),
+            20,
+        )
+        counts["trials"] = 20
+        public: dict[str, object] = {"passed": True}
+        _admission_controls(counts, public)
+        self.assertIs(public["passed"], True)
+        _admission_controls({**counts, "rollovers_verified": 19}, public)
+        self.assertIs(public["passed"], False)
+        for invalid in (True, -1, 21):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                _admission_controls({**counts, "dedup_verified": invalid}, public)
