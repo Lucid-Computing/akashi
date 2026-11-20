@@ -12,6 +12,8 @@ from datetime import timedelta
 from threading import Barrier
 from typing import Any
 
+from nacl.public import SealedBox
+
 from auditor.challenge_http import ChallengeApp
 from tests.test_challenge_intake import ChallengeIntakeTests as _SignedFixture
 
@@ -122,6 +124,19 @@ def _handles(fixture: _SignedFixture, responses: list[_Reply]) -> list[str]:
     return jobs
 
 
+def _stored_bundle_matches(
+    fixture: _SignedFixture, job: str, expected: dict[str, Any]
+) -> bool:
+    with closing(sqlite3.connect(fixture.db)) as db:
+        row = db.execute(
+            "SELECT material FROM challenge_work WHERE job_id=?", (job,)
+        ).fetchone()
+    return (
+        row is not None
+        and json.loads(SealedBox(fixture.key).decrypt(row[0])) == expected
+    )
+
+
 def _case(number: int) -> tuple[dict[str, bool], bool]:
     fixture = _SignedFixture()
     try:
@@ -172,6 +187,7 @@ def _case(number: int) -> tuple[dict[str, bool], bool]:
             and len(set(ids[:10])) == 10
             and len(set(ids[10:])) == 1
             and ids[-1] not in ids[:10]
+            and _stored_bundle_matches(fixture, ids[-1], target)
         )
         # A genuinely eligible reader and transcript still get their own durable
         # work while the original holder and the shared transcript remain full.
@@ -179,7 +195,9 @@ def _case(number: int) -> tuple[dict[str, bool], bool]:
         honest = eligible.accepted() and fixture.counts() == (14, 12)
         if honest:
             jobs = _handles(fixture, [*winners, eligible])
-            honest = jobs[-1] not in jobs[:-1]
+            honest = jobs[-1] not in jobs[:-1] and _stored_bundle_matches(
+                fixture, jobs[-1], inputs[12]
+            )
         fixture.clock = fixture.received + timedelta(hours=1, microseconds=-1)
         almost_hour = _submit(fixture, "hourly", inputs[13])
         hour_unchanged = fixture.counts() == (14, 12)
