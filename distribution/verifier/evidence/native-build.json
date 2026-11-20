@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "upstream_revision": "9e2bdd8ff5bf9c62f18263d7dac189b0400b260c",
+  "source": "verifier/build.sh, verifier/src/cp_verify.cpp",
+  "command": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "LC_ALL=C",
+    "HOME=<fresh-private-directory>",
+    "bash",
+    "verifier/build.sh",
+    "--field",
+    "2",
+    "-",
+    "<empty-output-directory>"
+  ],
+  "source_digest": "93afdaf592393a54ebd17b681d1c03295eb883f0161ff0e6ab872a3b39939595",
+  "digest_words": 8,
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "glibc_build_host": "2.39",
+  "architecture": "Linux x86_64, ELF PIE",
+  "cpu_requirement": "SHA extensions (pinned upstream README.md, System requirements)",
+  "interpreter": "/lib64/ld-linux-x86-64.so.2",
+  "shared_libraries": [
+    "libstdc++.so.6",
+    "libm.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+  ],
+  "highest_required_symbol_versions": {
+    "GLIBC": "2.38",
+    "GLIBCXX": "3.4.30",
+    "CXXABI": "1.3.9"
+  },
+  "size_bytes": 2750592,
+  "sha256": "7f9efc1e86a848a3715c6cc870e465ac2a1c5e8fd1eac09e4809023de7604394",
+  "comparison": "An independent new-directory, clean-environment compile on a separate Linux host matched all output bytes of the original F4 public verifier.",
+  "compile_flags": "-O2 -fno-ipa-modref -D_GLIBCXX_ASSERTIONS -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -ftrivial-auto-var-init=zero -fPIE -pie -Wl,-z,relro,-z,now,-z,noexecstack -fcf-protection=full -std=c++17 -Wall -Wextra -Wuninitialized -Werror=unused-result -Wno-misleading-indentation -pthread -I. -I../../blocks -I../../prover -DBLK_FIELD=2 -DBLK_COUNT_HASH_CALLS=1 -DSERVING_BUILD=1 -DDIGEST_WORDS=8 -DVF_SOURCE_DIGEST=\"93afdaf592393a54ebd17b681d1c03295eb883f0161ff0e6ab872a3b39939595\""
+}

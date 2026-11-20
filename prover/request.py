@@ -3,8 +3,11 @@
 import os
 import struct
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 
 # specs/parameters.md fixes T, z and the vocabulary for the published commitment.
+REVISION = "9e2bdd8ff5bf9c62f18263d7dac189b0400b260c"
+COMMITMENT = "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46"
 WINDOW = 1024
 VOCABULARY_SIZE = 202048
 END_TOKENS = frozenset({200001, 200007, 200008})  # F37
@@ -49,3 +52,36 @@ def build_statement(prompt: Sequence[int], reply: Sequence[int]) -> bytes:
 def build_spool_request(prompt: Sequence[int], reply: Sequence[int]) -> bytes:
     """Append a fresh private nonce to the verifier statement for submission."""
     return build_statement(prompt, reply) + os.urandom(32)
+
+
+@dataclass(frozen=True)
+class CandidateProof:
+    """Only the verifier can turn these private bytes into evidence of conformance."""
+
+    statement: bytes = field(repr=False)
+    y: bytes = field(repr=False)
+    proof: bytes = field(repr=False)
+
+
+@dataclass(frozen=True)
+class Divergence:
+    index: int
+    expected: int = field(repr=False)
+
+
+def deviation_statement(
+    prompt: Sequence[int], served: Sequence[int], divergence: Divergence
+) -> bytes:
+    """Keep all served tokens preceding d, replace y[d], then zero-pad the new prefix."""
+    # Check the *whole* original transcript even though the shortened statement drops its suffix.
+    build_statement(prompt, served)
+    d, correct = divergence.index, divergence.expected
+    if (
+        type(d) is not int
+        or not 0 <= d < len(served)
+        or type(correct) is not int
+        or not 0 <= correct < VOCABULARY_SIZE
+        or served[d] == correct
+    ):
+        raise ValueError("Invalid deviation against the original served token")
+    return build_statement(prompt, (*served[:d], correct))

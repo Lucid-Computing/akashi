@@ -1,0 +1,68 @@
+[project]
+name = "vig-verify"
+version = "0.0.0"
+description = "Offline verification of signed inference receipts and FlashProve evidence"
+requires-python = ">=3.10"
+license = "Apache-2.0 AND CC0-1.0 AND MIT AND LicenseRef-Llama-4-Community"
+license-files = [
+    "licenses/BLAKE2-54f4faa4.COPYING",
+    "licenses/FlashProve-LICENSE",
+    "licenses/FlashProve-NOTICE",
+    "licenses/LICENSE",
+    "licenses/Llama-4-LICENSE",
+    "licenses/Notice",
+    "licenses/plonky2.LICENSE-MIT",
+]
+dependencies = [
+    "cryptography==50.0.2",
+    "jinja2==3.1.6",
+    "py-ecc==8.0.0",
+    "tokenizers==0.23.2",
+]
+
+[project.scripts]
+vig = "verifier.cli:main"
+
+[project.urls]
+Source = "https://github.com/AbdelStark/verified-inference-gateway"
+Documentation = "https://github.com/AbdelStark/verified-inference-gateway/tree/main/verifier"
+
+[build-system]
+requires = ["hatchling==1.33.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
+
+[tool.hatch.build.hooks.custom]
+path = "platform_wheel.py"
+
+[tool.hatch.build.targets.wheel.force-include]
+"../../auditor/__init__.py" = "auditor/__init__.py"
+"../../auditor/beacon.py" = "auditor/beacon.py"
+"../../gateway/__init__.py" = "gateway/__init__.py"
+"../../gateway/renderer.py" = "gateway/renderer.py"
+"../../log/__init__.py" = "log/__init__.py"
+"../../log/merkle.py" = "log/merkle.py"
+"../../log/receipt.py" = "log/receipt.py"
+"../../log/verification.py" = "log/verification.py"
+"../../prover/__init__.py" = "prover/__init__.py"
+"../../prover/artifacts.py" = "prover/artifacts.py"
+"../../prover/request.py" = "prover/request.py"
+"../../tools/__init__.py" = "tools/__init__.py"
+"../../tools/check_hardware.py" = "tools/check_hardware.py"
+"../../verifier/__init__.py" = "verifier/__init__.py"
+"../../verifier/cli.py" = "verifier/cli.py"
+"../../verifier/holder.py" = "verifier/holder.py"
+"../../verifier/holder_proof.py" = "verifier/holder_proof.py"
+"../../verifier/lean.py" = "verifier/lean.py"
+"../../verifier/native_output.py" = "verifier/native_output.py"
+"../../verifier/proof.py" = "verifier/proof.py"
+"../../verifier/py.typed" = "verifier/py.typed"
+"native/cp_verify" = "verifier/native/cp_verify"
+"native/config/policy.txt" = "verifier/native/config/policy.txt"
+"native/config/layout.txt" = "verifier/native/config/layout.txt"
+"native/config/KL.bin" = "verifier/native/config/KL.bin"
+"native/ivk/key.bin" = "verifier/native/ivk/key.bin"
+"native/ivk/leaf/0.bin" = "verifier/native/ivk/leaf/0.bin"
+"native/manifest.json" = "verifier/native/manifest.json"

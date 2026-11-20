@@ -21,6 +21,7 @@ exclude = ['^\.venv/']
 
 [dependency-groups]
 dev = [
+    "hatchling==1.33.0",
     "markdown-it-py==4.3.0",
     "mypy==2.4.1",
     "packaging==26.3",

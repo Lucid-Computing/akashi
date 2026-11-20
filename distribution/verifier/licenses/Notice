@@ -1,0 +1,21 @@
+vig-verify
+Built with Llama. Model provenance: Llama 4 Maverick 17B-128E Instruct,
+Unsloth's UD-Q4_K_XL conversion and the configuration and public verification
+key produced by the FlashProve F4 rebuild.
+
+Llama 4 is licensed under the Llama 4 Community License, Copyright © Meta Platforms, Inc. All Rights Reserved.
+The Llama 4 Community License Agreement is reproduced in Llama-4-LICENSE.
+Source: https://github.com/meta-llama/llama-models/blob/0e0b8c519242d5833d8c11bffc1232b77ad7f301/models/llama4/LICENSE
+
+The gateway project source is distributed under LICENSE.
+FlashProve 0.16.0 is Copyright 2026 Anthropic PBC. See FlashProve-LICENSE,
+FlashProve-NOTICE and the upstream third-party inventory at
+https://github.com/anthropics/FlashProve/blob/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c/THIRD_PARTY.md
+
+The native verifier uses BLAKE2 reference code under CC0 (BLAKE2-54f4faa4.COPYING),
+the SplitMix64 mixer by Sebastiano Vigna (permission notice in FlashProve-NOTICE),
+Goldilocks arithmetic from Plonky2 (plonky2.LICENSE-MIT), and material attributed
+to Plonky3 under Apache-2.0 (FlashProve-LICENSE and FlashProve-NOTICE).
+The proof protocol builds on Zero-Knowledge IOPPs for Constrained Interleaved
+Codes by A. Chiesa, G. Fenzi and G. Weissenberg. See
+https://github.com/anthropics/FlashProve/blob/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c/PUBLISHED-WORKS.md

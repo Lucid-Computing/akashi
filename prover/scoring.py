@@ -8,35 +8,13 @@ from typing import Literal, Protocol
 
 from prover.reference import ReferenceTrace, ReferenceUnavailable
 from prover.request import VOCABULARY_SIZE, WINDOW, build_statement, reply_complete
+from prover.request import Divergence as Divergence  # noqa: PLC0414 -- preserve the existing public import
+from prover.request import deviation_statement as deviation_statement  # noqa: PLC0414 -- preserve the existing public import
 from prover.worker import Unavailable
 
 
 class Scorer(Protocol):
     def score(self, tokens: tuple[int, ...]) -> ReferenceTrace: ...
-
-
-@dataclass(frozen=True)
-class Divergence:
-    index: int
-    expected: int = field(repr=False)
-
-
-def deviation_statement(
-    prompt: Sequence[int], served: Sequence[int], divergence: Divergence
-) -> bytes:
-    """Keep all served tokens preceding d, replace y[d], then zero-pad the new prefix."""
-    # Check the *whole* original transcript even though the shortened statement drops its suffix.
-    build_statement(prompt, served)
-    d, correct = divergence.index, divergence.expected
-    if (
-        type(d) is not int
-        or not 0 <= d < len(served)
-        or type(correct) is not int
-        or not 0 <= correct < VOCABULARY_SIZE
-        or served[d] == correct
-    ):
-        raise ValueError("Invalid deviation against the original served token")
-    return build_statement(prompt, (*served[:d], correct))
 
 
 @dataclass(frozen=True)

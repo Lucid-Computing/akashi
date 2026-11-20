@@ -4,8 +4,7 @@ import re
 import struct
 from typing import Literal
 
-from prover.request import WINDOW
-from prover.submission import COMMITMENT
+from prover.request import COMMITMENT, WINDOW
 
 Outcome = Literal["verified", "rejected", "unavailable"]
 _RECORD = (
