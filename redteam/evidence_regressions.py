@@ -1,4 +1,4 @@
-"""Validate isolated model, receipt and monitor outcomes against the M3 source contract."""
+"""Validate isolated regression outcomes against the M3 source contract."""
 
 from __future__ import annotations
 
@@ -8,8 +8,9 @@ import json
 import platform
 import subprocess
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from tools.gate_m1 import FIXTURES, ROOT, _assets, _write
 
@@ -115,23 +116,116 @@ def _long_prompt_controls(
     )
 
 
+ADMISSION_CONTRACT = {
+    "R19": ("429/rate_limited + bounded_queue", "202/pending + independent_handle")
+}
+
+
+def _receipt_rows() -> list[dict[str, object]]:
+    from redteam.history_cases import run_history_cases
+    from redteam.transcript_cases import run_cases
+
+    manifest = json.loads((FIXTURES / "render-goldens/manifest.json").read_bytes())
+    with tempfile.TemporaryDirectory() as tmp:
+        rows = run_cases(_assets(Path(tmp), manifest)) + run_history_cases()
+    return summarize(rows, CONTRACT)
+
+
+def _model_rows() -> list[dict[str, object]]:
+    from redteam.model_cases import run_model_cases
+
+    rows = run_model_cases()
+    checked = summarize(rows, MODEL_CONTRACT)
+    _long_prompt_controls(rows, checked)
+    return checked
+
+
+def _admission_rows() -> list[dict[str, object]]:
+    from redteam.admission_cases import run_admission_cases
+
+    rows = run_admission_cases()
+    checked = summarize(rows, ADMISSION_CONTRACT)
+    _admission_controls(rows[0], checked[0])
+    return checked
+
+
+def _admission_controls(row: dict[str, object], public: dict[str, object]) -> None:
+    trials = row["trials"]
+    if type(trials) is not int:
+        raise ValueError("Invalid admission trial count")
+    for key in (
+        "holder_boundaries",
+        "transcript_boundaries",
+        "retry_after_verified",
+        "durable_queue_verified",
+        "dedup_verified",
+        "rollovers_verified",
+    ):
+        count = row[key]
+        if type(count) is not int or not 0 <= count <= trials:
+            raise ValueError("Invalid admission control count")
+        public[key] = count
+        if count != trials:
+            public["passed"] = False
+
+
+class Suite(NamedTuple):
+    scope: str
+    execution: str
+    fixtures: tuple[str, ...]
+    checks: Callable[[], list[dict[str, object]]]
+
+
+SUITES = {
+    "evidence": Suite(
+        "R10-R17",
+        "offline synthetic receipt, proof-policy and history fixtures",
+        (
+            "tests/fixtures/render-goldens/manifest.json",
+            "tests/fixtures/render-goldens/chat.jsonl",
+            "redteam/history_cases.py",
+            "redteam/transcript_cases.py",
+        ),
+        _receipt_rows,
+    ),
+    "model": Suite(
+        "R1-R9,R18",
+        "offline synthetic reference choices, controlled completions and verifier policy",
+        (
+            "tests/fixtures/model-outcomes-v1.jsonl",
+            "tests/fixtures/model-f9-records-v1.json",
+            "redteam/model_cases.py",
+            "tests/test_beacon.py",
+            "tests/test_proof_verification.py",
+        ),
+        _model_rows,
+    ),
+    "admission": Suite(
+        "R19",
+        "in-process signed challenge fixtures with independent SQLite connections",
+        (
+            "redteam/admission_cases.py",
+            "tests/test_challenge_intake.py",
+            "tests/test_discovery.py",
+        ),
+        _admission_rows,
+    ),
+}
+
+
 def gate(output: Path, *, suite: str = "evidence") -> bool:
-    if suite not in {"evidence", "model"}:
+    if suite not in SUITES:
         raise ValueError("Unknown M3 suite")
-    model = suite == "model"
+    spec = SUITES[suite]
     report: dict[str, object] = {
         "schema_version": 1,
-        "scope": "R1-R9,R18" if model else "R10-R17",
+        "scope": spec.scope,
         "environment": {
             "python": platform.python_version(),
             "machine": platform.machine(),
         },
         "status": "incomplete",
-        "execution": (
-            "offline synthetic reference choices, controlled completions and verifier policy"
-            if model
-            else "offline synthetic receipt, proof-policy and history fixtures"
-        ),
+        "execution": spec.execution,
     }
     _write(output, report)
     stage = "fixture_provenance"
@@ -139,41 +233,12 @@ def gate(output: Path, *, suite: str = "evidence") -> bool:
         report["source_revision"] = subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
         ).strip()
-        manifest_path = FIXTURES / "render-goldens/manifest.json"
-        if model:
-            from redteam.model_cases import run_model_cases
-
-            public_inputs = [
-                FIXTURES / "model-outcomes-v1.jsonl",
-                FIXTURES / "model-f9-records-v1.json",
-                ROOT / "redteam/model_cases.py",
-                ROOT / "tests/test_beacon.py",
-                ROOT / "tests/test_proof_verification.py",
-            ]
-        else:
-            from redteam.history_cases import run_history_cases
-            from redteam.transcript_cases import run_cases
-
-            public_inputs = [
-                manifest_path,
-                FIXTURES / "render-goldens/chat.jsonl",
-                ROOT / "redteam/history_cases.py",
-                ROOT / "redteam/transcript_cases.py",
-            ]
         report["fixture_sha256"] = {
-            p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
-            for p in public_inputs
+            name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+            for name in spec.fixtures
         }
         stage = "local_evidence_checks"
-        if model:
-            rows = run_model_cases()
-            checked = summarize(rows, MODEL_CONTRACT)
-            _long_prompt_controls(rows, checked)
-        else:
-            with tempfile.TemporaryDirectory() as tmp:
-                assets = _assets(Path(tmp), json.loads(manifest_path.read_bytes()))
-                rows = run_cases(assets) + run_history_cases()
-            checked = summarize(rows, CONTRACT)
+        checked = spec.checks()
         report["scenarios"] = checked
         report["status"] = (
             "passed" if all(row["passed"] for row in checked) else "failed"
@@ -195,7 +260,7 @@ def gate(output: Path, *, suite: str = "evidence") -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=("evidence", "model"), default="evidence")
+    parser.add_argument("--suite", choices=tuple(SUITES), default="evidence")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     output = args.output or ROOT / f"build/gates/m3-{args.suite}.json"
