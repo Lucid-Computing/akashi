@@ -97,6 +97,28 @@ class LogMonitor:
                 raise KeyError("Leaf outside the authenticated history")
             return cast("dict[str,object]", json.loads(row[0]))
 
+    def root_at(self, size: int) -> str:
+        """Return a prefix root from the monitor's already authenticated local nodes."""
+        with closing(sqlite3.connect(self._path)) as db:
+            db.execute("BEGIN")
+            row = db.execute("SELECT signed FROM tip").fetchone()
+            if (
+                row is None
+                or type(size) is not int
+                or not 0 <= size <= json.loads(row[0])["tree_size"]
+            ):
+                raise ValueError("Unknown authenticated prefix")
+
+            def node(start: int, width: int) -> bytes:
+                return bytes(
+                    db.execute(
+                        "SELECT digest FROM nodes WHERE start=? AND width=?",
+                        (start, width),
+                    ).fetchone()[0]
+                )
+
+            return merkle.root_hash(size, node).hex()
+
     def checkpoint(self) -> dict[str, Any] | None:
         with closing(sqlite3.connect(self._path)) as db:
             row = db.execute("SELECT signed FROM tip").fetchone()
