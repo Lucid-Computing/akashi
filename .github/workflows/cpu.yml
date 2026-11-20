@@ -19,6 +19,7 @@ jobs:
         with:
           version: "0.13.6"
       - run: make setup
+      - run: make docs-check
       - run: make test-unit
       - run: make lint
       - run: make gate-m1

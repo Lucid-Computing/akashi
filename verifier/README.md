@@ -27,20 +27,9 @@ From spec § 11.3:
 | 30 | no verdict (`cp_verify` 2-5, 14, 15; missing files) |
 | 64 | usage |
 
-## Distribution
+## Source checkout
 
-Python package with pinned, reproducibly built `cp_verify` binary per platform (x86-64 Linux with SHA extensions).
-
-```bash
-pip install vig-verify
-```
-
-## Testing
-
-```bash
-cd verifier/
-pytest tests/ -v
-```
+Run `make setup test-receipts test-merkle-log` from the repository root for the signed-receipt and log evidence checks. Native proof verification requires the pinned binary and F4 public inputs on a compatible x86-64 Linux CPU. [Contributor setup](../CONTRIBUTING.md#getting-started) · [Distribution policy](../docs/spec/09-release-and-versioning.md#distribution)
 
 ## Related Specifications
 

@@ -12,9 +12,10 @@ See `specs/redteam-suite.md` for the complete R1-R19 table with expected outcome
 
 ## Testing
 
+Run the current CPU regression suite from the repository root. M3 release evidence is recorded separately. [Release gates](../docs/spec/07-testing-strategy.md#release-gates)
+
 ```bash
-cd redteam/
-pytest tests/ -v
+make setup test-unit
 ```
 
 Exit criteria from spec § 19.2:
