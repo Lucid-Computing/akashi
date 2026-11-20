@@ -1,0 +1,13 @@
+# Restrict local access to the unencrypted vLLM listener to the mTLS proxy.
+add table inet vig_engine
+flush table inet vig_engine
+table inet vig_engine {
+    chain input {
+        type filter hook input priority filter; policy accept;
+        iifname != "lo" tcp dport 8000 drop
+    }
+    chain output {
+        type filter hook output priority filter; policy accept;
+        ip daddr 127.0.0.1 tcp dport 8000 meta skuid != "vig-proxy" reject
+    }
+}

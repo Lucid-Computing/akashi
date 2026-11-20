@@ -1,0 +1,31 @@
+name: Service boundaries
+on:
+  pull_request:
+    paths:
+      - 'deploy/**'
+      - 'operations/*keys.py'
+      - 'operations/key_archive.py'
+      - 'tests/test_engine_proxy.py'
+      - 'tests/test_service_roles.py'
+      - 'tests/test_key_archive.py'
+      - 'tests/test_publish_keys.py'
+      - '.github/workflows/service-boundaries.yml'
+  push:
+    branches: [main]
+    paths: ['deploy/**', 'operations/*keys.py', 'operations/key_archive.py']
+
+permissions:
+  contents: read
+jobs:
+  boundaries:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.13.6"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends haproxy nftables
+      - run: make test-service-boundaries
+      - run: sudo bash deploy/service-roles/test-linux.sh
