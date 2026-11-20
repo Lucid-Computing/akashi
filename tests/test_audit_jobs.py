@@ -1,6 +1,5 @@
 """Exercise stable private job identity, reader isolation, spool replay and deadlines."""
 
-import importlib
 import sqlite3
 import tempfile
 import unittest
@@ -8,13 +7,13 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
 
 from nacl.public import PrivateKey
 
+from auditor.intake import ChallengeIntake
 from auditor.jobs import AuditJobs, Claim
 from prover.request import build_statement
 from prover.scoring import Assessment
@@ -22,9 +21,6 @@ from prover.submission import SubmissionStore
 from tests.test_proof_submission import MARK
 
 
-@unittest.skipUnless(
-    find_spec("auditor.intake"), "requires the challenge intake database"
-)
 class AuditJobTests(unittest.TestCase):
     def setUp(self) -> None:
         temp = tempfile.TemporaryDirectory()
@@ -35,7 +31,7 @@ class AuditJobTests(unittest.TestCase):
         self.tags = b"t" * 32
         self.start = datetime(2026, 11, 20, tzinfo=timezone.utc)
         self.now = self.start
-        self.intake = importlib.import_module("auditor.intake").ChallengeIntake(
+        self.intake = ChallengeIntake(
             self.path,
             descriptor={},
             assets=None,

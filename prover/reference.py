@@ -7,9 +7,7 @@ import importlib
 import importlib.metadata
 import importlib.util
 import json
-import os
 import re
-import stat
 import sys
 import threading
 from dataclasses import dataclass, field
@@ -17,9 +15,10 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from prover.artifacts import trusted_file
 from prover.request import VOCABULARY_SIZE, WINDOW
 from prover.runtime import REVISION
-from prover.submission import COMMITMENT, trusted_directory
+from prover.submission import COMMITMENT
 
 # All Python sources in the integer_model package at REVISION, hashed by _runtime.
 _PACKAGE_SHA256 = "2d2c37a94e0d01f6b2c7463904737fc34ab0de74d19a4aea954c04ee46cd5d03"
@@ -43,19 +42,8 @@ class ReferenceTrace:
 
 
 def _read(path: Path) -> bytes:
-    with trusted_directory(path.parent) as directory:
-        fd = os.open(
-            path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory
-        )
-        with os.fdopen(fd, "rb") as stream:
-            metadata = os.fstat(fd)
-            if (
-                not stat.S_ISREG(metadata.st_mode)
-                or metadata.st_uid not in (0, os.geteuid())
-                or metadata.st_mode & 0o022
-            ):
-                raise ReferenceUnavailable("Untrusted reference artifact")
-            return stream.read()
+    with trusted_file(path) as stream:
+        return stream.read()
 
 
 def _runtime() -> ModuleType:
