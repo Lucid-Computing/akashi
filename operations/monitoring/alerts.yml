@@ -1,0 +1,45 @@
+groups:
+  - name: vig-private
+    rules:
+      - alert: EngineStartupGateFailure
+        expr: vig_engine_startup_gate_failed{service="engine"} > 0
+        labels: {severity: critical, owner: engine}
+        annotations: {summary: "Engine startup integrity gates failed"}
+      - alert: UnwarrantedReplyRate
+        expr: |
+          sum by (job, instance, mode) (increase(vig_unwarranted_total{service="engine"}[1h]))
+          / on (job, instance, mode)
+          sum by (job, instance, mode) (increase(vig_engine_requests_total{service="engine"}[1h]))
+          > 0.01
+        labels: {severity: medium, owner: engine}
+        annotations: {summary: "More than one percent of dispatched engine requests were unwarranted"}
+      - alert: DeviationDetected
+        expr: vig_signed_deviations_last_5m{service="auditor"} > 0
+        labels: {severity: critical, owner: auditor}
+        annotations: {summary: "An authenticated deviation verdict was published in the last five minutes"}
+      - alert: BeaconUnavailable
+        expr: vig_beacon_available{service="sampler"} == 0
+        labels: {severity: high, owner: sampler}
+        annotations: {summary: "The enabled sampler could not authenticate the beacon"}
+      - alert: BeaconLagHigh
+        expr: vig_beacon_lag_seconds{service="sampler"} > 60
+        labels: {severity: high, owner: sampler}
+        annotations: {summary: "The authenticated beacon is more than one minute behind"}
+      - alert: ObservationUnavailable
+        expr: |
+          (vig_observation_coverage == 0)
+          unless on (job, instance, mode, service) (vig_sampling_coverage{state="disabled"} == 1)
+        labels: {severity: high, owner: operations}
+        annotations: {summary: "A configured role cannot provide a current observation"}
+      - alert: PrivateScrapeUnavailable
+        expr: |
+          (up{job="vig-private"} == 0)
+          or ((up{job="vig-private"} == 1) unless on (job, instance)
+            (vig_observation_coverage or vig_log_checkpoint_known))
+        labels: {severity: high, owner: operations}
+        annotations: {summary: "A private monitoring target is down or exposes no role observations"}
+      - alert: SignedHistoryIncident
+        expr: |
+          increase(vig_log_incidents_total{service="log",kind=~"omitted_promise|conflicting_history|tree_size_regression|checkpoint_time_regression|promise_backdated|unverified_leaf_history|unverified_consistency"}[5m]) > 0
+        labels: {severity: high, owner: log}
+        annotations: {summary: "The independent monitor recorded a signed-history incident"}

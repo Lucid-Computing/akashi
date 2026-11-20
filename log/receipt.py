@@ -4,7 +4,7 @@ import hashlib
 import re
 import struct
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -52,6 +52,13 @@ def _uint(value: object, bits: int, name: str) -> int:
 
 def _frame(data: bytes) -> bytes:
     return struct.pack("<I", _uint(len(data), 32, "frame length")) + data
+
+
+def promise_backdated(served_at: datetime, observed_at: datetime) -> bool:
+    """R17 compares signed delivery time with a contemporaneous observation."""
+    if served_at.utcoffset() is None or observed_at.utcoffset() is None:
+        raise ValueError("Delivery observation timestamps must identify an instant")
+    return observed_at - served_at > timedelta(seconds=30)
 
 
 def params_digest(max_tokens: int) -> str:

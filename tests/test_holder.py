@@ -205,6 +205,82 @@ class HolderTests(unittest.TestCase):
         self.assertEqual((early.outcome, early.warnings), ("INCLUSION_UNAVAILABLE", ()))
         self.assertEqual(late.warnings, ("MERGE_DEADLINE_ELAPSED",))
 
+    def test_backdating_uses_only_a_contemporaneous_holder_witness(self) -> None:
+        bundle = self.bundle()
+        archived = self.now + timedelta(days=31)
+        bundle["observed_at"] = archived.isoformat()
+        self.assertEqual(
+            verify(bundle, self.trusted, receipt_only=True, now=archived).warnings,
+            ("CHALLENGE_WINDOW_EXPIRED",),
+        )
+        for offset, expected in (
+            (timedelta(seconds=-31), ()),
+            (timedelta(seconds=30), ()),
+            (timedelta(seconds=30, microseconds=1), ("PROMISE_BACKDATED",)),
+        ):
+            with self.subTest(offset=offset):
+                result = verify(
+                    bundle,
+                    self.trusted,
+                    receipt_only=True,
+                    now=self.now,
+                    observed_at=self.now + offset,
+                )
+                self.assertEqual(
+                    (result.exit_code, result.outcome, result.warnings),
+                    (30, "RECEIPT_VERIFIED", expected),
+                )
+        late = self.now + timedelta(seconds=31)
+        self.assertEqual(
+            verify(bundle, self.trusted, now=archived, observed_at=late).warnings,
+            ("PROMISE_BACKDATED", "CHALLENGE_WINDOW_EXPIRED"),
+        )
+        bundle.pop("history")
+        self.assertEqual(
+            verify(bundle, self.trusted, now=late, observed_at=late).warnings,
+            ("PROMISE_BACKDATED", "MERGE_DEADLINE_ELAPSED"),
+        )
+        self.assertEqual(
+            verify(
+                bundle, self.trusted, observed_at=self.now.replace(tzinfo=None)
+            ).exit_code,
+            64,
+        )
+
+    def test_cli_keeps_delivery_observation_separate_from_untrusted_bundle(
+        self,
+    ) -> None:
+        bundle = self.root / "observed-bundle.json"
+        trusted = self.root / "observed-descriptor.json"
+        bundle.write_text(json.dumps(self.bundle()))
+        trusted.write_text(json.dumps(self.trusted))
+        command = [
+            sys.executable,
+            str(Path(__file__).resolve().parents[1] / "vig"),
+            "verify",
+            str(bundle),
+            "--descriptor",
+            str(trusted),
+            "--receipt-only",
+            "--observed-at",
+        ]
+        for stamp in ("2026-11-20T09:00:30.000001Z", "2026-11-20T09:00:31+00:00"):
+            run = subprocess.run([*command, stamp], capture_output=True, check=False)
+            self.assertEqual(run.returncode, 30)
+            result = json.loads(run.stdout)
+            self.assertEqual(result["outcome"], "RECEIPT_VERIFIED")
+            self.assertIn("PROMISE_BACKDATED", result["warnings"])
+            self.assertNotIn(stamp.encode(), run.stdout + run.stderr)
+        for stamp in (
+            "2026-11-20T09:00:31",
+            "2026-11-20T09:00:31+01:00",
+            "private-invalid-date",
+        ):
+            run = subprocess.run([*command, stamp], capture_output=True, check=False)
+            self.assertEqual(run.returncode, 64)
+            self.assertEqual(json.loads(run.stderr)["outcome"], "USAGE")
+            self.assertNotIn(stamp.encode(), run.stdout + run.stderr)
+
     def test_historical_keys_are_role_scoped(self) -> None:
         bundle = self.bundle()
         log = dict(self.trusted["log"])  # type: ignore[call-overload]

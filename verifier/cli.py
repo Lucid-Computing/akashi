@@ -3,7 +3,9 @@
 import argparse
 import json
 import os
+import re
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any, NoReturn
 
@@ -20,6 +22,15 @@ def _unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     if len(result) != len(pairs):
         raise ValueError("duplicate field")
     return result
+
+
+def _observation(value: str) -> datetime:
+    if not re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?(?:Z|\+00:00)",
+        value,
+    ):
+        raise argparse.ArgumentTypeError("expected a UTC delivery observation")
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _constant(value: str) -> NoReturn:
@@ -50,6 +61,11 @@ def main(argv: list[str] | None = None) -> int:
     cmd.add_argument(
         "--checkpoint", type=Path, help="holder's previously trusted signed head"
     )
+    cmd.add_argument(
+        "--observed-at",
+        type=_observation,
+        help="holder's independently recorded UTC time of receipt delivery",
+    )
     cmd.add_argument("--receipt-only", action="store_true")
     cmd.add_argument(
         "--assets",
@@ -75,6 +91,7 @@ def main(argv: list[str] | None = None) -> int:
             assets=args.assets,
             receipt_only=args.receipt_only,
             runtime=runtime,
+            observed_at=args.observed_at,
         )
     except OSError:
         result = VerificationResult(30, "INPUT_UNAVAILABLE")

@@ -17,17 +17,24 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol
 
-from prover.artifacts import sha256_stream, trusted_file
-from prover.request import VOCABULARY_SIZE, WINDOW, build_statement, reply_complete
-from prover.runtime import REVISION
-from prover.scoring import Divergence, deviation_statement
-from prover.submission import (
-    COMMITMENT,
+from prover.artifacts import (
     SpoolError,
     private_directory,
+    sha256_stream,
     trusted_directory,
+    trusted_file,
 )
-from prover.worker import CandidateProof
+from prover.request import (
+    COMMITMENT,
+    REVISION,
+    VOCABULARY_SIZE,
+    WINDOW,
+    CandidateProof,
+    Divergence,
+    build_statement,
+    deviation_statement,
+    reply_complete,
+)
 from tools.check_hardware import check_verifier_cpu
 from verifier.native_output import Outcome, native_outcome
 
