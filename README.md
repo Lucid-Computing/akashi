@@ -141,6 +141,7 @@ See `specs/build-plan.md` for detailed exit tests.
 
 ## Documentation
 
+- Candidate qualification and release history. [Release gate](release/README.md) · [Changelog](CHANGELOG.md)
 - `AGENTS.md`: Guidance for coding agents working in this repo
 - `CONTRIBUTING.md`: Contribution guidelines
 - `specs/README.md`: Specification index and reading order
