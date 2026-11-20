@@ -32,12 +32,17 @@ From spec § 10:
 1. **V1 configuration**: 1 request per batch (F28 advises this under published seed)
 2. **Soundness**: q/2^124 + 2^-101 after q hash queries (F32, Lean-verified)
 
-## Testing
+## Exact-match request bytes
 
-```bash
-cd prover/
-pytest tests/ -v
-```
+`prover.request.build_statement(prompt, reply)` returns the verifier request
+for one whole reply. Both inputs contain token IDs. For prompt length P and reply length R, the verifier
+checks the next-token prediction at each position in [P−1, P+R−1).
+`build_spool_request(prompt, reply)` appends a fresh 32-byte nonce for the
+private spool. Keep submitted bytes private. Both encoders use the 1,024-token
+window and zero padding specified by F7 and F8. [Proof runtime contract](../docs/rfcs/RFC-0006-proof-runtime.md#proposed-design)
+
+Run `make test-proof-request` from the repository root to check the
+encoding against pinned FlashProve vectors.
 
 ## Related Specifications
 
