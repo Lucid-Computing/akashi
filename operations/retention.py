@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from auditor.retention import sweep as sweep_auditor
+from escrow.mailbox import reconcile_handoffs
 from operations.engine_logs import EngineLogs
 from pickup.store import PickupStore
 from prover.submission import SubmissionStore
@@ -23,7 +24,10 @@ def _sweep(args: argparse.Namespace) -> dict[str, int]:
     if not args.database.is_file():
         raise ValueError("Expected an existing service database")
     if args.role == "auditor":
-        return {"expired": sweep_auditor(args.database)}
+        counts = {"expired": sweep_auditor(args.database)}
+        if args.inbox is not None:
+            counts["handoffs_reconciled"] = reconcile_handoffs(args.database, args.inbox)
+        return counts
     if args.role == "engine":
         return {"expired": EngineLogs(args.database).purged_on_open}
     return {"expired": PickupStore(args.database).purged_on_open}
@@ -35,7 +39,10 @@ def main() -> int:
         "--interval-seconds", type=float, help="repeat under a service supervisor"
     )
     roles = parser.add_subparsers(required=True, dest="role")
-    for role in ("auditor", "engine", "pickup"):
+    auditor = roles.add_parser("auditor")
+    auditor.add_argument("database", type=Path)
+    auditor.add_argument("inbox", type=Path, nargs="?", help="selected transcript inbox")
+    for role in ("engine", "pickup"):
         roles.add_parser(role).add_argument("database", type=Path)
     prover = roles.add_parser("prover")
     prover.add_argument("state", type=Path)

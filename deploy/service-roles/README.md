@@ -73,9 +73,9 @@ Install the reviewed source checkout under root-owned `/opt/vig/source` and its 
 
 | Role | Arguments after the role name | Data removed |
 | --- | --- | --- |
-| auditor | Challenge database | At verdict plus 30 days, erase the sealed transcript, private proof, statement and holder capabilities. Keep public verdicts and historical signing keys. |
+| auditor | Challenge database, then selected-transcript inbox | At verdict plus 30 days, erase the sealed transcript, private proof, statement and holder capabilities. Keep public verdicts and historical signing keys. |
 | engine | `/var/lib/vig-engine/engine-events.sqlite3` | Remove engine events at seven days. The engine records only validated telemetry. |
 | pickup | Pickup database | Remove reservations and ciphertext at the seven-day deadline. |
 | prover | Submission state directory, then native spool directory | Retire an expired job and remove temporary statement, nonce and proof copies. Keep a content-free job marker for retries. |
 
-For a one-shot check under the owning identity, run `python -m operations.retention ROLE PATHS` from the installed source with the locked interpreter. The worker outputs aggregate counts. A prover `pending_cleanup` count reports native files still in use. Let the process finish, or use the provisioned stop hook to quiesce it, then repeat the sweep. Keep the escrow role's existing deadline-driven `ExpiryWorker` running to erase unselected material at its separate five-minute cap. Scope backups and volume snapshots to the same private retention policy. [Retention policy](../../specs/retention.md#retention-policy)
+For a one-shot check under the owning identity, run `python -m operations.retention ROLE PATHS` from the installed source with the locked interpreter. Supply both auditor paths when the role receives selections. A challenge-only database can run without an inbox. The worker outputs aggregate counts. A prover `pending_cleanup` count reports native files still in use. Let the process finish, or use the provisioned stop hook to quiesce it, then repeat the sweep. Keep the escrow role's existing deadline-driven `ExpiryWorker` running to erase unselected material at its separate five-minute cap. Scope backups and volume snapshots to the same private retention policy. [Retention policy](../../specs/retention.md#retention-policy)
