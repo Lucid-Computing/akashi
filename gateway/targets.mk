@@ -11,3 +11,8 @@ test-renderer:
 		done; \
 	fi; \
 	uv run --locked python -m unittest -v tests.test_renderer
+
+.PHONY: test-request-policy
+
+test-request-policy:
+	uv run --no-project --python 3.13.18 python -m unittest -v tests.test_request_policy
