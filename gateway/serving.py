@@ -18,8 +18,7 @@ from gateway.commit_delivery import DeliveryCommitter
 from gateway.discovery import ServiceConfig
 from gateway.policy import Mode, PolicyError, read_body, validate
 from pickup.crypto import PickupError, parse_holder_secret
-
-END = frozenset({200001, 200007, 200008})  # F37
+from prover.request import END_TOKENS, reply_complete
 
 
 class Engine(Protocol):
@@ -173,10 +172,8 @@ class Serving:
             tokens = result.tokens
             if (
                 not isinstance(tokens, tuple)
-                or not 1 <= len(tokens) <= req.max_tokens
                 or any(type(t) is not int or not 0 <= t < 202048 for t in tokens)
-                or not END.isdisjoint(tokens[:-1])
-                or (len(tokens) < req.max_tokens and tokens[-1] not in END)
+                or not reply_complete(tokens, req.max_tokens)
             ):
                 raise PolicyError(
                     502, "Incomplete or invalid engine reply", "unwarranted_reply"
@@ -198,7 +195,7 @@ class Serving:
             check_release()
             choice: dict[str, object] = {
                 "index": 0,
-                "finish_reason": "stop" if tokens[-1] in END else "length",
+                "finish_reason": "stop" if tokens[-1] in END_TOKENS else "length",
             }
             if mode == "chat":
                 choice["message"] = {"role": "assistant", "content": display}
