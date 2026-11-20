@@ -198,18 +198,14 @@ def _invalid_constant(_: str) -> NoReturn:
     _content()
 
 
-def admit(
+def read_body(
     body: bytes | Iterable[bytes],
-    mode: Mode,
     *,
     authorization: str | None,
     authenticate: Callable[[str], bool],
-    model: str,
-    render: Renderer | None = None,
     body_limit: int = 256 * 1024,
-    max_tokens_cap: int = 256,
-) -> InferenceRequest:
-    """Authenticate before reading the body and enforce its byte limit before JSON parsing."""
+) -> object:
+    """Authenticate before reading and enforce the byte limit before parsing."""
     if type(body_limit) is not int or body_limit < 1:
         raise ValueError("invalid configured body limit")
     match = re.fullmatch(
@@ -234,6 +230,27 @@ def admit(
         )
     except (ValueError, ArithmeticError, RecursionError):
         raise PolicyError(400, "Invalid JSON body", "unsupported_content") from None
+    return decoded
+
+
+def admit(
+    body: bytes | Iterable[bytes],
+    mode: Mode,
+    *,
+    authorization: str | None,
+    authenticate: Callable[[str], bool],
+    model: str,
+    render: Renderer | None = None,
+    body_limit: int = 256 * 1024,
+    max_tokens_cap: int = 256,
+) -> InferenceRequest:
+    """Authenticate before reading the body and enforce its byte limit before JSON parsing."""
+    decoded = read_body(
+        body,
+        authorization=authorization,
+        authenticate=authenticate,
+        body_limit=body_limit,
+    )
     return validate(
         decoded, mode, model=model, render=render, max_tokens_cap=max_tokens_cap
     )
