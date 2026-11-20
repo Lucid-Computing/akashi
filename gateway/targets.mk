@@ -16,3 +16,8 @@ test-renderer:
 
 test-request-policy:
 	uv run --no-project --python 3.13.18 python -m unittest -v tests.test_request_policy
+
+.PHONY: test-discovery
+
+test-discovery:
+	uv run --no-project --python 3.13.18 python -m unittest -v tests.test_discovery
