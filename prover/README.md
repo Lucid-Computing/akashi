@@ -47,3 +47,11 @@ encoding against pinned FlashProve vectors.
 ## Related Specifications
 
 - `specs/open-questions.md`: OQ6 (batched proving safety)
+
+## CPU proof-worker fixture
+
+Use the adapter in `prover.mock` to exercise M1 proof-worker outcomes with the
+nonce-free statement bytes from the request encoder. Its success result
+identifies fixture evidence. Rejection and timeout give callers distinct
+failure paths. Run `make test-mock-prover` at the repository root.
+[Testing strategy](../docs/spec/07-testing-strategy.md#validation-layers)
