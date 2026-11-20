@@ -149,14 +149,8 @@ def _json_integer(text: str) -> int | float:
     return number if abs(number) <= (1 << 53) - 1 else float(text)
 
 
-def open(
-    envelope: object,
-    holder_secret: bytes,
-    original_chat: object,
-    budget: int,
-    reply_text: str,
-) -> dict[str, object]:
-    """Authenticate and decode a pickup before independent receipt verification."""
+def envelope_parts(envelope: object) -> tuple[bytes, bytes]:
+    """Decode the public framing without possessing any holder secrets."""
     if not isinstance(envelope, dict) or envelope.get("version") != VERSION:
         raise PickupError("Invalid pickup envelope")
     nonce = _octets(
@@ -165,6 +159,18 @@ def open(
     ciphertext = _octets(envelope.get("ciphertext"))
     if len(ciphertext) < bindings.crypto_aead_xchacha20poly1305_ietf_ABYTES:
         raise PickupError("Invalid pickup ciphertext")
+    return nonce, ciphertext
+
+
+def open(
+    envelope: object,
+    holder_secret: bytes,
+    original_chat: object,
+    budget: int,
+    reply_text: str,
+) -> dict[str, object]:
+    """Authenticate and decode a pickup before independent receipt verification."""
+    nonce, ciphertext = envelope_parts(envelope)
     k, digest = _material(original_chat, budget, reply_text, holder_secret)
     try:
         plaintext = bindings.crypto_aead_xchacha20poly1305_ietf_decrypt(
