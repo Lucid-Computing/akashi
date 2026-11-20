@@ -9,8 +9,10 @@ from pathlib import Path
 
 from nacl.public import PrivateKey
 
+from operations.private_db import private_database_file
+
 from .crypto import open_transfer
-from .store import Binding, Transfer, _private_file
+from .store import Binding, Transfer
 
 
 class AuditorInbox:
@@ -48,7 +50,7 @@ class AuditorInbox:
 
     @contextmanager
     def _db(self) -> Iterator[sqlite3.Connection]:
-        _private_file(self.path)
+        private_database_file(self.path)
         with closing(sqlite3.connect(self.path)) as db:
             if db.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
                 raise ValueError("auditor inbox requires a private rollback journal")
