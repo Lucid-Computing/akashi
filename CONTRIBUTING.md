@@ -1,15 +1,14 @@
 # Contributing to Verified Inference Gateway
 
-Thank you for your interest in contributing to this project. This document outlines the process and standards for contributions.
-
 ## Getting Started
 
-Install Git, Make and uv 0.13.6. From a clean checkout, run the CPU profile:
+Install Git, Make and uv 0.13.6. From the root of a clean checkout, run the CPU checks.
 
 ```sh
 make setup
 make test-unit
 make lint
+make docs-check
 ```
 
 uv selects the CPython patch in `.python-version` and installs the resolved
@@ -23,6 +22,35 @@ The hardware requirements and upstream runtime pins are in
 [the facts register](specs/facts-register.md#hardware-requirements) and
 [parameters](specs/parameters.md#version-pinning). Milestone evidence requires
 the real-model runs specified in the [build plan](specs/build-plan.md).
+
+For the CPU milestone integration run, use `make gate-m1`. It fetches and checks the pinned public rendering assets or uses `VIG_RENDER_ASSETS` for an offline run. The report is written to `build/gates/m1.json`. Use `make demo-router` to exercise the holder through the local mock router. [Milestone evidence](docs/spec/07-testing-strategy.md#release-gates) · [Router demo](router/README.md)
+
+## Build and check the verifier wheel
+
+From the repository root, use the pinned uv and the development environment installed by `make setup`.
+
+```sh
+make setup
+make test-package
+```
+
+The gate builds the Linux x86-64 `vig-verify` 0.0.0 development wheel and checks its explicit file list, package metadata, native inputs and wheel RECORD. It installs the locked dependencies and the wheel in a fresh environment, then invokes the installed `vig` command on the signed raw-ID fixture and a changed-signature control. A cross-installed Linux wheel on macOS can run those receipt checks. Native proof qualification runs on a compatible Linux CPU. [Platform and build provenance](distribution/verifier/README.md#native-executable)
+
+The gate writes the wheel, hash-locked `requirements.txt` and `verifier-install-v1.json` to `build/package/`. Its report at `build/gates/package.json` records their SHA-256 values, the source revision, the installed dependency and license inventory, and the receipt outcomes. Pair that report with the Linux clean-install proof run for the same wheel digest. Preserve the exact candidate hashes when preparing release evidence. [Holder installation and fixture](verifier/README.md#install-the-development-wheel) · [Release policy](docs/spec/09-release-and-versioning.md#distribution)
+
+When changing the native bundle, compare a clean build of the pinned FlashProve executable with its measured SHA-256 and reconcile every fitted input with the F4 provenance. Review the wheel's file mappings and license list together. Keep F37 tokenizer assets external and hash-pinned. [Measured public input inventory](distribution/verifier/README.md#public-verification-inputs) · [Wheel build metadata](distribution/verifier/pyproject.toml)
+
+## Compatibility
+
+| Change | Evidence to include |
+| --- | --- |
+| Shared Python code | Run the locked CPU commands above. The package declares Python 3.10 or newer. The default contributor interpreter is CPython 3.13.18. |
+| Public response or CLI | Test the supported version and structured outcome. Preserve historical signed evidence and the interpretation of existing fields. |
+| Request or signed encoding | Check old and new inputs against the published vectors. A breaking interpretation needs a new protocol or artifact version. |
+| Real engine or prover | Run the role's hardware checks on x86-64 Linux with SHA extensions and an H100. F31 specifies CUDA 13.2 Update 2, GCC/G++ 13 and Python 3.13. |
+| Native proof verifier | Exercise the pinned verifier on x86-64 Linux with SHA extensions and the public verification inputs. The verifier runs on CPU. |
+
+Tests with host-owned dependencies report skips when those dependencies are absent. Record the skipped cases with the command and environment. Cite the relevant gate artifact before making a release claim. [Release compatibility policy](docs/spec/09-release-and-versioning.md#release-policy) · [Hardware sources F22, F24, F26 and F31](specs/facts-register.md#hardware-requirements)
 
 ## Contribution Process
 
@@ -111,15 +139,7 @@ Reviews may take several days. Be patient and responsive to feedback.
 
 ### Reporting Security Issues
 
-**Do not open public issues for security vulnerabilities.**
-
-Email security reports to: [security contact to be added]
-
-Include:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fixes (if any)
+Send reports privately to the maintainer using the [security policy](SECURITY.md#security-reporting).
 
 ### Secure Development Practices
 
@@ -140,7 +160,7 @@ Model weights must never be committed to version control:
 
 ## Documentation
 
-Good documentation is essential:
+Run `make docs-check` before submitting documentation. CI checks local file links, heading anchors and the accepted RFC section structure.
 
 - Update `README.md` for user-facing changes
 - Update `AGENTS.md` for architectural changes

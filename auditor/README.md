@@ -16,21 +16,17 @@ The auditor accepts challenges from clients, runs automated sampling using drand
 From spec § 10:
 
 1. **Receipt verification first**: Verify log signature and recompute commitment before requesting proof
-2. **Escrow window**: Accept challenges if within escrow + 72 hours
+2. **Holder challenge window**: Accept independently verified holder evidence within 30 days of delivery
 3. **Rate limits**: 10/hour per holder key, 3/day per transcript
-4. **Verdict signature**: Ed25519 over `"AuditVerdict" || challenge_id || t || verdict || verified_at`
+4. **Verdict signature**: Ed25519 over `"vig/verdict/1" || JCS(verdict)`, as specified in [RFC-0007](../docs/rfcs/RFC-0007-challenge-lifecycle.md#proposed-design)
 
-## Challenge Flow
+## Holder challenge intake
 
-From spec § 10.1:
+Send `POST /audit/v1/challenges` with an authenticated holder bearer key and JSON containing `bundle` and its unsigned integer `leaf_index`. The bundle carries the caller's original input, resolved budget and displayed text, the gateway's private verification object, the signed log head and its inclusion response. Keep the returned challenge ID and private capability together. Separate submissions have separate capabilities even when their proof work is shared. [Holder bundle](../docs/spec/03-data-model.md#wire-types) · [Challenge API](../docs/spec/02-public-api.md#interfaces)
 
-1. Client submits (t, x, y)
-2. Auditor fetches receipt from log, verifies
-3. Auditor recomputes commitment, confirms match
-4. Auditor requests conformance or deviation proof
-5. Prover generates proof (~58.8 s, F23)
-6. Auditor verifies with `cp_verify` (~21 s, F26)
-7. Auditor publishes signed verdict
+The auditor independently verifies the signed delivery and original transcript before accepting a challenge. A three-day-old receipt remains eligible when the holder supplies this evidence. The 30-day window starts at delivery. Each rolling hour allows ten challenges per authenticated holder. Each rolling day allows three per transcript across holders. A limited response includes Retry-After. The intake transaction commits the encrypted work item, hashed capability and both quota charges together. An otherwise verified incomplete reply is classified for the auditor without requesting a proof. [Parameters](../specs/parameters.md#rate-limits) · [Lifecycle](../docs/rfcs/RFC-0007-challenge-lifecycle.md#proposed-design)
+
+Construct `ChallengeIntake` with an owner-only SQLite directory, trusted descriptor, F37 asset directory, the auditor's encryption public key and a private key for holder tags. Pass its `submit` method, an authenticated holder lookup and the deployment body limit to `ChallengeApp`. Run `make test-challenge-intake` for HTTP, independent receipt validation, quota races, restart and encrypted persistence.
 
 ## Automated Sampling
 

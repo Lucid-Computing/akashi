@@ -12,7 +12,7 @@ from threading import Event
 from typing import Any, cast
 
 from log import merkle
-from log.receipt import checked_public_leaf, verify_promise
+from log.receipt import checked_public_leaf, promise_backdated, verify_promise
 from log.verification import verify_consistency, verify_head
 
 Lookup = Callable[[str, str], bytes]
@@ -70,7 +70,10 @@ class LogMonitor:
             if db.execute("SELECT log_id FROM identity").fetchone()[0] != log_id:
                 raise ValueError("Monitor database belongs to another log")
 
-    def hold(self, receipt: Mapping[str, object]) -> None:
+    def hold(
+        self, receipt: Mapping[str, object], *, observed_at: datetime | None = None
+    ) -> None:
+        """Retain a verified promise; supply observation time only for a live delivery."""
         key = receipt.get("log_key_id")
         if not isinstance(key, str):
             raise TypeError("Missing promise key identity")
@@ -81,14 +84,25 @@ class LogMonitor:
             public_key=self.lookup_key("log", key),
         )
         witness = {k: v for k, v in receipt.items() if k != "salt"}
-        due = datetime.fromisoformat(
+        served = datetime.fromisoformat(
             str(receipt["served_at"]).replace("Z", "+00:00")
-        ) + timedelta(seconds=10)
+        )
+        due = served + timedelta(seconds=10)
         with closing(sqlite3.connect(self._path)) as db, db:
             db.execute(
                 "INSERT OR IGNORE INTO promises VALUES(?,?,?)",
                 (receipt["leaf_hash"], due.isoformat(), _json(witness)),
             )
+            if observed_at is not None and promise_backdated(served, observed_at):
+                self._alert(
+                    db,
+                    "promise_backdated",
+                    str(receipt["leaf_hash"]),
+                    promise=witness,
+                    delivery_observed_at=observed_at.astimezone(
+                        timezone.utc
+                    ).isoformat(),
+                )
 
     def verified_leaf(self, index: int) -> dict[str, object]:
         with closing(sqlite3.connect(self._path)) as db:
@@ -125,6 +139,50 @@ class LogMonitor:
         with closing(sqlite3.connect(self._path)) as db:
             row = db.execute("SELECT signed FROM tip").fetchone()
             return _object(json.loads(row[0])) if row else None
+
+    def prometheus(self, *, mode: str) -> str:
+        """Export verified tree size and incident counts without loading witnesses."""
+        if mode not in {"live", "soak"}:
+            raise ValueError("Invalid monitoring mode")
+        kinds = (
+            "omitted_promise",
+            "promise_backdated",
+            "overdue_checkpoint",
+            "conflicting_history",
+            "tree_size_regression",
+            "checkpoint_time_regression",
+            "unverified_leaf_history",
+            "unverified_consistency",
+            "observation_unavailable",
+        )
+        params = f'service="log",mode="{mode}"'
+        with closing(sqlite3.connect(self._path)) as db:
+            db.execute("BEGIN")
+            tip = db.execute(
+                "SELECT json_extract(signed,'$.tree_size') FROM tip"
+            ).fetchone()
+            counts = dict(
+                db.execute(
+                    "SELECT json_extract(evidence,'$.kind'), count(*) FROM alerts GROUP BY 1"
+                )
+            )
+        if not counts.keys() <= set(kinds):
+            raise ValueError("Unknown stored monitor incident")
+        lines = [
+            "# TYPE vig_log_checkpoint_known gauge",
+            f"vig_log_checkpoint_known{{{params}}} {int(tip is not None)}",
+            "# TYPE vig_log_tree_size gauge",
+        ]
+        if tip is not None:
+            if type(tip[0]) is not int or tip[0] < 0:
+                raise ValueError("Invalid monitor checkpoint")
+            lines.append(f"vig_log_tree_size{{{params}}} {tip[0]}")
+        lines.append("# TYPE vig_log_incidents_total counter")
+        for kind in kinds:
+            lines.append(
+                f'vig_log_incidents_total{{{params},kind="{kind}"}} {counts.get(kind, 0)}'
+            )
+        return "\n".join(lines) + "\n"
 
     def incidents(self) -> list[dict[str, Any]]:
         with closing(sqlite3.connect(self._path)) as db:

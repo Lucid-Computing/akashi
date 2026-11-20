@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "phase": "eligible",
+  "commitment_id": "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46",
+  "dtype": "float32",
+  "startup_ns": 1294165262839,
+  "same_process_f21": true,
+  "float64_cases_passed": 51,
+  "platform": {
+    "architecture": "x86_64",
+    "gpu_model": "NVIDIA H100 80GB HBM3",
+    "driver": "580.173.02",
+    "cuda": "13.2.2",
+    "torch": "2.13.0+cu130",
+    "vllm": "0.29.0"
+  },
+  "canaries_verified": 3
+}

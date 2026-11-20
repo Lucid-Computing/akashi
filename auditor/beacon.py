@@ -14,7 +14,7 @@ from py_ecc.optimized_bls12_381.optimized_curve import G2, is_inf
 from py_ecc.optimized_bls12_381.optimized_pairing import pairing
 
 # The quicknet /info document referenced by F36 (specs/facts-register.md).
-_CHAIN_HASH = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971"
+CHAIN_HASH = "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971"
 _GROUP_HASH = "f477d5c89f21a17c863a7f937c6a6d15859414d2be09cd448d4279af331c5d3e"
 _PUBLIC_KEY = (
     "83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c"
@@ -81,7 +81,7 @@ def verify_round(
     number = _round_number(assigned_round)
     metadata = chain_info.get("metadata")
     if (
-        chain_info.get("hash") != _CHAIN_HASH
+        chain_info.get("hash") != CHAIN_HASH
         or chain_info.get("public_key") != _PUBLIC_KEY
         or chain_info.get("groupHash") != _GROUP_HASH
         or chain_info.get("schemeID") != "bls-unchained-g1-rfc9380"

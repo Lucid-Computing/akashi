@@ -12,9 +12,10 @@ See `specs/redteam-suite.md` for the complete R1-R19 table with expected outcome
 
 ## Testing
 
+Run the current CPU regression suite from the repository root. M3 release evidence is recorded separately. [Release gates](../docs/spec/07-testing-strategy.md#release-gates)
+
 ```bash
-cd redteam/
-pytest tests/ -v
+make setup test-unit
 ```
 
 Exit criteria from spec § 19.2:
@@ -27,3 +28,17 @@ Exit criteria from spec § 19.2:
 - `specs/redteam-suite.md`: Complete R1-R19 attack list
 - `specs/guarantee.md`: Threat model and security properties
 - `specs/build-plan.md`: M3 milestone (red team phase)
+
+## Transcript and log evidence
+
+Run `make test-evidence-regressions`. It writes `build/gates/m3-evidence.json` with per-scenario trial and control counts for R10–R17. To use an offline checkout of the pinned F37 assets, set `VIG_RENDER_ASSETS`. The report records the source revision and fixture digests. The proof replay and commitment controls exercise synthetic F9 terminal records through the holder's statement and verifier policy. Physical proof verification has its own milestone evidence. [M3 criteria](../specs/build-plan.md#m3-red-team) · [F9](../specs/facts-register.md#flashprove-foundation)
+
+For a live delivery, a holder can record when it received the signed promise and supply that UTC timestamp to `vig verify` with `--observed-at`. The monitor accepts the same contemporaneous observation via `hold(receipt, observed_at=...)`. An observation more than 30 seconds after the signed time produces a warning and a monitor incident. It records a timing discrepancy that can include delivery latency. When verifying an archived receipt, leave the option unset unless the original delivery observation is available. [R17](../specs/redteam-suite.md)
+
+## Model outcomes
+
+Run `make test-model-regressions` for R1–R9 and R18. The fixed CPU corpus supplies synthetic completions and reference choices for each scenario. The checks exercise completion policy and identify the first differing token through the reference scorer interface. R18 additionally checks short prompts and selection at N=1. The report at `build/gates/m3-model.json` records counts, corpus digests and the source revision. Real Maverick proof measurements are recorded in the M0 and M2 gates. [M3 criteria](../specs/build-plan.md#m3-red-team)
+
+## Challenge admission
+
+Run `make test-admission-regressions` for R19. Each fixed trial uses a fresh private test ledger and signed receipts. Two callers compete for the last available quota slot. The fixture checks the reported retry interval, counts the surviving challenge handles and work rows after reopening SQLite, and submits a separate eligible control. The command writes `build/gates/m3-admission.json`. [Challenge limits](../specs/parameters.md#rate-limits) · [M3 criteria](../specs/build-plan.md#m3-red-team)

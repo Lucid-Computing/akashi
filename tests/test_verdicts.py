@@ -18,6 +18,7 @@ import rfc8785
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.public import PrivateKey
 
+from auditor.intake import ChallengeIntake
 from auditor.verdict_signing import public_verdict, sign_verdict, verify_signed
 from auditor.verdicts import VerdictStore, decide
 from prover.reference import ReferenceTrace
@@ -90,10 +91,8 @@ class SignedVerdictTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    find_spec("auditor.jobs")
-    and find_spec("verifier.proof")
-    and find_spec("auditor.intake"),
-    "requires integrated intake, jobs and proof verifier",
+    find_spec("auditor.jobs"),
+    "requires the durable audit jobs from issue 28",
 )
 class VerdictStoreTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -103,7 +102,7 @@ class VerdictStoreTests(unittest.TestCase):
         self.now = datetime(2026, 11, 20, tzinfo=timezone.utc)
         key = PrivateKey.generate()
         tags = b"t" * 32
-        self.intake = importlib.import_module("auditor.intake").ChallengeIntake(
+        self.intake = ChallengeIntake(
             self.path,
             descriptor={},
             assets=None,

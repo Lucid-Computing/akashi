@@ -7,3 +7,5 @@ Emit structured events with timestamp, severity, service, event name, optional i
 Maintain health and readiness separately. Readiness covers the serving gates and required downstream services. Trace stage boundaries with internal correlation only. Redact prompts, reply text, token IDs, salt, challenge and pickup capabilities, keys and proof material before telemetry serialization. Correlation IDs must not function as public lookup credentials.
 
 Alert and dashboard definitions follow [observability](../../specs/observability.md#alerts). Preserve signed evidence for log omissions and inconsistency. Classify missing data or disabled coverage as distinct from zero incidents. Run incident drills for deviation, engine integrity spikes and unavailable beacon; record the accountable owner and recovery evidence.
+
+Run `make test-operational-alerts` to exercise private engine, beacon and auditor scrapes, evaluate the Prometheus rules, and check every dashboard query. The [operations playbook](../../operations/monitoring/README.md) covers alert ownership and the signed evidence retained across recovery.

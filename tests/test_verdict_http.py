@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import importlib
-import importlib.util
 import io
 import json
 import tempfile
@@ -16,6 +14,7 @@ from unittest.mock import Mock
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from auditor.challenge_http import ChallengeApp
 from auditor.selections import Selections, SelectionsApp
 from auditor.verdict_http import VerdictApp
 from auditor.verdict_signing import sign_verdict, verify_signed
@@ -231,12 +230,7 @@ class VerdictHttpTests(unittest.TestCase):
                         )
                         self.assertIn(expected, json.loads(response.read()))
 
-    @unittest.skipUnless(
-        importlib.util.find_spec("auditor.challenge_http"),
-        "requires deployed challenge intake",
-    )
     def test_aggregate_dispatches_real_post_intake(self) -> None:
-        challenge = importlib.import_module("auditor.challenge_http")
         submit = Mock(
             return_value={
                 "challenge_id": _ID,
@@ -246,7 +240,7 @@ class VerdictHttpTests(unittest.TestCase):
         )
         app = VerdictApp(
             self.store,
-            intake=challenge.ChallengeApp(
+            intake=ChallengeApp(
                 submit, authenticate=lambda _: "holder", body_limit=512
             ),
         )

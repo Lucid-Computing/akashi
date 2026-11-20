@@ -3,13 +3,12 @@
 import base64
 import hashlib
 import hmac
-import importlib
 import json
 import sqlite3
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Protocol
+from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.public import SealedBox
@@ -19,13 +18,10 @@ from prover.reference import ReferenceUnavailable
 from prover.request import build_statement, reply_complete
 from prover.scoring import Divergence, Scorer, assess
 from prover.worker import CandidateProof, Unavailable
+from verifier.proof import ProofChecker, verify_reply
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 _DAY = 86_400_000_000
-
-
-class Checker(Protocol):
-    def check(self, statement: bytes, y: bytes, proof: bytes) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -54,8 +50,8 @@ def decide(
     budget: int,
     candidate: CandidateProof | Unavailable | None,
     *,
-    primary: Checker,
-    secondary: Checker | None,
+    primary: ProofChecker,
+    secondary: ProofChecker | None,
     scorer: Scorer | None,
 ) -> Decision:
     if not reply_complete(reply, budget):
@@ -89,7 +85,7 @@ def decide(
             if diagnosis.kind != "deviation" or diagnosis.divergence is None:
                 return Decision("UNAVAILABLE", "statement_mismatch")
             divergence = diagnosis.divergence
-        result = importlib.import_module("verifier.proof").verify_reply(
+        result = verify_reply(
             prompt,
             reply,
             budget,
@@ -125,8 +121,8 @@ class VerdictStore:
         *,
         key_id: str,
         signer: Ed25519PrivateKey,
-        primary: Checker,
-        secondary: Checker | None = None,
+        primary: ProofChecker,
+        secondary: ProofChecker | None = None,
         scorer: Scorer | None = None,
     ) -> None:
         if not isinstance(key_id, str) or not key_id:
