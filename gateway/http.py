@@ -64,7 +64,9 @@ class ServingApp:
             raise ValueError("A positive finite stream heartbeat is required")
         self.stream_heartbeat_seconds = stream_heartbeat_seconds
         self.serving = serving
-        self.discovery = DiscoveryApp(serving.config)
+        self.discovery = DiscoveryApp(
+            serving.config, streaming=stream_heartbeat_seconds is not None
+        )
         self.request_timeout, self.retry_after = request_timeout, retry_after_seconds
 
     def __call__(

@@ -2,6 +2,10 @@
 
 A zero-knowledge proof system for verifiable LLM inference serving using FlashProve.
 
+## Local router demo
+
+Run `make setup demo-router` to send synthetic chat requests through a local Mode R router. The holder recovers a sealed receipt after the router strips verification and checks the signed log. [Demo and proxy commands](router/README.md)
+
 ## The Problem
 
 LLM inference providers make unverifiable claims. Users cannot confirm that a reply came from the advertised model. Providers could serve cheaper quantizations, different models, or modified outputs without detection.
