@@ -88,6 +88,20 @@ Engine listens on `127.0.0.1` only. A reverse proxy on the engine host terminate
 
 The proxy allows one connection.
 
+## Provider adapter
+
+Supply a `LaunchConfig` with the real rebuild report and fitted work directory, the prepared model and independent loader reference directory, the pinned FlashProve checkout, the serving Python environment, private home and temporary directories, an operator-provisioned canary file and a shutdown grace period. Export only the public fit configuration and verification-key artifacts to the engine account. Bind the measured dtype to the same F4 commitment in the canary file. Record three distinct prompt vectors, their budgets and their M0-proved expected replies. Keep the model read-only and run under the provider service account.
+
+On the provider, enter `engine.service.observe_engine(config, ...)` and read `evidence, canaries = observation.startup()`. Keep the context open while serving. The pinned vLLM launcher binds the loopback listener before loading the model. Only the new child's two loader messages satisfy this startup. Configure the startup deadline, health polling interval, log checkpoint timeout and maximum log-line size on the host.
+
+The private control channel proposed by this adapter exposes the startup evidence, public canaries and log-window boundaries. In the provider context, start `engine.control.ControlServer` with the service socket path, authorized gateway UID and GID, control timeout, `evidence.instance`, `lambda: observation.startup()[0]`, the canaries, and the observation's `begin` and `finish` methods. Provision a provider-owned socket directory with mode `2750` and the gateway group. The gateway connects with `ControlClient` configured with the provider UID. Each side checks its peer's operating-system identity. This Unix socket supports co-located service accounts. A split-host deployment requires an authenticated private relay that preserves these identities and the request boundaries.
+
+On the gateway, construct `EngineClient` with the private mTLS proxy host and port, model name, server CA, gateway certificate and key, request margin and response-size limit. Call `engine.service.attach_engine(client, control_client, ...)` to check health and run the three canaries. The gateway alone holds its TLS key. The client buffers the greedy reply and checks the echoed prompt token IDs before returning tokens.
+
+The provider drains the current process's own stdout/stderr pipe at both request boundaries. This requires synchronous plugin logging to that pipe before token emission, as in the pinned model plugin. An asynchronous collector needs its own acknowledged post-request barrier. Preserve the one-sequence launch and the authenticated engine route. Missing coverage, cancellation or an invalid reply quarantines the adapter. A supervisor may reopen the slot only after a clean, complete window covering the interrupted work, or a fresh measured startup.
+
+Run `make test-engine` for CPU gate, process and transport fixtures. Real startup and proof evidence belongs in the [M0 gate](build-plan.md#m0-bring-up). The [pinned completion schema](https://github.com/vllm-project/vllm/blob/v0.29.0/vllm/entrypoints/openai/completion/protocol.py) describes the token ID response fields.
+
 ## Hardware Requirements
 
 From F22:
@@ -104,3 +118,14 @@ From F22:
 - `parameters.md`: Engine parameters
 - `hardening.md`: Security configuration
 - `gateway-api.md`: Request format from gateway
+
+On 2026-11-20, Lucid H100 allocation 7292 ran the production supervisor and gateway
+attachment at engine revision `79247c9425e46ea5b1da1ee5e87e1af8930ff46a`.
+The F4 rebuild supplied the reference files. All 51 GPU arithmetic cases passed
+and the supervisor observed both verification messages from the launched child.
+Three whole-reply goldens had already passed FlashProve's native verifier on a
+separate CPU host. The gateway replayed all three through its mutually authenticated
+proxy. From entry into the provider supervisor through completion of the third
+canary, 1,294.165 seconds elapsed. The same process then closed integrity windows
+for 16 greedy requests and a separate streamed completion. The stream's three
+token IDs matched its nonstreaming reply. [Redacted readiness record](../engine/evidence/maverick-engine-ready.json)
