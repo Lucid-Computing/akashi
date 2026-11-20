@@ -118,3 +118,14 @@ From F22:
 - `parameters.md`: Engine parameters
 - `hardening.md`: Security configuration
 - `gateway-api.md`: Request format from gateway
+
+On 2026-11-20, Lucid H100 allocation 7292 ran the production supervisor and gateway
+attachment at engine revision `79247c9425e46ea5b1da1ee5e87e1af8930ff46a`.
+The F4 rebuild supplied the reference files. All 51 GPU arithmetic cases passed
+and the supervisor observed both verification messages from the launched child.
+Three whole-reply goldens had already passed FlashProve's native verifier on a
+separate CPU host. The gateway replayed all three through its mutually authenticated
+proxy. From entry into the provider supervisor through completion of the third
+canary, 1,294.165 seconds elapsed. The same process then closed integrity windows
+for 16 greedy requests and a separate streamed completion. The stream's three
+token IDs matched its nonstreaming reply. [Redacted readiness record](../engine/evidence/maverick-engine-ready.json)
