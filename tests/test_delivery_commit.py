@@ -1,5 +1,6 @@
 """Integration checks for private custody, signed append, pickup, and terminal release."""
 
+import hmac
 import tempfile
 import unittest
 from collections.abc import Mapping
@@ -171,7 +172,11 @@ class DeliveryCommitTests(unittest.TestCase):
             self.pickup.reservation,
             (
                 evidence["pickup_id"],
-                actual["leaf_hash"],
+                hmac.digest(
+                    secret,
+                    b"vig/pickup/reservation/1" + bytes.fromhex(actual["leaf_hash"]),
+                    "sha256",
+                ).hex(),
                 NOW.replace(microsecond=123000) + timedelta(days=7),
             ),
         )
@@ -185,6 +190,81 @@ class DeliveryCommitTests(unittest.TestCase):
             ),
             evidence,
         )
+
+    def test_durable_pickup_with_shorter_lifetime_and_rotated_holder_secrets(
+        self,
+    ) -> None:
+        from pickup.store import PickupStore
+
+        store = PickupStore(self.root / "sealed.db", clock=lambda: self.now)
+        writer = DeliveryCommitter(
+            self.config,
+            endpoint_id="test",
+            sampling_mode="live",
+            stage=self.stage,
+            append=self.append,
+            pickup=store,
+            pickup_lifetime=timedelta(hours=1),
+            clock=lambda: self.now,
+        )
+        chat = [{"role": "user", "content": "private pickup fixture"}]
+        secrets = (b"b" * 32, b"c" * 32)
+        ids: list[str] = []
+        for secret in secrets:
+            attempt = writer.prepare(
+                self.chat,
+                (3, 4),
+                original_chat=chat,
+                reply_text="reply",
+                holder_secret=secret,
+            )
+            signed = writer.commit(attempt, guard=guard)
+            self.assertEqual(writer.commit(attempt, guard=guard), signed)
+            digest = signed["pickup_id"]
+            assert isinstance(digest, str)
+            ids.append(digest)
+            envelope = store.get(digest)
+            self.assertEqual(open_pickup(envelope, secret, chat, 2, "reply"), signed)
+            receipt: Any = signed["receipt"]
+            self.assertNotIn(receipt["leaf_hash"].encode(), store.path.read_bytes())
+            self.assertNotIn(receipt["salt"].encode(), store.path.read_bytes())
+        self.assertNotEqual(ids[0], ids[1])
+        from pickup.crypto import PickupError
+
+        with self.assertRaises(PickupError):
+            open_pickup(store.get(ids[0]), secrets[1], chat, 2, "reply")
+        self.now += timedelta(hours=1)
+        self.assertIsNone(store.get(ids[0]))
+        self.assertIsNone(store.get(ids[1]))
+        self.assertEqual(self.log.head()["tree_size"], 2)
+
+    def test_pickup_expiring_before_release_withholds_terminal_success(self) -> None:
+        from pickup.store import PickupStore
+
+        def clock() -> datetime:
+            return self.now
+
+        writer = DeliveryCommitter(
+            self.config,
+            endpoint_id="test",
+            sampling_mode="live",
+            stage=self.stage,
+            append=self.append,
+            pickup=PickupStore(self.root / "short.db", clock=clock),
+            pickup_lifetime=timedelta(seconds=1),
+            clock=clock,
+        )
+        attempt = writer.prepare(
+            self.chat,
+            (3, 4),
+            original_chat=[{"role": "user", "content": "short"}],
+            reply_text="reply",
+            holder_secret=b"b" * 32,
+        )
+        writer.commit(attempt, guard=guard)
+        self.now += timedelta(seconds=1)
+        with self.assertRaisesRegex(CommitError, "Pickup expired"):
+            writer.check_release(attempt)
 
     def test_lost_append_reuses_original_leaf_and_new_submission_is_fresh(self) -> None:
         attempt = self.committer.prepare(self.raw, (200008,))

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import secrets
 import uuid
@@ -18,6 +19,7 @@ from gateway.discovery import ServiceConfig
 from gateway.policy import InferenceRequest
 from log.receipt import leaf_hash, params_digest, transcript_commitment, verify_promise
 from pickup.crypto import lookup_id, seal
+from pickup.store import PICKUP_LIFETIME
 
 
 class CommitError(RuntimeError):
@@ -25,16 +27,19 @@ class CommitError(RuntimeError):
 
 
 class PickupWriter(Protocol):
-    """Durable, idempotent operations. Conflicting leaf or expiry must fail."""
+    """Durable, idempotent operations. The private binding tag and expiry must agree."""
 
-    def reserve(self, pickup_id: str, leaf_hash: str, expires_at: datetime) -> None: ...
+    def reserve(
+        self, pickup_id: str, binding_tag: str, expires_at: datetime, /
+    ) -> None: ...
 
     def publish(
         self,
         pickup_id: str,
-        leaf_hash: str,
+        binding_tag: str,
         envelope: dict[str, str],
         expires_at: datetime,
+        /,
     ) -> None: ...
 
 
@@ -82,6 +87,7 @@ class DeliveryCommitter:
         stage: Callable[[Binding, bytes], str],
         append: Callable[[Mapping[str, object]], Mapping[str, object]],
         pickup: PickupWriter | None = None,
+        pickup_lifetime: timedelta = PICKUP_LIFETIME,
         clock: Callable[[], datetime] = _utc,
     ) -> None:
         if (
@@ -90,6 +96,9 @@ class DeliveryCommitter:
             or sampling_mode not in ("live", "soak")
         ):
             raise ValueError("Invalid receipt endpoint or sampling mode")
+        if not timedelta(0) < pickup_lifetime <= PICKUP_LIFETIME:
+            raise ValueError("Invalid pickup lifetime")
+        self._pickup_lifetime = pickup_lifetime
         self._config, self._endpoint, self._mode = config, endpoint_id, sampling_mode
         self._stage, self._append, self._pickup, self._clock = (
             stage,
@@ -221,6 +230,8 @@ class DeliveryCommitter:
             or round_is_open(attempt.beacon_round, now)
         ):
             raise CommitError("Delivery clock is outside the fixed pre-round interval")
+        if attempt._pickup_id is not None and now >= served + self._pickup_lifetime:
+            raise CommitError("Pickup expired before delivery")
 
     def commit(
         self, attempt: DeliveryAttempt, *, guard: Callable[[], None]
@@ -251,14 +262,22 @@ class DeliveryCommitter:
         boundary()
         pickup = self._pickup
         pickup_id = attempt._pickup_id
-        expires = datetime.fromisoformat(
-            attempt.served_at.replace("Z", "+00:00")
-        ) + timedelta(days=7)
+        expires = (
+            datetime.fromisoformat(attempt.served_at.replace("Z", "+00:00"))
+            + self._pickup_lifetime
+        )
+        binding_tag = ""
         if pickup_id is not None:
-            if pickup is None:
+            if pickup is None or attempt._secret is None:
                 raise CommitError("Pickup is unavailable")
+            # The pickup database must not carry a public-log index beside its opaque ID.
+            binding_tag = hmac.digest(
+                attempt._secret,
+                b"vig/pickup/reservation/1" + bytes.fromhex(digest),
+                "sha256",
+            ).hex()
             _commit_step(
-                lambda: pickup.reserve(pickup_id, digest, expires),
+                lambda: pickup.reserve(pickup_id, binding_tag, expires),
                 "Pickup reservation failed",
             )
             boundary()
@@ -315,7 +334,7 @@ class DeliveryCommitter:
                 raise CommitError("Pickup identity changed")
             boundary()
             _commit_step(
-                lambda: pickup.publish(pickup_id, digest, envelope, expires),
+                lambda: pickup.publish(pickup_id, binding_tag, envelope, expires),
                 "Pickup publication failed",
             )
         boundary()
