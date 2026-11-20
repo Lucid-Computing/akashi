@@ -341,7 +341,7 @@ class AuditJobs:
     def _owned(self, db: sqlite3.Connection, claim: Claim, now: int) -> sqlite3.Row:
         self._refresh(db, now)
         row = db.execute(
-            """SELECT a.*,w.statement_tag,w.incomplete FROM audit_jobs a JOIN challenge_work w USING(job_id)
+            """SELECT a.*,w.statement_tag,w.incomplete,w.material FROM audit_jobs a JOIN challenge_work w USING(job_id)
                WHERE a.job_id=? AND a.state='verifying' AND a.lease_until>?""",
             (claim.job_id, now),
         ).fetchone()
@@ -349,6 +349,12 @@ class AuditJobs:
             row["lease"], hashlib.sha256(claim.lease.encode()).digest()
         ):
             raise ValueError("Worker no longer owns this audit claim")
+        try:
+            saved_budget = json.loads(SealedBox(self._key).decrypt(row["material"]))[
+                "max_tokens"
+            ]
+        except (CryptoError, TypeError, ValueError, KeyError):
+            raise ValueError("Invalid private job evidence") from None
         tag = hmac.digest(
             self._tags,
             b"vig/challenge/statement/1" + build_statement(claim.prompt, claim.reply),
@@ -356,6 +362,9 @@ class AuditJobs:
         )
         if (
             row["t"] != claim.transcript
+            or type(saved_budget) is not int
+            or type(claim.budget) is not int
+            or saved_budget != claim.budget
             or not hmac.compare_digest(tag, row["statement_tag"])
             or bool(row["incomplete"]) != claim.incomplete
         ):

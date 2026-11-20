@@ -113,6 +113,19 @@ class AuditJobTests(unittest.TestCase):
         self.now += timedelta(days=30)
         self.assertIsNone(self.jobs.status(a["challenge_id"], a["capability"]))
 
+    def test_claim_budget_matches_authenticated_work_after_restart(self) -> None:
+        reader = self.demand()
+        claim = self.claim()
+        recovered = self.restart()
+        with self.assertRaises(ValueError):
+            recovered.complete(
+                replace(claim, budget=3), "UNAVAILABLE", "prover_unavailable"
+            )
+        current = recovered.status(reader["challenge_id"], reader["capability"])
+        assert current is not None
+        self.assertEqual(current["status"], "verifying")
+        recovered.complete(claim, "UNAVAILABLE", "prover_unavailable")
+
     def test_concurrent_claim_and_authorized_spool_retry(self) -> None:
         self.demand()
         with ThreadPoolExecutor(max_workers=5) as pool:
