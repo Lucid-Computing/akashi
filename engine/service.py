@@ -1,12 +1,14 @@
 """Provider-side launch observation and gateway-side attachment."""
 
+from __future__ import annotations
+
 import math
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from threading import Event
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from engine.adapter import (
     Canary,
@@ -21,6 +23,9 @@ from engine.process_log import ProcessLog
 from engine.transport import EngineClient
 from operations.engine_logs import EngineLogs
 from operations.telemetry import Event as TelemetryEvent
+
+if TYPE_CHECKING:
+    from operations.role_metrics import EngineMetrics
 
 
 class Observation(Protocol):
@@ -118,9 +123,12 @@ def attach_engine(
     *,
     startup_timeout: float,
     health_poll_seconds: float,
+    metrics: EngineMetrics | None = None,
 ) -> Engine:
     """Run the gateway's mTLS health check and three measured token canaries."""
     _intervals(startup_timeout, health_poll_seconds)
+    if metrics is not None:
+        metrics.attaching()
     deadline = time.monotonic() + startup_timeout
     while (left := deadline - time.monotonic()) > 0:
         if client.healthy(min(left, health_poll_seconds)):
@@ -129,7 +137,12 @@ def attach_engine(
             except EngineUnavailable:
                 pass
             else:
-                engine = Engine(client.generate, observation.begin, observation.finish)
+                engine = Engine(
+                    client.generate,
+                    observation.begin,
+                    observation.finish,
+                    metrics=metrics,
+                )
                 engine.start(evidence, canaries)
                 return engine
         time.sleep(min(max(0, deadline - time.monotonic()), health_poll_seconds))

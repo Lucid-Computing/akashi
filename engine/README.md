@@ -80,3 +80,7 @@ The fixtures cover a completed integrity window, an engine integrity fault and
 an unavailable engine. Select the fixture when constructing the adapter. The
 mock requires no model files or accelerator. Run `make test-mock-engine` at
 the repository root. [Engine boundary](../docs/rfcs/RFC-0001-engine-integrity.md#proposed-design)
+
+## Real-model measurements
+
+Run `make gate-m0` on the provisioned verifier host to reconstruct and check a 16-reply hardware capture. [Inputs and replay procedure](baseline.md)

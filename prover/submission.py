@@ -20,105 +20,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from prover.artifacts import SpoolError as SpoolError  # noqa: PLC0414 -- preserve the existing public import
+from prover.artifacts import entry_exists
+from prover.artifacts import private_directory as private_directory  # noqa: PLC0414 -- preserve the existing public import
+from prover.artifacts import trusted_directory as trusted_directory  # noqa: PLC0414 -- preserve the existing public import
+from prover.request import COMMITMENT as COMMITMENT  # noqa: PLC0414 -- preserve the existing public import
 from prover.request import WINDOW, build_spool_request, build_statement
 
-COMMITMENT = "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46"
 _MARK = f"cp-folder 1\nkind spool\ncommitment {COMMITMENT}\n".encode("ascii")
-_DIR = os.O_DIRECTORY | os.O_NOFOLLOW | os.O_RDONLY
 _FILE = os.O_NOFOLLOW | os.O_NONBLOCK
 _WORDS = struct.Struct(f"<{WINDOW + 2}I")
 
 
-class SpoolError(RuntimeError):
-    """Spool permissions, identity, hold or durable publication state is invalid."""
-
-
-def _ancestors(path: Path, links: int = 0) -> int:
-    """Open trusted ancestors. Resolve owner-controlled system links such as macOS /tmp."""
-    if links > 40 or ".." in path.parts or not path.is_absolute():
-        raise SpoolError("Unsafe private directory ancestry")
-    fd = os.open("/", _DIR)
-    try:
-        parent = Path("/")
-        for name in path.parts[1:]:
-            about = os.stat(name, dir_fd=fd, follow_symlinks=False)
-            if about.st_uid not in (0, os.geteuid()):
-                raise SpoolError("Untrusted private directory ancestry")
-            if stat.S_ISLNK(about.st_mode):
-                target = Path(os.readlink(name, dir_fd=fd))
-                child = _ancestors(parent / target, links + 1)
-            else:
-                child = os.open(name, _DIR, dir_fd=fd)
-            os.close(fd)
-            fd = child
-            about = os.fstat(fd)
-            if about.st_uid not in (0, os.geteuid()) or (
-                about.st_mode & 0o022 and not about.st_mode & stat.S_ISVTX
-            ):
-                raise SpoolError("Writable private directory ancestry")
-            parent /= name
-        return fd
-    except BaseException:
-        os.close(fd)
-        raise
-
-
-@contextmanager
-def trusted_directory(path: str | Path) -> Iterator[int]:
-    """Open a read-only parent that trusted owners control, including its ancestry."""
-    fd = _ancestors(Path(path).absolute())
-    try:
-        yield fd
-    finally:
-        os.close(fd)
-
-
-@contextmanager
-def private_directory(
-    path: str | Path, *, parent_fd: int | None = None, create: bool = False
-) -> Iterator[int]:
-    """Yield a verified role-owned private directory descriptor; creation is single-level."""
-    path = Path(path)
-    if parent_fd is None:
-        absolute = path.absolute()
-        with (
-            trusted_directory(absolute.parent) as fd,
-            private_directory(absolute.name, parent_fd=fd, create=create) as child,
-        ):
-            yield child
-        return
-    if len(path.parts) != 1 or path.name in ("", ".", ".."):
-        raise SpoolError("Invalid private subdirectory")
-    if create:
-        try:
-            os.mkdir(path, 0o700, dir_fd=parent_fd)
-        except FileExistsError:
-            pass
-        else:
-            os.fsync(parent_fd)
-    fd = os.open(path, _DIR, dir_fd=parent_fd)
-    try:
-        info = os.fstat(fd)
-        if info.st_uid != os.geteuid() or info.st_mode & 0o077:
-            raise SpoolError("Directory is not private to this role")
-        for forbidden in ("seed.bin", "isk.txt"):
-            if _exists(fd, forbidden):
-                raise SpoolError("Refusing a secret-key directory")
-        yield fd
-    finally:
-        os.close(fd)
-
-
-def _exists(fd: int, name: str) -> bool:
-    try:
-        os.stat(name, dir_fd=fd, follow_symlinks=False)
-    except FileNotFoundError:
-        return False
-    return True
-
-
 def check_spool(fd: int) -> None:
-    if _exists(fd, "hold"):
+    if entry_exists(fd, "hold"):
         raise SpoolError("Proof spool on hold")
     try:
         mark = os.open("mark.txt", _FILE | os.O_RDONLY, dir_fd=fd)
@@ -291,7 +206,7 @@ def _clean_spool(state: int, spool: int, request: str) -> bool:
         name = request + ".req"
         for directory in (incoming, work):
             if directory is not None:
-                if not offline and _exists(directory, name):
+                if not offline and entry_exists(directory, name):
                     return False
                 if offline:
                     _erase_file(directory, name)
@@ -577,7 +492,7 @@ class SubmissionStore:
                     ).fetchone():
                         raise TimeoutError("Proof submission is retired")
                     self._deadline(job.deadline_ns)
-                    if _exists(state, source):
+                    if entry_exists(state, source):
                         raw = os.open(source, _FILE | os.O_RDONLY, dir_fd=state)
                         with os.fdopen(raw, "rb") as stream:
                             _private_file(raw)

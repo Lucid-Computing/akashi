@@ -12,12 +12,16 @@ from gateway.renderer import (
     ChatRenderer,
     raw_ids,
 )
-from log.receipt import params_digest, transcript_commitment, verify_promise
+from log.receipt import (
+    params_digest,
+    promise_backdated,
+    transcript_commitment,
+    verify_promise,
+)
 from log.verification import verify_consistency, verify_head, verify_inclusion
+from prover.request import COMMITMENT as COMMITMENT  # noqa: PLC0414 -- preserve the existing public import
 from prover.request import END_TOKENS, WINDOW, reply_complete
 from verifier.holder_proof import check_proof
-
-COMMITMENT = "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46"
 
 
 @dataclass(frozen=True)
@@ -101,7 +105,12 @@ def verify(
     runtime: object = None,
     receipt_only: bool = False,
     now: datetime | None = None,
+    observed_at: datetime | None = None,
 ) -> VerificationResult:
+    if observed_at is not None and (
+        not isinstance(observed_at, datetime) or observed_at.utcoffset() != timedelta(0)
+    ):
+        return VerificationResult(64, "USAGE")
     clock = now or datetime.now(timezone.utc)
     result = VerificationResult(10, "RECEIPT_INVALID")
     try:
@@ -167,6 +176,12 @@ def verify(
             return result
         if bundle["text"] != (renderer.decode(reply) if renderer else None):
             return VerificationResult(12, "TEXT_MISMATCH")
+        # A delivery witness belongs to the holder, separately from the bundle.
+        warnings: tuple[str, ...] = (
+            ("PROMISE_BACKDATED",)
+            if observed_at is not None and promise_backdated(served, observed_at)
+            else ()
+        )
         history = bundle.get("history", {})
         if not isinstance(history, dict):
             return result
@@ -176,7 +191,7 @@ def verify(
             return VerificationResult(
                 30,
                 "INCLUSION_UNAVAILABLE",
-                ("MERGE_DEADLINE_ELAPSED",) if overdue else (),
+                warnings + (("MERGE_DEADLINE_ELAPSED",) if overdue else ()),
             )
         if (
             not isinstance(history["sth"], dict)
@@ -184,9 +199,9 @@ def verify(
         ):
             return result
         if checkpoint is not None and "consistency" not in history:
-            return VerificationResult(30, "CONSISTENCY_UNAVAILABLE")
+            return VerificationResult(30, "CONSISTENCY_UNAVAILABLE", warnings)
         _history(history, receipt["leaf_hash"], descriptor, checkpoint)
-        warnings = (
+        warnings += (
             ("CHALLENGE_WINDOW_EXPIRED",)
             if clock >= served + timedelta(days=30)
             else ()
