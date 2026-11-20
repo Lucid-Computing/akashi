@@ -1,0 +1,237 @@
+# Contributing to Verified Inference Gateway
+
+Thank you for your interest in contributing to this project. This document outlines the process and standards for contributions.
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10 or later
+- Rust 1.70 or later (for prover integration)
+- Git for version control
+- Familiarity with LLM inference and zero-knowledge proofs is helpful
+
+### Development Setup
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd verified-inference-gateway
+```
+
+2. Install dependencies:
+```bash
+# Python dependencies
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements-dev.txt
+
+# Rust dependencies
+cd prover
+cargo build
+```
+
+3. Run tests to verify setup:
+```bash
+make test
+```
+
+## Contribution Process
+
+### Before You Start
+
+1. Check existing issues to avoid duplicate work
+2. For major changes, open an issue first to discuss the approach
+3. Read `AGENTS.md` for architectural guidelines
+4. Review relevant specifications in `specs/`
+
+### Making Changes
+
+1. Create a new branch:
+```bash
+git checkout -b feature/your-feature-name
+```
+
+2. Make your changes following coding standards (see below)
+3. Add or update tests for your changes
+4. Update specifications if behavior changes
+5. Update documentation as needed
+6. Run the full test suite
+
+### Coding Standards
+
+See `AGENTS.md` for detailed coding standards. Key points:
+
+- Use type hints in Python code
+- Follow PEP 8 style for Python
+- Follow Rust conventions for Rust code
+- Write clear, self-documenting code
+- Keep functions small and focused
+- Validate inputs and handle errors explicitly
+
+### Testing Requirements
+
+All contributions must include appropriate tests:
+
+- **Unit tests**: For individual functions and modules
+- **Integration tests**: For component interactions
+- **Red team tests**: For security-critical changes
+- **Property-based tests**: For cryptographic operations
+
+### Commit Messages
+
+Write clear, descriptive commit messages:
+
+```
+Short summary (50 chars or less)
+
+Longer explanation if needed. Wrap at 72 characters.
+Explain what changed and why, not how.
+
+Reference issues: Fixes #123
+```
+
+### Submitting a Pull Request
+
+1. Push your branch to GitHub:
+```bash
+git push origin feature/your-feature-name
+```
+
+2. Open a pull request with:
+   - Clear description of changes
+   - Link to related issue
+   - List of breaking changes (if any)
+   - Testing performed
+
+3. Address review feedback
+4. Ensure CI passes before merging
+
+## Code Review Process
+
+All contributions go through code review:
+
+- **Soundness**: Security properties preserved
+- **Determinism**: Behavior is predictable
+- **Testing**: Adequate test coverage
+- **Documentation**: Specs and docs updated
+- **Style**: Follows coding standards
+
+Reviews may take several days. Be patient and responsive to feedback.
+
+## Security Guidelines
+
+### Reporting Security Issues
+
+**Do not open public issues for security vulnerabilities.**
+
+Email security reports to: [security contact to be added]
+
+Include:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact
+- Suggested fixes (if any)
+
+### Secure Development Practices
+
+- Never commit secrets, keys, or credentials
+- Use environment variables for configuration
+- Validate and sanitize all inputs
+- Use established cryptographic libraries
+- Document security assumptions
+
+### Model Weights
+
+Model weights must never be committed to version control:
+
+- Add weight directories to `.gitignore`
+- Document weight download and verification procedures
+- Use checksums to verify weight integrity
+- Pin weights to specific versions
+
+## Documentation
+
+Good documentation is essential:
+
+- Update `README.md` for user-facing changes
+- Update `AGENTS.md` for architectural changes
+- Add ADRs in `docs/decisions/` for design decisions
+- Update specifications in `specs/` for behavior changes
+- Include inline comments for complex logic
+
+## Architecture Decision Records
+
+For significant design decisions, create an ADR:
+
+1. Copy `docs/decisions/000-template.md`
+2. Name it `NNN-descriptive-title.md` (next number in sequence)
+3. Fill in: Context, Decision, Consequences, Alternatives
+4. Link to relevant spec sections
+5. Include in your PR
+
+## Testing
+
+### Running Tests
+
+```bash
+# All tests
+make test
+
+# Unit tests only
+make test-unit
+
+# Integration tests
+make test-integration
+
+# Red team suite
+make test-redteam
+
+# Specific test file
+pytest tests/test_renderer.py
+
+# With coverage
+make test-coverage
+```
+
+### Writing Tests
+
+- Test one thing per test function
+- Use descriptive test names
+- Include edge cases and error conditions
+- Mock external dependencies
+- Keep tests fast and deterministic
+
+### Red Team Tests
+
+Security testing is critical. Red team tests should:
+
+- Attempt to break security properties
+- Document the attack vector
+- Verify defenses work correctly
+- Be maintained as the system evolves
+
+## Performance Considerations
+
+- Profile before optimizing
+- Document performance requirements
+- Add benchmarks for critical paths
+- Consider proof generation cost
+- Verify scalability claims with tests
+
+## Questions and Support
+
+- Open an issue for questions
+- Check `specs/open-questions.md` for known unknowns
+- Review `docs/decisions/` for design rationale
+- Read `AGENTS.md` for development guidelines
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
+
+## Recognition
+
+Contributors will be recognized in release notes and project documentation.
+
+Thank you for contributing to verifiable inference!

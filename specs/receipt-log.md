@@ -1,0 +1,202 @@
+# Receipt Log
+
+## Overview
+
+Append-only Merkle tree log of transcript commitments with cryptographically signed tree heads from specification section 9.
+
+## Receipt Format
+
+Every warranted reply carries a receipt binding the transcript into the public log:
+
+```json
+{
+  "log_id": "<32-byte hex>",
+  "endpoint_id": "maverick-int-c7982f8a",
+  "request_id": "<uuid>",
+  "served_at": "2026-11-20T10:15:03.412Z",
+  "commitment_id": "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46",
+  "render_profile": "<32-byte hex>",
+  "params_digest": "<32-byte hex>",
+  "salt": "<32-byte hex>",
+  "transcript_commitment": "<t, 32-byte hex>",
+  "leaf_hash": "<32-byte hex>",
+  "beacon_round": 21734890,
+  "promise_sig": "<Ed25519 signature by the log key>"
+}
+```
+
+## Transcript Commitment
+
+Computed by the gateway before serving the reply:
+
+```
+t = SHA-256(C || R || H_params || salt || x || y)
+```
+
+Where:
+- `C` = commitment ID (32 bytes)
+- `R` = render profile digest (32 bytes)
+- `H_params` = SHA-256 of `max_tokens` as 4-byte little-endian (32 bytes)
+- `salt` = 32 random bytes
+- `x` = prompt token IDs (P × 4 bytes, little-endian)
+- `y` = reply token IDs (R × 4 bytes, little-endian)
+
+This binding includes the integer model state, render profile, request parameters, and actual tokens (F28).
+
+## Leaf Hash
+
+The Merkle tree leaf combines the transcript commitment with metadata:
+
+```
+leaf_hash = SHA-256(
+  commitment_id || 
+  render_profile || 
+  params_digest || 
+  salt || 
+  transcript_commitment || 
+  8-byte big-endian beacon_round || 
+  served_at as RFC3339 bytes
+)
+```
+
+## Promise Signature
+
+Ed25519 signature by the log service's private key over:
+
+```
+"PromiseReceipt" || log_id || leaf_hash
+```
+
+The gateway verifies this signature before serving the reply. An invalid signature causes 500 with no receipt.
+
+## Merkle Tree
+
+RFC 6962 append-only binary Merkle tree with SHA-256:
+
+```
+MTH({})         = SHA-256("")
+MTH({leaf₀})    = SHA-256(0x00 || leaf₀)
+MTH({leaf₀...leafₙ}) = SHA-256(0x01 || MTH(left) || MTH(right))
+```
+
+Tree size `N` grows monotonically. Each leaf index is permanent.
+
+## Signed Tree Head (STH)
+
+Periodic commitment to the tree state, signed by the log key:
+
+```json
+{
+  "version": "vig-log/1",
+  "log_id": "<32-byte hex>",
+  "tree_size": 123456,
+  "timestamp": "2026-11-20T10:20:00.000Z",
+  "root_hash": "<32-byte hex>",
+  "signature": "<Ed25519 signature>"
+}
+```
+
+Signature over:
+```
+"STH" || log_id || 8-byte big-endian tree_size || timestamp as RFC3339 bytes || root_hash
+```
+
+STH published every 60 seconds and after every write, so clients polling at 1 Hz see receipts within 2 seconds (F29).
+
+## Log API
+
+All endpoints under `/log/v1/`:
+
+### `GET /sth`
+
+Returns latest STH.
+
+### `POST /promise`
+
+Gateway-only endpoint (authenticated). Request:
+
+```json
+{
+  "leaf_hash": "<32-byte hex>",
+  "beacon_round": 21734890,
+  "served_at": "2026-11-20T10:15:03.412Z"
+}
+```
+
+Response: receipt without `endpoint_id` or `request_id` (gateway adds those).
+
+The log appends the leaf immediately and signs the promise. Tree size increments by one.
+
+### `GET /receipts/{leaf_index}`
+
+Returns the receipt at leaf index (0-based), or 404.
+
+### `GET /receipts/range?start={s}&end={e}`
+
+Returns receipts for leaf indices `[s, e)`, up to 10,000 per call.
+
+### `GET /proof/{leaf_index}`
+
+Returns audit path from leaf to current root:
+
+```json
+{
+  "leaf_index": 42,
+  "tree_size": 123456,
+  "audit_path": ["<32-byte hex>", ...]
+}
+```
+
+Client verifies by recomputing MTH and checking against STH.
+
+### `GET /consistency?from={old_size}&to={new_size}`
+
+Returns consistency proof between two tree sizes (RFC 6962 section 2.1.2).
+
+## Sealed Pickup (Mode R)
+
+Router clients that don't receive `verification` in the proxied response can fetch the receipt by request ID after serving.
+
+The pickup URL from `.well-known/vig.json`:
+
+```
+GET /receipts/v1/pickup/{request_id}
+```
+
+Returns:
+```json
+{
+  "receipt": { <same receipt> },
+  "prompt_token_ids": [...],
+  "reply_token_ids": [...],
+  "pickup_id": "<32-byte hex>"
+}
+```
+
+Where `pickup_id = SHA-256("sealed_pickup" || request_id || secret)` proves that the gateway operator sealed this package (router cannot forge it).
+
+Available for 30 days after serving; returns 404 if request_id is unknown or expired.
+
+## Retention
+
+From `retention.md`:
+
+| Data | Retention | Purpose |
+|---|---|---|---|
+| Receipts in log | 5 years | Proof of inclusion, challenges |
+| Leaf hashes in tree | Permanent | Tree integrity |
+| Sealed pickup packages | 30 days | Router receipt delivery |
+| STH history | 5 years | Tree consistency verification |
+
+## Security Properties
+
+- **S1 (Binding)**: Transcript commitment cryptographically binds C, R, params, salt, x, y
+- **S3 (Non-omission)**: Every receipted reply enters the log; transparency allows public verification
+- **S5 (Accountable failure)**: If log is compromised, the provider can prove it with an inconsistent STH
+
+## Related Specifications
+
+- `gateway-api.md`: Receipt delivery in response
+- `sampling.md`: beacon_round determination
+- `audit-protocol.md`: Log queries for challenges
+- `facts-register.md`: F28-F29 (commitment and STH timing)
