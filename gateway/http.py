@@ -2,8 +2,9 @@
 
 import json
 import math
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from concurrent.futures import CancelledError
+from contextlib import ExitStack
 from http import HTTPStatus
 from typing import BinaryIO, cast
 
@@ -11,6 +12,7 @@ from gateway.commit_delivery import CommitError
 from gateway.discovery import DiscoveryApp
 from gateway.policy import Mode, PolicyError
 from gateway.serving import RequestControl, Serving
+from gateway.streaming import StreamDelivery
 
 _INFERENCE: dict[str, Mode] = {"/v1/completions": "raw", "/v1/chat/completions": "chat"}
 
@@ -43,21 +45,35 @@ class ServingApp:
     """Mount behind TLS with one queue-owning coordinator per configured engine."""
 
     def __init__(
-        self, serving: Serving, *, request_timeout: float, retry_after_seconds: int
+        self,
+        serving: Serving,
+        *,
+        request_timeout: float,
+        retry_after_seconds: int,
+        stream_heartbeat_seconds: float | None = None,
     ) -> None:
         if not math.isfinite(request_timeout) or request_timeout <= 0:
             raise ValueError("invalid gateway request timeout")
         if type(retry_after_seconds) is not int or retry_after_seconds <= 0:
             raise ValueError("invalid Retry-After interval")
+        if stream_heartbeat_seconds is not None and (
+            type(stream_heartbeat_seconds) not in (int, float)
+            or not math.isfinite(stream_heartbeat_seconds)
+            or stream_heartbeat_seconds <= 0
+        ):
+            raise ValueError("A positive finite stream heartbeat is required")
+        self.stream_heartbeat_seconds = stream_heartbeat_seconds
         self.serving = serving
-        self.discovery = DiscoveryApp(serving.config)
+        self.discovery = DiscoveryApp(
+            serving.config, streaming=stream_heartbeat_seconds is not None
+        )
         self.request_timeout, self.retry_after = request_timeout, retry_after_seconds
 
     def __call__(
         self,
         environ: Mapping[str, object],
         start_response: Callable[[str, list[tuple[str, str]]], object],
-    ) -> list[bytes]:
+    ) -> Iterable[bytes]:
         path = environ.get("PATH_INFO")
         if not isinstance(path, str) or path not in _INFERENCE:
             return self.discovery(environ, start_response)
@@ -73,17 +89,52 @@ class ServingApp:
         headers: list[tuple[str, str]] = []
         try:
             auth = environ.get("HTTP_AUTHORIZATION")
-            completion = self.serving.complete(
-                _body(environ),
-                _INFERENCE[path],
-                auth if isinstance(auth, str) else None,
-                control,
-            )
-            payload = json.dumps(
-                completion.body, ensure_ascii=False, separators=(",", ":")
-            ).encode()
-            completion.check_release()
-            headers.append(("x-vig-receipt", completion.receipt_header))
+            with ExitStack() as slot:
+                admitted = slot.enter_context(
+                    self.serving.admit(
+                        _body(environ),
+                        _INFERENCE[path],
+                        auth if isinstance(auth, str) else None,
+                        control,
+                    )
+                )
+                if admitted.request.stream:
+                    if self.stream_heartbeat_seconds is None:
+                        raise PolicyError(
+                            400,
+                            "Streaming is unavailable on this deployment",
+                            "unsupported_parameter",
+                            "stream",
+                        )
+                    # The stream owns the slot until its worker stops, even if the client goes away.
+                    owned = slot.pop_all()
+                    try:
+                        stream = StreamDelivery(
+                            lambda: self.serving.execute(admitted, control),
+                            control,
+                            release=owned.close,
+                            mode=admitted.request.mode,
+                            include_usage=admitted.request.include_usage,
+                            heartbeat_seconds=self.stream_heartbeat_seconds,
+                        )
+                        start_response(
+                            "200 OK",
+                            [
+                                ("Content-Type", "text/event-stream"),
+                                ("Cache-Control", "no-store"),
+                            ],
+                        )
+                    except BaseException:
+                        control.cancel()
+                        owned.close()
+                        raise
+                    return stream
+                completion = self.serving.execute(admitted, control)
+                payload = json.dumps(
+                    completion.body, ensure_ascii=False, separators=(",", ":")
+                ).encode()
+                completion.check_release()
+                headers.append(("x-vig-receipt", completion.receipt_header))
         except PolicyError as exc:
             status = HTTPStatus(exc.status)
             error = exc.as_dict()

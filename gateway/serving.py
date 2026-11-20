@@ -16,7 +16,7 @@ from typing import Protocol
 from engine.mock import EngineIntegrityError, EngineResult, EngineUnavailable
 from gateway.commit_delivery import DeliveryCommitter
 from gateway.discovery import ServiceConfig
-from gateway.policy import Mode, PolicyError, read_body, validate
+from gateway.policy import InferenceRequest, Mode, PolicyError, read_body, validate
 from pickup.crypto import PickupError, parse_holder_secret
 from prover.request import END_TOKENS, reply_complete
 
@@ -96,6 +96,13 @@ class Completion:
     check_release: Callable[[], None] = field(repr=False)
 
 
+@dataclass(frozen=True)
+class Admitted:
+    request: InferenceRequest
+    original_chat: object = field(repr=False)
+    holder_secret: bytes | None = field(repr=False)
+
+
 class Serving:
     def __init__(
         self,
@@ -109,13 +116,14 @@ class Serving:
         self.committer, self.authenticate = committer, authenticate
         self.queue = AdmissionQueue()
 
-    def complete(
+    @contextmanager
+    def admit(
         self,
         body: bytes | Iterable[bytes],
         mode: Mode,
         authorization: str | None,
         control: RequestControl,
-    ) -> Completion:
+    ) -> Iterator[Admitted]:
         content = read_body(
             body, authorization=authorization, authenticate=self.authenticate
         )
@@ -128,13 +136,6 @@ class Serving:
                 max_tokens_cap=self.config.max_tokens_cap,
             )
             assert isinstance(content, dict)
-            if req.stream:
-                raise PolicyError(
-                    400,
-                    "Streaming is unavailable on this deployment",
-                    "unsupported_parameter",
-                    "stream",
-                )
             try:
                 secret = parse_holder_secret(content.get("user"))
             except PickupError:
@@ -151,81 +152,103 @@ class Serving:
                     "user",
                 )
             control.check()
-            try:
-                result = self.engine.generate(req.prompt, req.max_tokens)
-            except EngineUnavailable:
+            yield Admitted(req, content.get("messages"), secret)
+
+    def complete(
+        self,
+        body: bytes | Iterable[bytes],
+        mode: Mode,
+        authorization: str | None,
+        control: RequestControl,
+    ) -> Completion:
+        with self.admit(body, mode, authorization, control) as admitted:
+            if admitted.request.stream:
                 raise PolicyError(
-                    503, "Engine unavailable", "engine_unavailable"
-                ) from None
-            except EngineIntegrityError:
-                raise PolicyError(
-                    502, "Engine integrity check failed", "unwarranted_reply"
-                ) from None
+                    400,
+                    "Stream delivery requires the SSE transport",
+                    "unsupported_parameter",
+                    "stream",
+                )
+            return self.execute(admitted, control)
+
+    def execute(self, admitted: Admitted, control: RequestControl) -> Completion:
+        """Run one admitted request while its FIFO slot is owned by this caller."""
+        req = admitted.request
+        mode = req.mode
+        control.check()
+        try:
+            result = self.engine.generate(req.prompt, req.max_tokens)
+        except EngineUnavailable:
+            raise PolicyError(503, "Engine unavailable", "engine_unavailable") from None
+        except EngineIntegrityError:
+            raise PolicyError(
+                502, "Engine integrity check failed", "unwarranted_reply"
+            ) from None
+        control.check()
+        if (
+            not isinstance(result, EngineResult)
+            or result.integrity_window_closed is not True
+        ):
+            raise PolicyError(
+                502, "Engine integrity window incomplete", "unwarranted_reply"
+            )
+        tokens = result.tokens
+        if (
+            not isinstance(tokens, tuple)
+            or any(type(t) is not int or not 0 <= t < 202048 for t in tokens)
+            or not reply_complete(tokens, req.max_tokens)
+        ):
+            raise PolicyError(
+                502, "Incomplete or invalid engine reply", "unwarranted_reply"
+            )
+        display = self.renderer.decode(tokens) if mode == "chat" else None
+        attempt = self.committer.prepare(
+            req,
+            tokens,
+            original_chat=admitted.original_chat,
+            reply_text=display,
+            holder_secret=admitted.holder_secret,
+        )
+        verification = self.committer.commit(attempt, guard=control.check)
+
+        def check_release() -> None:
+            self.committer.check_release(attempt)
             control.check()
-            if (
-                not isinstance(result, EngineResult)
-                or result.integrity_window_closed is not True
-            ):
-                raise PolicyError(
-                    502, "Engine integrity window incomplete", "unwarranted_reply"
-                )
-            tokens = result.tokens
-            if (
-                not isinstance(tokens, tuple)
-                or any(type(t) is not int or not 0 <= t < 202048 for t in tokens)
-                or not reply_complete(tokens, req.max_tokens)
-            ):
-                raise PolicyError(
-                    502, "Incomplete or invalid engine reply", "unwarranted_reply"
-                )
-            display = self.renderer.decode(tokens) if mode == "chat" else None
-            attempt = self.committer.prepare(
-                req,
-                tokens,
-                original_chat=content.get("messages"),
-                reply_text=display,
-                holder_secret=secret,
-            )
-            verification = self.committer.commit(attempt, guard=control.check)
 
-            def check_release() -> None:
-                self.committer.check_release(attempt)
-                control.check()
-
-            check_release()
-            choice: dict[str, object] = {
-                "index": 0,
-                "finish_reason": "stop" if tokens[-1] in END_TOKENS else "length",
-            }
-            if mode == "chat":
-                choice["message"] = {"role": "assistant", "content": display}
-            else:
-                choice.update(text=None, token_ids=list(tokens))
-            prefix = "chatcmpl" if mode == "chat" else "cmpl"
-            response: dict[str, object] = {
-                "id": f"{prefix}-{attempt.request_id}",
-                "object": "chat.completion" if mode == "chat" else "text_completion",
-                "created": int(
-                    datetime.fromisoformat(
-                        attempt.served_at.replace("Z", "+00:00")
-                    ).timestamp()
-                ),
-                "model": req.model,
-                "choices": [choice],
-                "usage": {
-                    "prompt_tokens": len(req.prompt),
-                    "completion_tokens": len(tokens),
-                    "total_tokens": len(req.prompt) + len(tokens),
-                },
-                "verification": verification,
-            }
-            header = (
-                base64.urlsafe_b64encode(
-                    json.dumps(
-                        verification["receipt"], sort_keys=True, separators=(",", ":")
-                    ).encode()
-                )
-                .rstrip(b"=")
-                .decode("ascii")
+        check_release()
+        choice: dict[str, object] = {
+            "index": 0,
+            "finish_reason": "stop" if tokens[-1] in END_TOKENS else "length",
+        }
+        if mode == "chat":
+            choice["message"] = {"role": "assistant", "content": display}
+        else:
+            choice.update(text=None, token_ids=list(tokens))
+        prefix = "chatcmpl" if mode == "chat" else "cmpl"
+        response: dict[str, object] = {
+            "id": f"{prefix}-{attempt.request_id}",
+            "object": "chat.completion" if mode == "chat" else "text_completion",
+            "created": int(
+                datetime.fromisoformat(
+                    attempt.served_at.replace("Z", "+00:00")
+                ).timestamp()
+            ),
+            "model": req.model,
+            "choices": [choice],
+            "usage": {
+                "prompt_tokens": len(req.prompt),
+                "completion_tokens": len(tokens),
+                "total_tokens": len(req.prompt) + len(tokens),
+            },
+            "verification": verification,
+        }
+        header = (
+            base64.urlsafe_b64encode(
+                json.dumps(
+                    verification["receipt"], sort_keys=True, separators=(",", ":")
+                ).encode()
             )
-            return Completion(response, header, check_release)
+            .rstrip(b"=")
+            .decode("ascii")
+        )
+        return Completion(response, header, check_release)

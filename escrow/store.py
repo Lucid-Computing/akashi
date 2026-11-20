@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import hmac
 import json
-import os
 import re
 import sqlite3
-import stat
 from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
+
+from operations.private_db import private_database_file
 
 from .crypto import seal_record, transfer_record
 from .wakeup import Wakeup
@@ -86,28 +86,6 @@ class Transfer:
         return self.binding.leaf_hash
 
 
-def _private_file(path: Path) -> None:
-    directory = path.parent.lstat()
-    if (
-        not stat.S_ISDIR(directory.st_mode)
-        or directory.st_uid != os.geteuid()
-        or directory.st_mode & 0o077
-    ):
-        raise PermissionError("Escrow requires a private role-owned directory")
-    fd = os.open(path, os.O_CREAT | os.O_NOFOLLOW | os.O_RDWR, 0o600)
-    try:
-        info = os.fstat(fd)
-        if (
-            not stat.S_ISREG(info.st_mode)
-            or info.st_uid != os.geteuid()
-            or info.st_mode & 0o077
-            or info.st_nlink != 1
-        ):
-            raise PermissionError("Escrow requires a private role-owned database")
-    finally:
-        os.close(fd)
-
-
 def _binding(row: sqlite3.Row) -> Binding:
     return Binding(
         row["leaf_hash"], row["t"], row["served_at"], int(row["round"]), row["mode"]
@@ -162,7 +140,7 @@ class EscrowStore:
         ):
             raise ValueError("Invalid escrow key configuration")
         self._path = Path(path)
-        _private_file(self._path)
+        private_database_file(self._path)
         self._wrap = wrapping_key
         self._recipient = auditor_public_key
         self._retry_key = hmac.digest(wrapping_key, b"vig/escrow/1/retry-key", "sha256")
