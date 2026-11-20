@@ -8,7 +8,7 @@ From specification section 12:
 |------|----------|------------------|------------|
 | `messages`, `x`, `y` (unselected) | ES (transcript escrow) | Until beacon round verified, max 5 minutes | Gateway operator |
 | Selected transcripts | CH (challenge service) | 30 days after verdict | Auditor |
-| Sealed receipts | PK (pickup store) | 7 days | Anyone holding the transcript |
+| Sealed receipts | PK (pickup store) | 7 days | Ciphertext by opaque ID, plaintext with holder material |
 | Log leaves, STHs | LG (receipt log) | Permanent | Public |
 | Verdicts (no content) | AU (audit API) | Permanent | Public |
 | Proofs, statements | CH | 30 days | The transcript's holder (with capability token) |
@@ -50,20 +50,19 @@ If beacon unavailable, transcripts wait; the hard cap ends in deletion and an `e
 
 ### Sealed Pickup
 
-For holders who lose the receipt, sealed pickup provides recovery without revealing content to the gateway operator:
+The holder generates a fresh 32-byte secret and sets the request's `user` field to `vig-pickup/1:` followed by its lowercase hex encoding. The gateway and forwarding router see these inputs. The pickup store retains only the lookup digest and authenticated ciphertext for `W_pickup`. Consult [RFC-0010](../docs/rfcs/RFC-0010-router-pickup.md#proposed-design) for the wire contract and [parameters](parameters.md#service-parameters) for expiry.
 
+```text
+frame(b) = u32le(len(b)) || b
+k = SHA256("vig/pickup/v1" || holder_secret || frame(JCS(messages))
+           || u32le(budget) || frame(UTF8(reply_text)))
+pickup_id = SHA256("id" || k)
+key = HKDF-SHA256(ikm=k, salt=absent, info="enc", length=32)
+aad = UTF8("vig-pickup/1") || pickup_id
+ciphertext_with_tag = XChaCha20-Poly1305(key, fresh_nonce24, JCS(verification), aad)
 ```
-k = SHA-256("vig/pickup/v1" || JCS(messages) || u32le(max_tokens) || UTF-8(reply_text))
-pickup_id = SHA-256("id" || k)
-blob = XChaCha20-Poly1305(key=HKDF-SHA256(k, info="enc"), plaintext=JCS(verification))
-```
 
-The store holds `(pickup_id, blob)` with:
-- No plaintext receipt
-- Key derivable only from the transcript
-- Blob encrypted with key derived from transcript
-
-Fetch: `GET /receipts/v1/pickup/{pickup_id}` returns blob; holder decrypts with their own `k`.
+Use the lowercase hex lookup ID at `GET /receipts/v1/pickup/{pickup_id}`. The response carries `version`, hex `nonce` and hex `ciphertext`, including the authentication tag. The holder opens the envelope with the original messages, resolved budget, exact displayed reply and secret, then independently verifies the receipt. Run `make test-pickup-crypto` for the [fixed byte vector](../tests/fixtures/pickup-v1.json).
 
 ## Proof Sensitivity
 

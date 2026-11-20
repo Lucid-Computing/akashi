@@ -155,27 +155,7 @@ Returns consistency proof between two tree sizes (RFC 6962 section 2.1.2).
 
 ## Sealed Pickup (Mode R)
 
-Router clients that don't receive `verification` in the proxied response can fetch the receipt by request ID after serving.
-
-The pickup URL from `.well-known/vig.json`:
-
-```
-GET /receipts/v1/pickup/{request_id}
-```
-
-Returns:
-```json
-{
-  "receipt": { <same receipt> },
-  "prompt_token_ids": [...],
-  "reply_token_ids": [...],
-  "pickup_id": "<32-byte hex>"
-}
-```
-
-Where `pickup_id = SHA-256("sealed_pickup" || request_id || secret)` proves that the gateway operator sealed this package (router cannot forge it).
-
-Available for 30 days after serving; returns 404 if request_id is unknown or expired.
+The pickup service returns a sealed envelope by its opaque `pickup_id`. The holder derives the digest from their secret and the original exchange, opens the envelope, and verifies the recovered receipt against the trusted log identity and key. The [sealed pickup byte contract](retention.md#sealed-pickup) specifies the inputs and encoding.
 
 ## Retention
 
@@ -185,7 +165,7 @@ From `retention.md`:
 |---|---|---|---|
 | Receipts in log | 5 years | Proof of inclusion, challenges |
 | Leaf hashes in tree | Permanent | Tree integrity |
-| Sealed pickup packages | 30 days | Router receipt delivery |
+| Sealed pickup packages | 7 days (`W_pickup`) | Router receipt delivery |
 | STH history | 5 years | Tree consistency verification |
 
 ## Security Properties
