@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import socket
+import time
 from collections.abc import Iterable, Iterator
 from contextlib import closing
 from http import HTTPStatus
@@ -161,6 +163,17 @@ class Forwarder(BaseHTTPRequestHandler):
         length = lengths[0].lstrip("0") or "0"
         if len(length) > 6 or int(length) > 256 * 1024:  # gateway request body limit
             self._error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+            # Closing with unread TCP input can reset the connection before the client reads 413.
+            deadline = time.monotonic() + self.server.timeout_seconds
+            try:
+                self.wfile.flush()
+                self.connection.shutdown(socket.SHUT_WR)
+                while (remaining := deadline - time.monotonic()) > 0:
+                    self.connection.settimeout(remaining)
+                    if not self.connection.recv(65536):
+                        break
+            except OSError:
+                pass
             return
         try:
             raw = self.rfile.read(int(length))
