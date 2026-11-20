@@ -48,3 +48,9 @@ installed. [Pinned quicknet chain information](https://api.drand.sh/52db9ba70e0c
 
 - `specs/verifier-kit.md`: Exit codes and verification procedure
 - `specs/facts-register.md`: F23, F26, F30-F33 (performance and soundness)
+
+## Audit job lifecycle
+
+Open `AuditJobs` on the challenge intake database with the same holder-tag key and the matching auditor private key. The store materializes demand jobs from accepted work even after a process restart. A `SampleBridge` periodically scans authenticated selections, signed log history and the auditor inbox. Its bounded cursor visits later indices when earlier ones are pending. It rechecks the original token binding and rendering before enqueuing selected evidence.
+
+Call `claim(lease_time=...)` with the worker lease configured for the deployment. A claim moves one job from pending to verifying. A restarted worker can reclaim expired leases and must present its current claim to dispatch or complete work. The prover spool receives a stable job identity, original statement and frozen deadline across retries. The 15-minute on-demand target is reported separately from the hard sampled deadline. Missing handoffs, expired samples and other unavailable outcomes retain their reason. Per-reader capabilities authorize private status. Each invocation of `make test-audit-jobs` exercises recovery, deadline boundaries, sample reconciliation and spool retries. [Auditor lifecycle](../docs/rfcs/RFC-0007-challenge-lifecycle.md#proposed-design) · [Timing parameters](../specs/parameters.md#service-parameters)
