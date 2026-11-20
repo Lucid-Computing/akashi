@@ -17,3 +17,8 @@ test-proof-worker:
 .PHONY: test-proof-spool-native
 test-proof-spool-native:
 	$(PYTHON) -m tests.native_spool
+
+REFERENCE_PYTHON ?= $(UV) run --locked python
+.PHONY: test-reference-scorer
+test-reference-scorer:
+	$(REFERENCE_PYTHON) -m unittest -v tests.test_reference tests.test_scoring
