@@ -16,7 +16,7 @@ from typing import Any
 from xml.etree import ElementTree
 
 from gateway.renderer import ChatRenderer
-from prover.request import build_statement, reply_complete
+from prover.request import VOCABULARY_SIZE, build_statement, reply_complete
 from tools.gate_m1 import ROOT, _write
 
 WORKLOAD = ROOT / "tests/fixtures/m0-workload.jsonl"
@@ -24,7 +24,9 @@ COMMITMENT = "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46"
 
 # SHA-256 of the sorted testcase names, one ASCII name and LF per line, from the
 # F4 integer_model/tests/test_arithmetic_edges.py with pytest 9.0.3 --collect-only.
-FLOAT64_NAMES_SHA256 = "879e0ef9ed58cc915b0081e37f1a2ab494771826364a62812e15016713b9d51a"
+FLOAT64_NAMES_SHA256 = (
+    "879e0ef9ed58cc915b0081e37f1a2ab494771826364a62812e15016713b9d51a"
+)
 
 
 class EvidenceError(ValueError):
@@ -215,6 +217,11 @@ def measure_cases(
                 "caller_budget": budget,
                 "reply_tokens": len(reply),
                 "proof_bytes": len(proof),
+                "evidence_sha256": hashlib.sha256(
+                    b"vig/m0/whole-reply/1"
+                    + hashlib.sha256(statement).digest()
+                    + hashlib.sha256(proof).digest()
+                ).hexdigest(),
                 "proof_ns": proof_ns,
                 "verify_ns": verify_ns,
                 **timing,
@@ -265,7 +272,9 @@ def engine_startup(capture: Path, eligible: object) -> dict[str, object]:
     }
     if field == "supervisor_start_to_both_markers_and_health_ns":
         require(health_ns <= eligible_ns, "eligibility preceded observed engine health")
-        durations["engine_startup_to_eligible_interval"] = "supervisor_start_to_eligible"
+        durations["engine_startup_to_eligible_interval"] = (
+            "supervisor_start_to_eligible"
+        )
     return durations
 
 
@@ -290,6 +299,104 @@ def engine_platform(observed: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def cross_platform(
+    record: dict[str, Any], ready: dict[str, Any], ready_sha256: str
+) -> dict[str, object]:
+    require(
+        type(record["schema_version"]) is int and record["schema_version"] == 1,
+        "unknown cross-host record version",
+    )
+    if record["status"] == "unavailable":
+        require(
+            record["reason"]
+            in (
+                "insufficient_memory",
+                "insufficient_storage",
+                "no_second_h100",
+                "unavailable_model_assets",
+                "allocation_unavailable",
+            )
+            and bool(record["resource_evidence"]),
+            "second host assessment missing",
+        )
+        return {"cross_host": record["reason"]}
+    require(
+        record["status"] in ("measured", "mismatch")
+        and all(
+            isinstance(record[k], str) and re.fullmatch(r"[a-f0-9]{64}", record[k])
+            for k in ("primary_host", "secondary_host")
+        )
+        and record["primary_host"] != record["secondary_host"]
+        and isinstance(record["canaries"], list)
+        and len(record["canaries"]) == len(ready["canaries"]) == 3,
+        "invalid cross-host observations",
+    )
+    mismatches = []
+    for index, (expected, observed) in enumerate(
+        zip(ready["canaries"], record["canaries"], strict=True)
+    ):
+        tokens = observed["expected"]
+        require(
+            expected["prompt"] == observed["prompt"]
+            and type(observed["max_tokens"]) is int
+            and expected["max_tokens"] == observed["max_tokens"]
+            and isinstance(tokens, list)
+            and all(
+                type(token) is int and 0 <= token < VOCABULARY_SIZE for token in tokens
+            )
+            and reply_complete(tokens, observed["max_tokens"]),
+            "secondary canary differs from canonical request or is incomplete",
+        )
+        if tokens != expected["expected"]:
+            mismatches.append(index)
+    matched = 3 - len(mismatches)
+    mismatch = record["status"] == "mismatch"
+    require(
+        (matched < 3) == mismatch, "cross-host outcome contradicts observed replies"
+    )
+    result: dict[str, object] = {
+        "cross_host": "canary_mismatch" if mismatch else "matched_three_canaries",
+        "cross_host_comparison": {
+            "matched": not mismatch,
+            "startup_refused": mismatch,
+            "canaries_compared": 3,
+            "canaries_matching": matched,
+        },
+    }
+    if mismatch:
+        require(
+            record["commitment_id"] == ready["commitment_id"] == COMMITMENT
+            and record["dtype"] == ready["dtype"]
+            and record["primary_ready_sha256"] == ready_sha256
+            and record["matched"] is False
+            and record["startup_refused"] is True
+            and record["secondary_eligible"] is False
+            and all(
+                type(index) is int
+                for key in ("compared_mismatch_indices", "startup_mismatch_indices")
+                for index in record[key]
+            )
+            and record["compared_mismatch_indices"] == mismatches
+            and record["startup_mismatch_indices"] == mismatches[:1]
+            and record["gate_failure"] == "canary_token_mismatch"
+            and record["same_process_f21"] is True
+            and type(record["float64_cases_passed"]) is int
+            and record["float64_cases_passed"] == ready["float64_cases_passed"]
+            and "secondary_platform" in record,
+            "secondary failure lacks its observed startup gate",
+        )
+    else:
+        require(
+            record.get("matched", True) is True
+            and record.get("startup_refused", False) is False
+            and record.get("secondary_eligible", True) is True,
+            "secondary match contradicts its startup gate",
+        )
+    if "secondary_platform" in record:
+        result["secondary_engine"] = engine_platform(record["secondary_platform"])
+    return result
+
+
 def environment(config: dict[str, Any], capture: Path) -> dict[str, object]:
     # Runtime imports keep the CPU mock gates usable without the real-model host components.
     launch = importlib.import_module("engine.launch")
@@ -301,7 +408,8 @@ def environment(config: dict[str, Any], capture: Path) -> dict[str, object]:
         and all(rebuild["observed"].get(k) == v for k, v in launch.F4.items()),
         "published commitment rebuild did not match",
     )
-    ready = document(Path(config["ready"]))
+    ready_bytes = Path(config["ready"]).read_bytes()
+    ready = json.loads(ready_bytes)
     candidates = document(capture / "unproven-candidates.json")
     require(
         ready["schema_version"] == 1
@@ -316,37 +424,10 @@ def environment(config: dict[str, Any], capture: Path) -> dict[str, object]:
     count, junit_sha256 = float64_suite(
         Path(config["float64_junit"]), ready["float64_cases_passed"]
     )
-    cross = document(Path(config["cross_host"]))
-    require(cross["schema_version"] == 1, "unknown cross-host record version")
-    secondary = {}
-    if cross["status"] == "measured":
-        if "secondary_platform" in cross:
-            secondary["secondary_engine"] = engine_platform(cross["secondary_platform"])
-        require(
-            all(
-                isinstance(cross[k], str) and re.fullmatch(r"[a-f0-9]{64}", cross[k])
-                for k in ("primary_host", "secondary_host")
-            )
-            and cross["primary_host"] != cross["secondary_host"]
-            and cross["canaries"] == ready["canaries"],
-            "cross-host canaries did not agree",
-        )
-        comparison = "matched_three_canaries"
-    else:
-        require(
-            cross["status"] == "unavailable"
-            and cross["reason"]
-            in (
-                "insufficient_memory",
-                "insufficient_storage",
-                "no_second_h100",
-                "unavailable_model_assets",
-                "allocation_unavailable",
-            )
-            and bool(cross["resource_evidence"]),
-            "second host assessment missing",
-        )
-        comparison = cross["reason"]
+    ready_sha256 = hashlib.sha256(ready_bytes).hexdigest()
+    comparison = cross_platform(
+        document(Path(config["cross_host"])), ready, ready_sha256
+    )
     proving = document(Path(config["prover_startup"]))
     require(
         proving["measurement"] in ("launch_to_ready", "launch_to_first_request")
@@ -363,8 +444,9 @@ def environment(config: dict[str, Any], capture: Path) -> dict[str, object]:
         "prover_startup_interval": proving["measurement"],
         "float64_cases": count,
         "float64_junit_sha256": junit_sha256,
-        "cross_host": comparison,
-        **secondary,
+        "serving_eligibility_scope": "primary_engine_only",
+        "eligible_startup_sha256": ready_sha256,
+        **comparison,
         "verifier_architecture": platform.machine(),
         "verifier_os": platform.system(),
         "verifier_python": platform.python_version(),
