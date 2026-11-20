@@ -13,6 +13,7 @@ import json
 import math
 import os
 import re
+import secrets
 import signal
 import socket
 import sqlite3
@@ -47,7 +48,12 @@ from log.reader import LogReader
 from prover.reference import ReferenceScorer, ReferenceTrace
 from prover.request import build_statement
 from prover.scoring import Assessment, assess
-from prover.submission import SubmissionStore
+from prover.submission import (
+    SubmissionStore,
+    _rename_once,
+    guarded_spool,
+    private_directory,
+)
 from prover.worker import ProofWorker, Unavailable
 from soak.settings import response
 from verifier.proof import NativeVerifier
@@ -395,12 +401,43 @@ def private_handler(
     return Handler
 
 
+def check_spool_publication(state: Path, spool: Path) -> None:
+    """Exercise the worker's atomic publication across its two actual directory FDs."""
+    require(
+        spool.is_absolute()
+        and spool.parts[-2:] == ("proof-io", "spool")
+        and state == spool.with_name("submission")
+    )
+    with (
+        private_directory(state) as src,
+        guarded_spool(spool) as pool,
+        private_directory("in", parent_fd=pool) as dst,
+    ):
+        # Continuous cp_prove only considers <64 lowercase hex>.req in in/.
+        # An empty probe has neither a request's name nor any private material.
+        name = ".vig-publication-" + secrets.token_hex(16)
+        fd = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600, dir_fd=src)
+        owner = src
+        try:
+            os.close(fd)
+            _rename_once(name, src, name, dst)
+            owner = dst
+            os.fsync(dst)
+        finally:
+            os.unlink(name, dir_fd=owner)
+            os.fsync(owner)
+        os.fsync(src)
+
+
 def assembly(c: dict[str, Any], mode: str) -> None:
     require(
         sys.platform == "linux"
         and type(c["schema_version"]) is int
         and c["schema_version"] == 1
     )
+    if mode == "check-spool":
+        check_spool_publication(Path(c["submission_state"]), Path(c["spool"]))
+        return
     state = private_dir(c["state"])
     for name in (
         "poll_seconds",
@@ -599,7 +636,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument(
-        "--role", choices=("index", "worker", "custody", "http"), required=True
+        "--role",
+        choices=("index", "worker", "custody", "http", "check-spool"),
+        required=True,
     )
     args = parser.parse_args()
     os.umask(0o077)

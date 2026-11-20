@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import http.client
 import json
 import os
@@ -25,7 +26,8 @@ from unittest.mock import patch
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.public import PrivateKey
 
-from prover.submission import COMMITMENT
+from prover.submission import COMMITMENT, _rename_once
+from soak import audit_service
 from soak import deployment as deploy
 from soak.ledger import NativeProcess
 from soak.settings import digest, private
@@ -51,7 +53,16 @@ class DeploymentTest(unittest.TestCase):
         self.verifier = self.root / "verifier"
         self.verifier.mkdir(mode=0o700)
         _write(self.verifier / "manifest.json", {"fixture": True})
-        for name in ("spool", "control", "prover", "gateway", "primary"):
+        for name in (
+            "proof-io",
+            "proof-io/spool",
+            "proof-io/spool/in",
+            "proof-io/submission",
+            "control",
+            "prover",
+            "gateway",
+            "primary",
+        ):
             (self.root / name).mkdir(mode=0o700)
         self.previous = self.root / "primary/ready.json"
         self.fresh = self.root / "gateway/ready.json"
@@ -62,7 +73,7 @@ class DeploymentTest(unittest.TestCase):
             "provider_uid": os.geteuid(),
             "port": 12345,
             "control_socket": str(self.root / "control/s"),
-            "spool": str(self.root / "spool"),
+            "spool": str(self.root / "proof-io/spool"),
             **{
                 k: str(self.root / "gateway" / n)
                 for k, n in (
@@ -144,7 +155,7 @@ class DeploymentTest(unittest.TestCase):
         )
         (self.root / "control/gpu-assignment").write_text("0, " + self.gpus["engine"])
         (self.root / "prover/gpu-assignment").write_text(self.gpus["prover"] + ", 12")
-        (self.root / "spool/mark.txt").write_text(
+        (self.root / "proof-io/spool/mark.txt").write_text(
             "cp-folder 1\nkind spool\ncommitment " + COMMITMENT + "\n"
         )
         _write(
@@ -163,7 +174,7 @@ class DeploymentTest(unittest.TestCase):
             self.gpus,
             self.ep,
             self.verifier,
-            self.root / "spool",
+            self.root / "proof-io/spool",
         )
 
     def test_primary_evidence_and_live_roles(self) -> None:
@@ -174,7 +185,7 @@ class DeploymentTest(unittest.TestCase):
                 "PRIMARY_READY": self.previous,
                 "FRESH_READY": self.fresh,
                 "ENGINE_ENDPOINT": self.root / "engine-endpoint.json",
-                "PROVER_SPOOL": self.root / "spool",
+                "PROVER_SPOOL": self.root / "proof-io/spool",
                 "VERIFIER": self.verifier,
             }.items()
         }
@@ -244,6 +255,9 @@ class DeploymentTest(unittest.TestCase):
             bytes(PrivateKey(Path(au["recipient_key"]).read_bytes()).public_key).hex(),
             gw["auditor_recipient"],
         )
+        self.assertEqual(au["submission_state"], str(self.primary.submission))
+        self.assertEqual(au["spool"], str(self.primary.spool))
+        self.assertFalse((self.t / "auditor/submission").exists())
         self.assertNotIn("spool", json.dumps(holder))
         self.assertNotIn(self.ep["key"], json.dumps(au))
         self.assertNotIn("loopback_origins", holder)
@@ -291,9 +305,86 @@ class DeploymentTest(unittest.TestCase):
             self.assertEqual(cmd.argv[:3], ("/operator/role-command", cmd.role, "--"))
             self.assertNotIn("cp_prove", str(cmd.argv))
             self.assertNotIn("client.key", str(cmd.argv))
+            if cmd.name == "sweep-spool":
+                self.assertEqual(
+                    cmd.argv[-2:],
+                    (str(self.primary.submission), str(self.primary.spool)),
+                )
             if cmd.role == "router":
                 self.assertIn("opaque", cmd.argv)
                 self.assertNotIn("--config", cmd.argv)
+
+    def test_publication_probe_uses_real_noreplace_and_preserves_queued_jobs(
+        self,
+    ) -> None:
+        deploy.provision(self.root, self.conf, self.primary)
+        state, incoming = self.primary.submission, self.primary.spool / "in"
+        reserved = state / "prepared.pending"
+        queued = incoming / ("a" * 64 + ".req")
+        reserved.write_bytes(b"prior private reservation")
+        queued.write_bytes(b"prior request")
+
+        def observe(name: str, source: int, target: str, dest: int) -> None:
+            self.assertEqual(os.fstat(source).st_ino, state.stat().st_ino)
+            self.assertEqual(os.fstat(dest).st_ino, incoming.stat().st_ino)
+            self.assertFalse(target.endswith(".req"))
+            _rename_once(name, source, target, dest)
+            self.assertEqual((incoming / target).read_bytes(), b"")
+
+        with patch.object(audit_service, "_rename_once", side_effect=observe) as call:
+            audit_service.check_spool_publication(state, self.primary.spool)
+            call.assert_called_once()
+        self.assertEqual(list(incoming.iterdir()), [queued])
+        self.assertEqual(list(state.iterdir()), [reserved])
+        self.assertEqual(reserved.read_bytes(), b"prior private reservation")
+        self.assertEqual(queued.read_bytes(), b"prior request")
+
+        # Even two bind mounts on the same filesystem give EXDEV on Linux.
+        self.assertEqual(state.stat().st_dev, incoming.stat().st_dev)
+        with (
+            patch.object(
+                audit_service,
+                "_rename_once",
+                side_effect=OSError(errno.EXDEV, "cross-mount"),
+            ),
+            self.assertRaises(OSError) as failed,
+        ):
+            audit_service.check_spool_publication(state, self.primary.spool)
+        self.assertEqual(failed.exception.errno, errno.EXDEV)
+        self.assertEqual(list(incoming.iterdir()), [queued])
+        self.assertEqual(list(state.iterdir()), [reserved])
+
+    def test_failed_namespace_probe_prevents_all_traffic_services(self) -> None:
+        ports = deploy.provision(self.root, self.conf, self.primary)
+        with (
+            patch.object(
+                subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 1),
+            ) as run,
+            patch.object(deploy.Children, "start") as spawn,
+            self.assertRaisesRegex(ValueError, "Auditor spool publication"),
+        ):
+            deploy.supervise(
+                self.root, self.conf, self.primary, ports, threading.Event()
+            )
+        self.assertEqual(
+            run.call_args.args[0],
+            [
+                self.conf["role_command"],
+                "auditor",
+                "--",
+                self.conf["audit_python"],
+                "-m",
+                "soak.audit_service",
+                "--role",
+                "check-spool",
+                "--config",
+                str(self.t / "auditor/config.json"),
+            ],
+        )
+        spawn.assert_not_called()
+        self.assertFalse((self.t / "runner/config.json").exists())
 
     def test_recovers_only_unbound_role_owned_socket(self) -> None:
         endpoint = self.root / "owned.sock"

@@ -132,6 +132,10 @@ class Primary:
     spool: Path
 
     @property
+    def submission(self) -> Path:
+        return self.spool.with_name("submission")
+
+    @property
     def prover(self) -> int:
         return self.native.pid
 
@@ -160,7 +164,7 @@ def physical(root: Path, config: Json, env: Mapping[str, str]) -> Primary:
         and root.is_absolute()
         and fresh == root / "gateway/ready.json"
         and ep == root / "engine-endpoint.json"
-        and spool == root / "spool"
+        and spool == root / "proof-io/spool"
         and previous.is_absolute()
         and verifier.is_absolute(),
         "Role environment differs from allocation",
@@ -248,6 +252,12 @@ def physical(root: Path, config: Json, env: Mapping[str, str]) -> Primary:
         "prover": _gpu(root / "prover/gpu-assignment", rf"({GPU}),\s*[0-9]+"),
     }
     require(len(set(gpus.values())) == 2, "Physical roles share a GPU")
+    _private_dir(spool.parent)
+    _private_dir(spool.with_name("submission"))
+    require(
+        {child.name for child in spool.parent.iterdir()} == {"spool", "submission"},
+        "Unexpected entries in the proof I/O mount",
+    )
     with guarded_spool(spool):
         pass
     verifier_attestation = json.loads((verifier / "verified.json").read_bytes())
@@ -379,7 +389,6 @@ def _populate(
         "public",
         "gateway",
         "auditor",
-        "auditor/submission",
         "holder",
         "runner",
         "ipc",
@@ -387,10 +396,6 @@ def _populate(
         "ipc/auditor",
     ):
         (stage / name).mkdir(mode=0o700)
-    require(
-        stage.stat().st_dev == p.spool.stat().st_dev,
-        "Submission and spool must share a filesystem",
-    )
     l = c["limits"]
     _certificate(stage, l["startup_timeout"], l["shutdown_timeout"])
     _raw(stage / "gateway/ingress.cfg", _proxy(dest / "gateway/ingress.pem", ports, l))
@@ -497,7 +502,7 @@ def _populate(
             custody_peer_uid=os.geteuid(),
             http_host="127.0.0.1",
             http_port=ports["audit"],
-            submission_state=str(auditor / "submission"),
+            submission_state=str(p.submission),
             spool=str(p.spool),
             native_runtime=native,
             reference=c["reference"],
@@ -692,14 +697,14 @@ def commands(t: Path, c: Json, p: Primary, ports: dict[str, int]) -> list[Comman
             role(
                 "auditor",
                 "sweep-spool",
-                [*sweep, "prover", str(au / "submission"), str(p.spool)],
+                [*sweep, "prover", str(p.submission), str(p.spool)],
             ),
         ]
     )
     return result
 
 
-def _ready(t: Path, ports: dict[str, int], c: Json) -> bool:
+def _ready(t: Path, ports: dict[str, int], c: Json, p: Primary) -> bool:
     limits = c["limits"]
     read = {"timeout": limits["network_timeout"], "cap": limits["response_cap"]}
     desc = private(t / "public/descriptor.json")
@@ -762,11 +767,11 @@ def _ready(t: Path, ports: dict[str, int], c: Json) -> bool:
         finally:
             conn.close()
     return all(
-        (t / "auditor" / name).is_file()
-        for name in (
-            "challenge.sqlite",
-            "inbox.sqlite",
-            "submission/submissions.sqlite3",
+        path.is_file()
+        for path in (
+            t / "auditor/challenge.sqlite",
+            t / "auditor/inbox.sqlite",
+            p.submission / "submissions.sqlite3",
         )
     )
 
@@ -877,6 +882,27 @@ def supervise(
         procs[group].append(pid)
 
     try:
+        check = subprocess.run(
+            [
+                c["role_command"],
+                "auditor",
+                "--",
+                c["audit_python"],
+                "-m",
+                "soak.audit_service",
+                "--role",
+                "check-spool",
+                "--config",
+                str(t / "auditor/config.json"),
+            ],
+            cwd=c["audit_source"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=limits["startup_timeout"],
+            check=False,
+        )
+        require(check.returncode == 0, "Auditor spool publication preflight failed")
         for item in jobs:
             if not item.name.startswith("sweep-"):
                 launch(item)
@@ -888,7 +914,7 @@ def supervise(
                 "Live traffic services did not become ready",
             )
             try:
-                if _ready(t, ports, c):
+                if _ready(t, ports, c, p):
                     break
             except (OSError, http.client.HTTPException):
                 pass
@@ -992,6 +1018,7 @@ def main() -> int:
         RuntimeError,
         OSError,
         http.client.HTTPException,
+        subprocess.TimeoutExpired,
     ) as exc:
         print("M4 traffic deployment stopped:", type(exc).__name__, file=sys.stderr)
         return 1
