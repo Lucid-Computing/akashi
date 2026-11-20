@@ -32,12 +32,21 @@ COMMITMENT_ID=c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46
 TOKENIZER_PATH=/path/to/tokenizer/
 ```
 
-## Testing
+## Canonical rendering
 
-```bash
-cd gateway/
-pytest tests/ -v
-```
+Supply the two tokenizer files from the F37 revision to `ChatRenderer`. The
+renderer verifies both SHA-256 digests before compiling the packaged template
+and loading the tokenizer. It joins text parts without a separator. User and
+assistant text retain their whitespace. The template trims the system message.
+The chat gate requires exactly one BOS, so a literal marker that produces a
+second BOS is rejected. Raw requests preserve the original IDs and have null
+display text. [Canonical rendering contract](../docs/rfcs/RFC-0002-canonical-rendering.md#proposed-design)
+
+Run `make test-renderer` at the repository root. The gate downloads the two
+pinned public files into a temporary directory. For offline runs, set
+`VIG_RENDER_ASSETS` to the directory containing `tokenizer.json` and
+`tokenizer_config.json` before invoking Make.
+[Pinned assets](https://huggingface.co/unsloth/Llama-4-Maverick-17B-128E-Instruct/tree/86c5ecb6f2fbddf604c60120125fb202e09f2556)
 
 ## Related Specifications
 
