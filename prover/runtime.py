@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 from prover.artifacts import sha256_stream, trusted_file
+from prover.request import REVISION as REVISION  # noqa: PLC0414 -- preserve the existing public import
 from prover.submission import (
     COMMITMENT,
     SpoolError,
@@ -25,7 +26,6 @@ from prover.submission import (
 )
 from tools.check_hardware import check_hardware
 
-REVISION = "9e2bdd8ff5bf9c62f18263d7dac189b0400b260c"
 SEED_SHA256 = "630dcd2966c4336691125448bbb25b4ff412a49c732db2c8abc1b8581bd710dd"
 # cp_prove.cu --setting, base.cuh print_setting(-1), common/setting.h, blocks/frame/version.h.
 SERVING_SETTING = (
@@ -96,8 +96,7 @@ def _pin(binary: BinaryIO, config: RuntimeConfig) -> None:
         or doc["schema_version"] != 1
         or doc.get("flashprove_revision") != REVISION
         or doc.get("commitment_id") != COMMITMENT
-        or doc.get("cp_prove_sha256")
-        != sha256_stream(binary)
+        or doc.get("cp_prove_sha256") != sha256_stream(binary)
     ):
         raise RuntimeUnavailable(
             "Prover build attestation does not match this executable"
@@ -195,7 +194,10 @@ class ProverProcess:
                 "HOME": str(config.home),
                 "TMPDIR": str(config.temp),
             }
-            with guarded_spool(config.spool) as spool, trusted_file(config.binary) as binary:
+            with (
+                guarded_spool(config.spool) as spool,
+                trusted_file(config.binary) as binary,
+            ):
                 _pin(binary, config)
                 # Execute the verified inode even if the deployment pathname is swapped.
                 fd = binary.fileno()

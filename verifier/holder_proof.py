@@ -8,9 +8,7 @@ import math
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from prover.request import VOCABULARY_SIZE, WINDOW
-from prover.scoring import Divergence
-from prover.worker import CandidateProof
+from prover.request import VOCABULARY_SIZE, WINDOW, CandidateProof, Divergence
 
 _REJECTED = (20, "PROOF_REJECTED")
 _UNAVAILABLE = (30, "NO_VERDICT")
@@ -128,7 +126,19 @@ def check_proof(
     record_disagreement: Callable[[str, str], None] | None = None,
 ) -> tuple[int, str]:
     """Check an exact or corrected-prefix statement through the pinned #25 adapter."""
-    if not isinstance(runtime, Mapping) or runtime.keys() - {"lean"} != _NATIVE:
+    if not isinstance(runtime, Mapping):
+        return _UNAVAILABLE
+    bounds = {"timeout_seconds", "memory_bytes", "max_proof_bytes"}
+    if runtime.keys() - {"lean"} == bounds:
+        native = Path(__file__).resolve().parent / "native"
+        runtime = {
+            **runtime,
+            "binary": str(native / "cp_verify"),
+            "manifest": str(native / "manifest.json"),
+            "config_dir": str(native / "config"),
+            "public_key_dir": str(native / "ivk"),
+        }
+    if runtime.keys() - {"lean"} != _NATIVE:
         return _UNAVAILABLE
     limit, memory = runtime.get("max_proof_bytes"), runtime.get("memory_bytes")
     if type(limit) is not int or limit <= 0 or type(memory) is not int or memory <= 0:
