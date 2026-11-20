@@ -109,27 +109,17 @@ All endpoints under `/log/v1/`:
 
 ### `GET /sth`
 
-Returns latest STH.
+Returns the latest signed tree head. The implementation also accepts the proposed `size` query parameter to retrieve the latest signed checkpoint at a historical size. Include `log_key_id` alongside `size` to retrieve a checkpoint signed by a specific historical writer. The response includes the signing key ID for archived-key verification.
 
 ### `POST /promise`
 
-Gateway-only endpoint (authenticated). Request:
+An authenticated gateway submits the canonical public leaf fields described in the [binding invariants](../docs/spec/03-data-model.md#binding-invariants). The log recomputes the leaf hash and rejects private fields. A successful append returns that public metadata, the permanent zero-based leaf index, the leaf hash and the Ed25519 promise signature. The gateway retains the private salt and verifies the promise before delivery.
 
-```json
-{
-  "leaf_hash": "<32-byte hex>",
-  "beacon_round": 21734890,
-  "served_at": "2026-11-20T10:15:03.412Z"
-}
-```
-
-Response: receipt without `endpoint_id` or `request_id` (gateway adds those).
-
-The log appends the leaf immediately and signs the promise. Tree size increments by one.
+Retrying the same bound request returns its original promise. Reusing the request ID with different metadata returns a conflict. The public leaf, tree nodes, promise and signed head commit in the same SQLite transaction. [RFC-0004](../docs/rfcs/RFC-0004-receipt-transparency.md#proposed-design)
 
 ### `GET /receipts/{leaf_index}`
 
-Returns the receipt at leaf index (0-based), or 404.
+Returns the public leaf at the zero-based index, or 404. The salt and holder promise signature stay outside public reads.
 
 ### `GET /receipts/range?start={s}&end={e}`
 
@@ -137,7 +127,7 @@ Returns receipts for leaf indices `[s, e)`, up to 10,000 per call.
 
 ### `GET /proof/{leaf_index}`
 
-Returns audit path from leaf to current root:
+Returns the audit path to the current root. The optional proposed `size` query parameter selects a historical root. The response identifies the tree size used.
 
 ```json
 {
@@ -151,7 +141,13 @@ Client verifies by recomputing MTH and checking against STH.
 
 ### `GET /consistency?from={old_size}&to={new_size}`
 
-Returns consistency proof between two tree sizes (RFC 6962 section 2.1.2).
+The response identifies both requested tree sizes and returns the RFC 6962 consistency path. The proposed JSON field names are `from`, `to` and `consistency_path`.
+
+### Running the log
+
+Construct `log.store.MerkleLog` with a dedicated database, operator-provisioned Ed25519 signing key, log identity, key ID, and the canonical `log.receipt.leaf_hash` function. Run one supervised `log.http.run_checkpoints(log, stop_event)` task for the log and mount `log.http.LogApp(log, gateway_identity=...)` behind the authenticating service front end. Configure that front end to set WSGI `REMOTE_USER` from its verified client principal. Keep the database and private signing material on operator-controlled storage.
+
+Run `make test-merkle-log` from the repository root. The tests exercise proof vectors, concurrent appends, rollback, replay, authenticated writes and historical reads.
 
 ## Sealed Pickup (Mode R)
 
