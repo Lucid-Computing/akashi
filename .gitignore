@@ -99,3 +99,6 @@ audit-outputs/
 # Build artifacts
 *.whl
 *.tar.gz
+
+# Agentic stuff
+.agents/harness/
