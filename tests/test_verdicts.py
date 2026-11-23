@@ -1,7 +1,6 @@
 """Signed verdict evidence, per-reader isolation and exact original proof reconstruction."""
 
 import hashlib
-import importlib
 import json
 import sqlite3
 import tempfile
@@ -9,7 +8,6 @@ import unittest
 import uuid
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
-from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
@@ -19,6 +17,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.public import PrivateKey
 
 from auditor.intake import ChallengeIntake
+from auditor.jobs import AuditJobs, Claim
 from auditor.verdict_signing import public_verdict, sign_verdict, verify_signed
 from auditor.verdicts import VerdictStore, decide
 from prover.reference import ReferenceTrace
@@ -90,10 +89,6 @@ class SignedVerdictTests(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(
-    find_spec("auditor.jobs"),
-    "requires the durable audit jobs from issue 28",
-)
 class VerdictStoreTests(unittest.TestCase):
     def setUp(self) -> None:
         temp = tempfile.TemporaryDirectory()
@@ -110,7 +105,7 @@ class VerdictStoreTests(unittest.TestCase):
             holder_hmac_key=tags,
             clock=lambda: self.now,
         )
-        self.jobs = importlib.import_module("auditor.jobs").AuditJobs(
+        self.jobs = AuditJobs(
             self.path,
             auditor_private_key=bytes(key),
             holder_hmac_key=tags,
@@ -146,8 +141,10 @@ class VerdictStoreTests(unittest.TestCase):
             result: dict[str, Any] = self.intake.submit(owner, material, 0)
             return result
 
-    def claim(self) -> Any:
-        return self.jobs.claim(lease_time=timedelta(minutes=5))
+    def claim(self) -> Claim:
+        claim = self.jobs.claim(lease_time=timedelta(minutes=5))
+        assert claim is not None
+        return claim
 
     def test_conformance_private_artifact_and_replayed_reader(self) -> None:
         first = self.handle()

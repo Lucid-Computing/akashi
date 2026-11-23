@@ -13,6 +13,7 @@ from typing import Any
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.public import SealedBox
 
+from auditor.jobs import AuditJobs, Claim
 from auditor.verdict_signing import sign_verdict, verify_signed
 from prover.reference import ReferenceUnavailable
 from prover.request import build_statement, reply_complete
@@ -117,7 +118,7 @@ def decide(
 class VerdictStore:
     def __init__(
         self,
-        jobs: Any,
+        jobs: AuditJobs,
         *,
         key_id: str,
         signer: Ed25519PrivateKey,
@@ -160,7 +161,7 @@ class VerdictStore:
                        leaf TEXT PRIMARY KEY,subject TEXT UNIQUE NOT NULL)""")
 
     def settle(
-        self, claim: Any, candidate: CandidateProof | Unavailable | None
+        self, claim: Claim, candidate: CandidateProof | Unavailable | None
     ) -> Decision:
         decision = decide(
             claim.prompt,
