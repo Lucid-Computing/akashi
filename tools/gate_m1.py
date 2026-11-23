@@ -29,6 +29,22 @@ VECTORS = {
 }
 
 
+MODE_D_EXPECTED: dict[str, object] = {
+    "mode": "D",
+    "engine": "mock",
+    "prover": "mock",
+    "logged": 3,
+    "promises_verified": 3,
+    "selected": 1,
+    "unselected": 1,
+    "gaps": 1,
+    "handed_off": 1,
+    "mock_proofs": 1,
+    "recomputed": 3,
+    "failure_controls": 2,
+}
+
+
 def _digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -146,20 +162,7 @@ def gate(output: Path) -> bool:
                 from tests.m1_flow import run_flow
 
                 observed = run_flow(assets)
-                expected: dict[str, object] = {
-                    "mode": "D",
-                    "engine": "mock",
-                    "prover": "mock",
-                    "logged": 3,
-                    "promises_verified": 3,
-                    "selected": 1,
-                    "unselected": 1,
-                    "gaps": 1,
-                    "handed_off": 1,
-                    "mock_proofs": 1,
-                    "recomputed": 3,
-                    "failure_controls": 2,
-                }
+                expected = MODE_D_EXPECTED
                 fixture_hash = observed.get("fixture_sha256")
                 if (
                     observed.keys() != expected.keys() | {"fixture_sha256"}

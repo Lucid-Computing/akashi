@@ -27,3 +27,7 @@ docs-check:
 .PHONY: gate-m0
 gate-m0:
 	$(UV) run --locked python -m tools.gate_m0
+
+.PHONY: gate-m2
+gate-m2:
+	$(UV) run --locked python -m tools.gate_m2 $(M2_ARGS)

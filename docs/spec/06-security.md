@@ -11,3 +11,5 @@ Assume secure primitives, a live authenticated beacon, trusted descriptor proven
 Use a private loopback engine behind the allowlisted mutually authenticated proxy. Separate non-root roles and use read-only weight mounts, permissioned secret files, archived verification keys and authenticated service-to-service calls. Treat prover inputs, proofs and statements as equally sensitive. Public verdicts exclude token IDs and proof URLs. Keep pickup ciphertext and proof capabilities separate from inference credentials. Enforce [retention](../../specs/retention.md#retention-policy), including deletion on escrow expiry, and publish redacted coverage gaps.
 
 Adopt dependency locking and provenance review before release. Use the repository's private vulnerability reporting channel and publish its location in the security policy before distribution. Record the owner of each rotation, incident and recovery procedure.
+
+The deployment owner can rehearse rotation, role replacement and expired reads with disposable local state. [Private data and key rotation](../operations/private-data.md)
