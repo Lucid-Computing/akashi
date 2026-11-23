@@ -2,6 +2,19 @@
 
 For a local demonstration with a fixture engine, run `make setup demo-router`. The mock router exercises opaque response handling, sealed pickup and signed log inclusion. The all-audit soak uses that router with a qualified physical engine, the native prover, and a separate holder process. These measurements cover a single-operator deployment. An independently administered router or holder needs its own deployment evidence. [Router demonstration](../router/README.md) · [M4 exit test and traffic](../specs/build-plan.md#m4-router-path-and-soak)
 
+## Serve an independent CLI client
+
+On a provisioned primary, use the normal deployment configuration and add `--services-only` to start the physical provider for a client you operate separately.
+
+```sh
+python -m soak.deployment --services-only \
+  --root "$VIG_M4_ROOT" --config "$VIG_M4_DEPLOYMENT_CONFIG"
+```
+
+The supervisor runs the hardware, spool and service readiness checks, starts the retention workers, and waits for client traffic. A private `traffic/runner/services-ready.json` records the supervisor PID and fresh startup digest. Check the current supervisor and use the pinned CA to authenticate the log's signed tree head before sending the request. The router accepts chat on its loopback port. The separate TLS ingress serves pickup, log and challenge requests. Use approved private connections for both endpoints and give the client its own credentials. [Holder protocol](../docs/rfcs/RFC-0010-router-pickup.md) · [Installed verifier](../verifier/README.md#verify-a-private-chat-reply-with-the-installed-native-checker)
+
+Once the client has its complete private proof bundle, stop the supervisor with SIGTERM or SIGINT. It removes its readiness record and shuts down its application processes. The provider operator owns the engine and prover jobs and their normal drain procedure. This mode produces no soak journal or M4 qualification report.
+
 ## Start and recover a run
 
 Use the primary engine that passed M0 and its original eligibility receipt. Start the sole authorized prover against its private spool. Provision the holder with its own bearer, pinned public keys, renderer and a public-only native verifier. Keep the holder's state separate from gateway escrow, auditor private data and the prover key. Run all roles under the cluster scheduler. The log and audit service must start with isolated state for this workload.

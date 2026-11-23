@@ -400,6 +400,81 @@ class DeploymentTest(unittest.TestCase):
             deploy._clear_stale_socket(endpoint)
         self.assertTrue(endpoint.is_file())
 
+    def test_services_only_exposes_ready_roles_and_never_starts_traffic(self) -> None:
+        ports = deploy.provision(self.root, self.conf, self.primary)
+        ready = self.t / "runner/services-ready.json"
+        roles = deploy.commands(self.t, self.conf, self.primary, ports)
+
+        def exercise(failure: bool) -> None:
+            with self.subTest(role_failure=failure), ExitStack() as stack:
+                start = stack.enter_context(
+                    patch.object(deploy.Children, "start", return_value=777)
+                )
+                shutdown = stack.enter_context(
+                    patch.object(deploy.Children, "shutdown")
+                )
+                stack.enter_context(patch.object(deploy, "_ready", return_value=True))
+                stack.enter_context(
+                    patch.object(
+                        subprocess,
+                        "run",
+                        return_value=subprocess.CompletedProcess([], 0),
+                    )
+                )
+                stop = threading.Event()
+
+                def observe(_: float) -> bool:
+                    self.assertEqual(private(ready)["supervisor_pid"], os.getpid())
+                    self.assertEqual(
+                        private(ready)["startup_sha256"], digest(self.fresh)
+                    )
+                    self.assertEqual(
+                        private(self.t / "runner/config.json")["processes"]["engine"],
+                        [self.primary.engine],
+                    )
+                    self.assertEqual(
+                        {call.args[0].name for call in start.call_args_list},
+                        {role.name for role in roles},
+                    )
+                    if failure:
+                        return False
+                    stop.set()
+                    return True
+
+                stack.enter_context(patch.object(stop, "wait", side_effect=observe))
+                stack.enter_context(
+                    patch.object(os, "kill", side_effect=ProcessLookupError)
+                )
+                if failure:
+                    with self.assertRaises(ProcessLookupError):
+                        deploy.supervise(
+                            self.root,
+                            self.conf,
+                            self.primary,
+                            ports,
+                            stop,
+                            services_only=True,
+                        )
+                else:
+                    self.assertEqual(
+                        deploy.supervise(
+                            self.root,
+                            self.conf,
+                            self.primary,
+                            ports,
+                            stop,
+                            services_only=True,
+                        ),
+                        0,
+                    )
+                self.assertFalse(ready.exists())
+                shutdown.assert_called_once_with(
+                    self.conf["limits"]["shutdown_timeout"]
+                )
+
+        exercise(False)
+        exercise(True)
+
     def test_shutdown_reaps_owned_children(self) -> None:
         children = deploy.Children()
         a = deploy.Command(

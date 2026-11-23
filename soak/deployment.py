@@ -794,8 +794,9 @@ class Children:
         self.live[cmd.name] = sub
         return sub.pid
 
-    def check(self, stop: threading.Event) -> None:
-        require(not stop.is_set(), "Operator stopped deployment")
+    def check(self, stop: threading.Event | None = None) -> None:
+        if stop is not None:
+            require(not stop.is_set(), "Operator stopped deployment")
         for name, child in self.live.items():
             if name != "runner" and child.poll() is not None:
                 raise RuntimeError("Deployment role stopped: " + name)
@@ -861,7 +862,13 @@ def _archive_recoverable(journal: Path, budget: float) -> bool:
 
 
 def supervise(
-    root: Path, c: Json, p: Primary, ports: dict[str, int], stop: threading.Event
+    root: Path,
+    c: Json,
+    p: Primary,
+    ports: dict[str, int],
+    stop: threading.Event,
+    *,
+    services_only: bool = False,
 ) -> int:
     t = root / "traffic"
     children = Children()
@@ -962,6 +969,25 @@ def supervise(
                 },
             ),
         )
+        if services_only:
+            ready = t / "runner/services-ready.json"
+            _write(
+                ready,
+                {
+                    "schema_version": 1,
+                    "mode": "services_only",
+                    "supervisor_pid": os.getpid(),
+                    "startup_sha256": digest(p.fresh),
+                },
+            )
+            try:
+                while not stop.wait(limits["poll_seconds"]):
+                    children.check()
+                    os.kill(p.engine, 0)
+                    p.native.check()
+                return 0
+            finally:
+                ready.unlink(missing_ok=True)
         runner = Command(
             "runner",
             "runner",
@@ -989,28 +1015,36 @@ def supervise(
         children.shutdown(limits["shutdown_timeout"])
 
 
-def deploy(root: Path, config: Path, stop: threading.Event) -> int:
+def deploy(
+    root: Path, config: Path, stop: threading.Event, *, services_only: bool = False
+) -> int:
     os.umask(0o077)
     _private_dir(root)
     fd = os.open(root / ".traffic.lock", os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "rb+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        (root / "traffic/runner/services-ready.json").unlink(missing_ok=True)
         c = private(config)
         p = physical(root, c, os.environ)
         ports = provision(root, c, p)
-        return supervise(root, c, p, ports, stop)
+        return supervise(root, c, p, ports, stop, services_only=services_only)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument(
+        "--services-only",
+        action="store_true",
+        help="Supervise the ready provider for an external client until SIGTERM or SIGINT",
+    )
     args = parser.parse_args()
     stop = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stop.set())
     try:
-        return deploy(args.root, args.config, stop)
+        return deploy(args.root, args.config, stop, services_only=args.services_only)
     except (
         KeyError,
         ValueError,

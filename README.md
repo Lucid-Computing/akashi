@@ -110,9 +110,7 @@ See `specs/deterrence.md` for complete tables.
 
 ## Status
 
-**Early Exploration - Nothing Built Yet**
-
-This repository contains specifications and scaffolding only. No working implementation exists.
+The gateway prototype has served real H100 inference and produced whole-reply proofs that a separate holder process verified. The verifier wheel has also checked a genuine proof offline on an x86-64 Linux CPU. The release gate tracks the historical challenge and sustained soak evidence. [Routed hardware run](https://github.com/AbdelStark/verified-inference-gateway/issues/42#issuecomment-7051332747) · [Offline verifier qualification](distribution/verifier/evidence/native-clean-install.json) · [Release gate](release/README.md)
 
 ## Roadmap
 
