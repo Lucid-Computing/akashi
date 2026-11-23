@@ -25,6 +25,8 @@ from prover.submission import COMMITMENT
 
 
 class SampleJobs(Protocol):
+    def has_selected_custody(self, leaf_hash: str, job: str) -> bool: ...
+
     def enqueue_sample(
         self,
         *,
@@ -34,9 +36,18 @@ class SampleJobs(Protocol):
         prompt: tuple[int, ...],
         reply: tuple[int, ...],
         budget: int,
+        original_transcript: bytes | None = None,
+        envelope_digest: bytes | None = None,
     ) -> str: ...
     def sample_unavailable(
-        self, *, leaf_hash: str, transcript: str, served_at: datetime, reason: str
+        self,
+        *,
+        leaf_hash: str,
+        transcript: str,
+        served_at: datetime,
+        reason: str,
+        original_transcript: bytes | None = None,
+        envelope_digest: bytes | None = None,
     ) -> str: ...
 
 
@@ -167,31 +178,36 @@ class SampleBridge:
             cast(int, leaf["beacon_round"]),
             cast(str, leaf["sampling_mode"]),
         )
-        reason = None
-        try:
-            data = self._inbox.read(binding)
-            if data is None:
-                if record["status"] == "pending":
-                    return
-                reason = (
-                    "selection_gap" if record["status"] == "gap" else "missing_handoff"
-                )
-            else:
+
+        def commit(data: bytes, envelope_digest: bytes) -> str:
+            try:
                 prompt, reply, budget = _transcript(data, leaf, self._renderer)
-        except (ValueError, TypeError, KeyError, RecursionError, OverflowError):
-            reason = "invalid_material"
-        if reason is not None:
-            self._jobs.sample_unavailable(
-                leaf_hash=key, transcript=transcript, served_at=at, reason=reason
-            )
-        else:
-            # The job store atomically classifies authenticated short/early-end
-            # replies as INCOMPLETE. Those jobs never enter the proof spool.
-            self._jobs.enqueue_sample(
+            except (ValueError, TypeError, KeyError, RecursionError, OverflowError):
+                return self._jobs.sample_unavailable(
+                    leaf_hash=key,
+                    transcript=transcript,
+                    served_at=at,
+                    reason="invalid_material",
+                    original_transcript=data,
+                    envelope_digest=envelope_digest,
+                )
+            return self._jobs.enqueue_sample(
                 leaf_hash=key,
                 transcript=transcript,
                 served_at=at,
                 prompt=prompt,
                 reply=reply,
                 budget=budget,
+                original_transcript=data,
+                envelope_digest=envelope_digest,
+            )
+
+        job = self._inbox.handoff(binding, commit)
+        if job is not None:
+            if not self._jobs.has_selected_custody(key, job):
+                raise ValueError("Confirmed handoff is missing from challenge custody")
+        elif record["status"] != "pending":
+            reason = "selection_gap" if record["status"] == "gap" else "missing_handoff"
+            self._jobs.sample_unavailable(
+                leaf_hash=key, transcript=transcript, served_at=at, reason=reason
             )

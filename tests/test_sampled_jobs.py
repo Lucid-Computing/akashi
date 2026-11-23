@@ -44,6 +44,8 @@ class SampleBridgeTests(unittest.TestCase):
             clock=lambda: self.public.now,
         )
         self.jobs = Mock()
+        self.jobs.enqueue_sample.side_effect = lambda **kwargs: kwargs["leaf_hash"]
+        self.jobs.sample_unavailable.side_effect = lambda **kwargs: kwargs["leaf_hash"]
         self.renderer = Mock(spec=ChatRenderer)
         self.bridge = SampleBridge(
             self.public.state,
@@ -147,9 +149,9 @@ class SampleBridgeTests(unittest.TestCase):
         self.assertIsNone(restarted.poll(limit=2))
         self.assertEqual(
             [c.kwargs["leaf_hash"] for c in self.jobs.enqueue_sample.call_args_list],
-            [second.leaf_hash, first.leaf_hash, second.leaf_hash],
+            [second.leaf_hash, first.leaf_hash],
         )
-        self.assertEqual(self.jobs.enqueue_sample.call_args.kwargs, observed)
+        self.assertIsNone(self.inbox.read(second))
 
     def test_authenticated_gap_missing_handoff_and_lost_ack(self) -> None:
         expired, missing, lost = self.material(), self.material(), self.material()

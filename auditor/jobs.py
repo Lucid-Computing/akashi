@@ -17,6 +17,7 @@ from typing import cast
 from nacl.exceptions import CryptoError
 from nacl.public import PrivateKey, SealedBox
 
+from auditor.retention import expire_private
 from operations.private_db import private_database_file
 from prover.request import build_statement, reply_complete
 from prover.scoring import Assessment, deviation_statement
@@ -88,6 +89,14 @@ class AuditJobs:
             db.execute("""CREATE TABLE IF NOT EXISTS sampled_obligations(
                 leaf TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES audit_jobs(job_id),
                 due INTEGER NOT NULL, missed INTEGER NOT NULL DEFAULT 0)""")
+            db.execute("""CREATE TABLE IF NOT EXISTS selected_transcripts(
+                leaf TEXT PRIMARY KEY REFERENCES sampled_obligations(leaf), material BLOB, envelope_digest BLOB)""")
+            if "envelope_digest" not in {
+                c[1] for c in db.execute("PRAGMA table_info(selected_transcripts)")
+            }:
+                db.execute(
+                    "ALTER TABLE selected_transcripts ADD COLUMN envelope_digest BLOB"
+                )
             db.execute("""CREATE TABLE IF NOT EXISTS expired_sample_work(
                         job_id TEXT PRIMARY KEY, resumed INTEGER NOT NULL DEFAULT 0)""")
             db.execute(
@@ -102,6 +111,11 @@ class AuditJobs:
         with closing(sqlite3.connect(self.path, isolation_level=None)) as db, db:
             db.row_factory = sqlite3.Row
             db.execute("PRAGMA foreign_keys=ON")
+            db.execute("PRAGMA secure_delete=ON")
+            if db.execute("PRAGMA journal_mode").fetchone()[0] != "delete":
+                raise ValueError(
+                    "Challenge retention requires a private rollback journal"
+                )
             db.execute("BEGIN IMMEDIATE")
             yield db
 
@@ -133,6 +147,90 @@ class AuditJobs:
         db.execute("""UPDATE expired_sample_work SET resumed=1 WHERE resumed=0 AND EXISTS(
                       SELECT 1 FROM challenge_handles h WHERE h.job_id=expired_sample_work.job_id)""")
 
+    def _open_selected(self, leaf: str, sealed: bytes) -> bytes:
+        try:
+            plain = SealedBox(self._key).decrypt(sealed)
+        except CryptoError:
+            raise ValueError("Invalid encrypted selected transcript") from None
+        if not hmac.compare_digest(plain[:32], bytes.fromhex(leaf)):
+            raise ValueError("Selected transcript belongs to a different leaf")
+        return plain[32:]
+
+    def _retain_selected(
+        self,
+        db: sqlite3.Connection,
+        leaf: str,
+        carrier: bytes | None,
+        envelope_digest: bytes | None,
+    ) -> None:
+        if envelope_digest is not None and (
+            not isinstance(envelope_digest, bytes)
+            or len(envelope_digest) != 32
+            or carrier is None
+        ):
+            raise ValueError("Invalid selected transfer digest")
+        if carrier is None:
+            return
+        saved = db.execute(
+            "SELECT material,envelope_digest FROM selected_transcripts WHERE leaf=?",
+            (leaf,),
+        ).fetchone()
+        if saved is None:
+            sealed = SealedBox(self._key.public_key).encrypt(
+                bytes.fromhex(leaf) + carrier
+            )
+            db.execute(
+                "INSERT INTO selected_transcripts(leaf,material,envelope_digest) VALUES(?,?,?)",
+                (leaf, sealed, envelope_digest),
+            )
+        elif saved[0] is not None and not hmac.compare_digest(
+            self._open_selected(leaf, saved[0]), carrier
+        ):
+            raise ValueError("Conflicting original selected transcript")
+        elif envelope_digest is not None:
+            if saved[1] is not None and not hmac.compare_digest(
+                saved[1], envelope_digest
+            ):
+                raise ValueError("Conflicting selected transfer digest")
+            if saved[1] is None:
+                db.execute(
+                    "UPDATE selected_transcripts SET envelope_digest=? WHERE leaf=?",
+                    (envelope_digest, leaf),
+                )
+        # A migrated obligation may already be past its verdict retention deadline.
+        expire_private(db, _us(self._clock()))
+
+    def has_selected_custody(self, leaf_hash: str, job: str) -> bool:
+        """Confirm a durable original-transcript record or its expired tombstone."""
+        with self._tx() as db:
+            return (
+                db.execute(
+                    """SELECT 1 FROM selected_transcripts p JOIN sampled_obligations s USING(leaf)
+                   WHERE p.leaf=? AND s.job_id=?""",
+                    (leaf_hash, job),
+                ).fetchone()
+                is not None
+            )
+
+    def selected_transcript(self, leaf_hash: str) -> bytes | None:
+        """Role-private original carrier, subject to the CH verdict retention deadline."""
+        if not _DIGEST.fullmatch(leaf_hash):
+            raise ValueError("Invalid selected leaf")
+        with self._tx() as db:
+            expire_private(db, _us(self._clock()))
+            row = db.execute(
+                "SELECT material FROM selected_transcripts WHERE leaf=?", (leaf_hash,)
+            ).fetchone()
+            if row is None or row[0] is None:
+                return None
+            data = self._open_selected(leaf_hash, row[0])
+            expire_private(db, _us(self._clock()))
+            retained = db.execute(
+                "SELECT 1 FROM selected_transcripts WHERE leaf=? AND material IS NOT NULL",
+                (leaf_hash,),
+            ).fetchone()
+            return data if retained else None
+
     def _sample(
         self,
         leaf: str,
@@ -140,6 +238,8 @@ class AuditJobs:
         served: datetime,
         material: tuple[tuple[int, ...], tuple[int, ...], int] | None,
         reason: str | None,
+        carrier: bytes | None = None,
+        envelope_digest: bytes | None = None,
     ) -> str:
         if not _DIGEST.fullmatch(leaf) or not _DIGEST.fullmatch(t):
             raise ValueError("Invalid verified sample identity")
@@ -156,6 +256,7 @@ class AuditJobs:
             if old is not None:
                 if (old["t"], old["due"]) != (t, due):
                     raise ValueError("Conflicting selected receipt")
+                self._retain_selected(db, leaf, carrier, envelope_digest)
                 return str(old["job_id"])
             job = str(uuid.uuid4())
             if material is None:
@@ -202,6 +303,7 @@ class AuditJobs:
                 "INSERT INTO sampled_obligations(leaf,job_id,due) VALUES(?,?,?)",
                 (leaf, job, due),
             )
+            self._retain_selected(db, leaf, carrier, envelope_digest)
             self._refresh(db, now)
             return job
 
@@ -214,17 +316,40 @@ class AuditJobs:
         prompt: tuple[int, ...],
         reply: tuple[int, ...],
         budget: int,
+        original_transcript: bytes | None = None,
+        envelope_digest: bytes | None = None,
     ) -> str:
         return self._sample(
-            leaf_hash, transcript, served_at, (prompt, reply, budget), None
+            leaf_hash,
+            transcript,
+            served_at,
+            (prompt, reply, budget),
+            None,
+            original_transcript,
+            envelope_digest,
         )
 
     def sample_unavailable(
-        self, *, leaf_hash: str, transcript: str, served_at: datetime, reason: str
+        self,
+        *,
+        leaf_hash: str,
+        transcript: str,
+        served_at: datetime,
+        reason: str,
+        original_transcript: bytes | None = None,
+        envelope_digest: bytes | None = None,
     ) -> str:
         if reason not in _REASONS:
             raise ValueError("Unknown sample failure")
-        return self._sample(leaf_hash, transcript, served_at, None, reason)
+        return self._sample(
+            leaf_hash,
+            transcript,
+            served_at,
+            None,
+            reason,
+            original_transcript,
+            envelope_digest,
+        )
 
     def sample_status(self, leaf_hash: str) -> dict[str, object] | None:
         with self._tx() as db:
@@ -265,6 +390,7 @@ class AuditJobs:
                 state["completed_us"] is not None
                 and now >= state["completed_us"] + 30 * _DAY_US
             ):
+                expire_private(db, now)
                 return None
             return {
                 "challenge_id": challenge_id,

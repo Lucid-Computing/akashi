@@ -21,6 +21,8 @@ from engine.adapter import (
 from engine.launch import LaunchConfig, LaunchError, StartedEngine, start
 from engine.process_log import ProcessLog
 from engine.transport import EngineClient
+from operations.engine_logs import EngineLogs
+from operations.telemetry import Event as TelemetryEvent
 
 if TYPE_CHECKING:
     from operations.role_metrics import EngineMetrics
@@ -36,6 +38,7 @@ class Observation(Protocol):
 class EngineObservation:
     _started: StartedEngine
     _log: ProcessLog
+    _events: EngineLogs
 
     def startup(self) -> tuple[StartupEvidence, tuple[Canary, ...]]:
         self._log.begin()  # Require live, complete coverage for this instance.
@@ -45,7 +48,10 @@ class EngineObservation:
         return self._log.begin()
 
     def finish(self, start: Cursor) -> Window:
-        return self._log.finish(start)
+        window = self._log.finish(start)
+        if window.integrity_error:
+            self._events.emit(TelemetryEvent("engine", "unwarranted", "engine_error"))
+        return window
 
 
 def _intervals(*values: float) -> None:
@@ -66,6 +72,9 @@ def observe_engine(
     _intervals(startup_timeout, health_poll_seconds, checkpoint_timeout)
     started = start(config)
     try:
+        # start() validates the provider's private, persistent HOME. The raw pipe
+        # remains exclusive to ProcessLog and is never copied into retained events.
+        events = EngineLogs(config.home / "engine-events.sqlite3")
         marks = Event()
 
         def observe(line: bytes) -> None:
@@ -90,11 +99,16 @@ def observe_engine(
             while not marks.is_set():
                 left = deadline - time.monotonic()
                 if left <= 0 or started.process.poll() is not None:
+                    events.emit(
+                        TelemetryEvent(
+                            "engine", "gate", "failed", reason="tensor_verification"
+                        )
+                    )
                     raise EngineUnavailable(
                         "serving process failed its startup deadline"
                     )
                 marks.wait(min(left, health_poll_seconds))
-            observation = EngineObservation(started, log)
+            observation = EngineObservation(started, log, events)
             observation.startup()
             yield observation
         finally:

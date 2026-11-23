@@ -14,6 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from nacl.public import SealedBox
 
 from auditor.jobs import AuditJobs, Claim
+from auditor.retention import expire_private
 from auditor.verdict_signing import sign_verdict, verify_signed
 from prover.reference import ReferenceUnavailable
 from prover.request import build_statement, reply_complete
@@ -288,6 +289,7 @@ class VerdictStore:
                 state["completed_us"] is not None
                 and now >= state["completed_us"] + 30 * _DAY
             ):
+                expire_private(db, now)
                 return None
             signed = db.execute(
                 "SELECT document FROM signed_verdicts WHERE challenge_id=?",
@@ -323,7 +325,9 @@ class VerdictStore:
                     )
                 ):
                     raise ValueError("Private artifact differs from signed verdict")
-                if _us(self.jobs._clock()) >= state["completed_us"] + 30 * _DAY:
+                finished = _us(self.jobs._clock())
+                if finished >= state["completed_us"] + 30 * _DAY:
+                    expire_private(db, finished)
                     return None
                 return decoded
             result: dict[str, object] = {
@@ -371,7 +375,11 @@ class VerdictStore:
             self._publish(db, now)
             total = int(
                 db.execute(
-                    "SELECT (SELECT count(*) FROM challenge_handles)+(SELECT count(*) FROM sampled_obligations)"
+                    """SELECT (SELECT count(*) FROM signed_verdicts)
+                           + (SELECT count(*) FROM challenge_handles h WHERE NOT EXISTS(
+                              SELECT 1 FROM signed_verdicts v WHERE v.challenge_id=h.challenge_id))
+                           + (SELECT count(*) FROM sampled_obligations s WHERE NOT EXISTS(
+                              SELECT 1 FROM sampled_verdict_ids i WHERE i.leaf=s.leaf))"""
                 ).fetchone()[0]
             )
             counts = {

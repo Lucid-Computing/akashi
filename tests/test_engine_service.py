@@ -26,6 +26,7 @@ from engine.launch import (
 )
 from engine.service import EngineObservation, attach_engine, observe_engine
 from engine.transport import EngineClient
+from operations.engine_logs import EngineLogs
 
 # A harmless loopback token server. It receives neither gateway nor proxy TLS material.
 CHILD = """
@@ -89,10 +90,14 @@ class ServiceTests(unittest.TestCase):
         self.addCleanup(started.close)
         return started
 
-    @staticmethod
-    def observe() -> AbstractContextManager[EngineObservation]:
+    def observe(self) -> AbstractContextManager[EngineObservation]:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        config = Mock(spec=LaunchConfig)
+        config.home = Path(directory.name)
+        self.event_path = config.home / "engine-events.sqlite3"
         return observe_engine(
-            Mock(spec=LaunchConfig),
+            config,
             startup_timeout=2,
             health_poll_seconds=0.01,
             checkpoint_timeout=1,
@@ -195,6 +200,39 @@ class ServiceTests(unittest.TestCase):
                 client, observation, startup_timeout=1, health_poll_seconds=0.01
             )
         client.generate.assert_not_called()
+
+    def test_provider_persists_only_classified_fault_after_whole_request(self) -> None:
+        content = "private-token-content-765432"
+        started = self.launch_child(
+            CHILD.replace(
+                "prompt = request['prompt']",
+                f"print('ERROR {content}', flush=True)\n        prompt = request['prompt']",
+            )
+        )
+        with (
+            patch("engine.service.start", return_value=started),
+            self.observe() as provider,
+        ):
+            cursor = provider.begin()
+            conn = HTTPConnection(
+                "127.0.0.1", int(self.port_file.read_text()), timeout=2
+            )
+            try:
+                conn.request(
+                    "POST",
+                    "/v1/completions",
+                    json.dumps({"model": "mock", "prompt": [1]}),
+                )
+                self.assertEqual(conn.getresponse().status, 200)
+            finally:
+                conn.close()
+            self.assertTrue(provider.finish(cursor).integrity_error)
+        rows = EngineLogs(self.event_path).read()
+        self.assertEqual(
+            [(r["event"], r["outcome"]) for r in rows],
+            [("unwarranted", "engine_error")],
+        )
+        self.assertNotIn(content.encode(), self.event_path.read_bytes())
 
     def test_failed_proxy_health_prevents_canaries_on_a_live_observation(self) -> None:
         started = self.launch_child(CHILD)
