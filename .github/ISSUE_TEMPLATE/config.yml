@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a vulnerability privately
+    url: https://github.com/AbdelStark/verified-inference-gateway/blob/main/SECURITY.md
+    about: Use the maintainer’s private reporting address for suspected vulnerabilities.

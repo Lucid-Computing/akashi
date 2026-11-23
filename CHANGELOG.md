@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.0.0 — Unreleased local proof of concept
+## Unreleased
+
+- Document the recorded Maverick request and both offline CLI verdicts with exact measurement boundaries and machine-readable evidence. [Recorded demo](docs/demo/README.md)
+- Give contributors a CPU quickstart and issue forms that direct vulnerability reports to the private security channel. [Quickstart](README.md#try-it-on-a-cpu) · [Security reporting](SECURITY.md)
+
+## 0.0.0 development candidate
 
 The development candidate supports signed inference receipts, an append-only receipt log, opt-in sealed pickup and offline holder verification for the pinned Maverick commitment. The holder can reconstruct its original request and verify the signed history. Native conformance and proven divergence have distinct CLI outcomes. [Holder verification](verifier/README.md) · [Public API](docs/spec/02-public-api.md)
 

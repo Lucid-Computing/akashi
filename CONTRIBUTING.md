@@ -52,172 +52,30 @@ When changing the native bundle, compare a clean build of the pinned FlashProve 
 
 Tests with host-owned dependencies report skips when those dependencies are absent. Record the skipped cases with the command and environment. Cite the relevant gate artifact before making a release claim. [Release compatibility policy](docs/spec/09-release-and-versioning.md#release-policy) · [Hardware sources F22, F24, F26 and F31](specs/facts-register.md#hardware-requirements)
 
-## Contribution Process
 
-### Before You Start
+## Open a change
 
-1. Check existing issues to avoid duplicate work
-2. For major changes, open an issue first to discuss the approach
-3. Read `AGENTS.md` for architectural guidelines
-4. Review relevant specifications in `specs/`
+For a small fix, send a focused pull request. For a new protocol, a change to a signed
+format, or a change to the trust model, start with an issue and link the relevant
+[contract](SPEC.md) or [RFC](docs/rfcs/README.md). That gives reviewers a chance to
+settle the compatibility question before reviewing code.
 
-### Making Changes
+In the pull request, include the behavior you changed, how you checked it, and any
+checks that require another host. For a measured run, name the exact revision, model
+commitment, environment and measurement boundary. Label mock and real-model results
+clearly. For user-facing changes, update [the changelog](CHANGELOG.md) and the affected
+guide or specification.
 
-1. Create a new branch:
-```bash
-git checkout -b feature/your-feature-name
-```
+Keep signed vectors for existing versions. Add regression coverage at the affected
+boundary when you change request admission, transcript binding, proof verification or
+private-data handling. Use synthetic inputs and isolated state. Keep weights,
+transcripts, proof material, credentials and signing keys out of Git, issues and CI
+artifacts. [Private data handling](docs/operations/private-data.md)
 
-2. Make your changes following coding standards (see below)
-3. Add or update tests for your changes
-4. Update specifications if behavior changes
-5. Update documentation as needed
-6. Run the full test suite
+## Get help
 
-### Coding Standards
+Search or open a [GitHub issue](https://github.com/AbdelStark/verified-inference-gateway/issues)
+for reproducible bugs, documentation gaps or project questions. Send vulnerability
+reports through the [private security channel](SECURITY.md#security-reporting).
 
-See `AGENTS.md` for detailed coding standards. Key points:
-
-- Use type hints in Python code
-- Follow PEP 8 style for Python
-- Follow Rust conventions for Rust code
-- Write clear, self-documenting code
-- Keep functions small and focused
-- Validate inputs and handle errors explicitly
-
-### Testing Requirements
-
-All contributions must include appropriate tests:
-
-- **Unit tests**: For individual functions and modules
-- **Integration tests**: For component interactions
-- **Red team tests**: For security-critical changes
-- **Property-based tests**: For cryptographic operations
-
-### Commit Messages
-
-Write clear, descriptive commit messages:
-
-```
-Short summary (50 chars or less)
-
-Longer explanation if needed. Wrap at 72 characters.
-Explain what changed and why, not how.
-
-Reference issues: Fixes #123
-```
-
-### Submitting a Pull Request
-
-1. Push your branch to GitHub:
-```bash
-git push origin feature/your-feature-name
-```
-
-2. Open a pull request with:
-   - Clear description of changes
-   - Link to related issue
-   - List of breaking changes (if any)
-   - Testing performed
-
-3. Address review feedback
-4. Ensure CI passes before merging
-
-## Code Review Process
-
-All contributions go through code review:
-
-- **Soundness**: Security properties preserved
-- **Determinism**: Behavior is predictable
-- **Testing**: Adequate test coverage
-- **Documentation**: Specs and docs updated
-- **Style**: Follows coding standards
-
-Reviews may take several days. Be patient and responsive to feedback.
-
-## Security Guidelines
-
-### Reporting Security Issues
-
-Send reports privately to the maintainer using the [security policy](SECURITY.md#security-reporting).
-
-### Secure Development Practices
-
-- Never commit secrets, keys, or credentials
-- Use environment variables for configuration
-- Validate and sanitize all inputs
-- Use established cryptographic libraries
-- Document security assumptions
-
-### Model Weights
-
-Model weights must never be committed to version control:
-
-- Add weight directories to `.gitignore`
-- Document weight download and verification procedures
-- Use checksums to verify weight integrity
-- Pin weights to specific versions
-
-## Documentation
-
-Run `make docs-check` before submitting documentation. CI checks local file links, heading anchors and the accepted RFC section structure.
-
-- Update `README.md` for user-facing changes
-- Update `AGENTS.md` for architectural changes
-- Add ADRs in `docs/decisions/` for design decisions
-- Update specifications in `specs/` for behavior changes
-- Include inline comments for complex logic
-
-## Architecture Decision Records
-
-For significant design decisions, create an ADR:
-
-1. Copy `docs/decisions/000-template.md`
-2. Name it `NNN-descriptive-title.md` (next number in sequence)
-3. Fill in: Context, Decision, Consequences, Alternatives
-4. Link to relevant spec sections
-5. Include in your PR
-
-## Testing
-
-### Writing Tests
-
-- Test one thing per test function
-- Use descriptive test names
-- Include edge cases and error conditions
-- Mock external dependencies
-- Keep tests fast and deterministic
-
-### Red Team Tests
-
-Security testing is critical. Red team tests should:
-
-- Attempt to break security properties
-- Document the attack vector
-- Verify defenses work correctly
-- Be maintained as the system evolves
-
-## Performance Considerations
-
-- Profile before optimizing
-- Document performance requirements
-- Add benchmarks for critical paths
-- Consider proof generation cost
-- Verify scalability claims with tests
-
-## Questions and Support
-
-- Open an issue for questions
-- Check `specs/open-questions.md` for known unknowns
-- Review `docs/decisions/` for design rationale
-- Read `AGENTS.md` for development guidelines
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
-
-## Recognition
-
-Contributors will be recognized in release notes and project documentation.
-
-Thank you for contributing to verifiable inference!
+Project contributions use the [Apache License 2.0](LICENSE).

@@ -2,16 +2,19 @@
 
 ## Overview
 
-The verified inference gateway provides a cryptographic guarantee that served LLM replies are exactly what the committed integer model would produce under greedy decoding, or explicitly identifies where they deviate.
+A holder can verify that an audited reply matches the committed integer model
+under greedy decoding, or verify evidence of a particular deviation.
 
 ## The Core Guarantee
 
-Every reply that carries a receipt is bound, at the moment it is delivered, into a public append-only log. A public rule over that log and a public randomness beacon, fixed after delivery, selects a fraction r of replies for audit. For each selected reply, and for any reply whose holder challenges it within the retention window, the auditor produces either:
+A receipt binds the reply to an append-only log at delivery. The receipt fixes a
+future beacon round before its randomness is known. The authenticated beacon
+selects a fraction of logged replies for audit. Holders can also challenge a
+particular reply within the retention window.
 
-- **Conformance proof**: The reply's tokens are, at every position, the committed integer model's greedy choice given the prompt's tokens
-- **Deviation proof**: At a stated position the committed model chooses a different token from the one served
-
-Both are checkable on a CPU, without the weights, by anyone who holds the transcript.
+An audit can yield a conformance proof for the whole reply or a deviation proof
+for a particular token. Both can be checked on a compatible CPU with the holder's
+transcript and public verifier inputs. [Coverage gaps and challenge outcomes](audit-protocol.md)
 
 ## The Proof Statement
 
@@ -43,7 +46,7 @@ Statements the system adds around the proof, checked by the verifier kit, not by
 | Conformance proof for false statement accepted | Lean verifier: at most about q/2^124 + 2^-101 after q hash queries, random-oracle model, exact match, full size, one proof (N proofs: N times the error). `cp_verify`, the program users run, is tested against it, not proved | Facts register F12, F13 |
 | C binds one set of weights | Protocol-level binding proved for a Lean model of the committer, not for `cp_commit` itself | Fact F12 |
 | C is the model advertised | The published Maverick commitment can be remade by anyone with the weight files and calibration set; equal IDs show the commitment repeats on that kind of machine, not that it is right | Facts F4, F5, F6 |
-| Unaudited replies are honest | Statistical only: deterrence from post-hoc sampling and the open challenge channel | Design property |
+| Audit coverage | Sampling measures a subset of replies. Holder challenges target individual replies. | [Deterrence model](deterrence.md) |
 
 ## Residuals and Limitations
 
@@ -78,7 +81,7 @@ Residuals the system does not close, stated in every published verdict:
 | **Auditor** | prover node, challenge service, verdict signer, audit API | auditor signing key; selected transcripts and proofs | the router or a neutral party |
 | **Holder** | verifier kit | own transcripts and receipts | the end user, or anyone the user gives them to |
 
-The provider runs only the engine. It receives token IDs and returns token IDs. It never sees `messages`, never renders, never decodes text for the client and never signs anything. This removes the provider's ability to inject a system prompt or rewrite text.
+The provider runs only the engine. It receives token IDs and returns token IDs. It never sees `messages`, never renders, never decodes text for the client and never signs anything. This makes rendering and delivery the gateway’s responsibility. The holder kit checks that the delivered text matches the bound tokens.
 
 ## Threat Model
 
@@ -94,49 +97,26 @@ The provider runs only the engine. It receives token IDs and returns token IDs. 
 
 ### Trust Assumptions
 
-The system requires trust in:
-
-1. **Cryptographic Primitives**: SHA-256, Merkle trees, ZK proof systems are secure
-2. **FlashProve Soundness**: The ZK proof system is sound and does not have critical bugs
-3. **drand Beacon**: The randomness beacon is live and unbiased
-4. **Client Verification**: Clients actually check receipts and proofs
-5. **Specification Adherence**: Implementation matches specifications
-
-The system does **not** require trust in:
-- The inference serving operator
-- The gateway operator
-- Model quality or training
-- Network intermediaries
+The holder needs an authenticated service descriptor and trusted verifier inputs.
+The protocol assumes secure cryptographic primitives, FlashProve soundness, an
+unpredictable beacon, and correct implementation of the checks. Holders and log
+monitors compare signed history for evidence of omission or equivocation.
+Availability depends on the services and the declared retention and queue
+policies. [Trust and evidence](../docs/spec/06-security.md#trust-and-evidence)
 
 ## Detection Probability
 
-### Sampling Arithmetic
-
-For a sampling rate of 1/N:
-- **Single trial detection**: 1/N
-- **k trials detection**: 1 - (1 - 1/N)^k
-- **Sustained deviation**: Detected with high probability within 1000N requests
-
-### Example Detection Rates
-
-For N = 1000 (default sampling rate):
-
-| Deviation Frequency | Detection in 100 Trials | Detection in 1000 Trials |
-|---------------------|--------------------------|---------------------------|
-| 1% (1/100) | >63% | >99.99% |
-| 10% (1/10) | >99.99% | >100% (certain) |
-| 100% (all) | >100% (certain) | >100% (certain) |
-
-**Interpretation**: Even rare deviations are caught quickly. Systematic deviations are detected with near certainty.
+Under the independent-selection approximation, the probability of at least one
+selection among `k` deviating logged replies is `1 - (1 - p)^k`, where `p` is
+the per-reply selection probability. Detection also depends on that selection
+being acted on and the result being checked. The exact per-reply probability
+comes from the [selection rule](sampling.md#selection-rule). [Worked examples](deterrence.md#detection-probability)
 
 ### Challenge Mechanism
 
-In addition to random sampling:
-- Any receipt holder can challenge a specific reply
-- Challenges trigger immediate proof generation
-- Challenge proofs have the same properties as sampled proofs
-
-This provides deterministic detection for suspicious replies without waiting for sampling.
+A holder can ask for an audit of one logged reply within the retention window.
+The [challenge API](audit-protocol.md) distinguishes accepted work and verifiable
+outcomes from unavailable evidence or a deadline failure.
 
 ## Security Properties
 
@@ -166,7 +146,7 @@ This provides deterministic detection for suspicious replies without waiting for
 
 ### Determinism
 
-**Property**: Identical inputs MUST produce identical outputs and proofs.
+**Property**: Identical model inputs and configuration determine the same greedy output. Proof generation admits randomness (F8).
 
 **Rationale**: Non-determinism breaks verifiability.
 
@@ -179,12 +159,6 @@ This provides deterministic detection for suspicious replies without waiting for
 **Rationale**: If the prover can avoid audits, deviations go undetected.
 
 **Verification**: Beacon randomness must be public and verifiable before use.
-
-## Compliance with Standards
-
-- **RFC 2119**: Keyword usage for requirements
-- **NIST Standards**: Cryptographic primitives follow NIST recommendations
-- **Academic Standards**: Threat model follows standard definitions from the ZK proof literature
 
 ## Assumptions Register
 

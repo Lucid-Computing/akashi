@@ -1,0 +1,30 @@
+name: Bug report
+description: Report a reproducible problem with the gateway, tools or docs.
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a vulnerability, use the [private security channel](https://github.com/AbdelStark/verified-inference-gateway/blob/main/SECURITY.md).
+        Use synthetic or redacted examples. Keep credentials, transcripts and proof material out of the report.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the smallest command or synthetic request that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and observed behavior
+      description: Include the CLI outcome and process exit code or the HTTP status if available.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Revision and environment
+      description: Include the commit or version, OS, architecture and whether you used the mock or native runtime.
+    validations:
+      required: true

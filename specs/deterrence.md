@@ -2,31 +2,26 @@
 
 ## Overview
 
-This document analyzes the deterrence properties of probabilistic sampling combined with on-demand challenges. The key insight: under greedy decoding, a deviation at any position makes a valid conformance proof impossible, so providers must serve honestly on all requests to avoid detection.
+Sampling can surface deviations from the committed greedy output. Holder
+challenges let a client request an audit of a particular logged reply. Both
+depend on available evidence and verification.
 
 ## Detection Probability
 
 ### Formula
 
-A provider that deviates on a fraction f of N receipted requests escapes every sampled audit with probability:
-
-```
-P(no detection) = (1 - f/N)^n
-P(detection) = 1 - (1 - f/N)^n
-```
-
-Where:
-- f = number of deviating requests
-- N = total requests
-- n = number of requests
-- Sampling rate r = 1/N
+For `k` deviating logged replies and per-reply selection probability `p`, model
+each selection as independent. The chance of selecting at least one deviation is
+`1 - (1 - p)^k`. The tables use `p ≈ 1/N`, where `N` is the active divisor.
+The [selection rule](sampling.md#selection-rule) gives the exact per-reply
+probability.
 
 ### Simplified Form
 
-When f = N (deviates on every request):
-```
-P(detection) = 1 - (1 - 1/N)^n
-```
+If deviations occur independently with probability `f` on each of `n` logged
+requests, the estimate is `1 - (1 - f × p)^n`. For systematic deviation,
+`f = 1`. These are selection probabilities. Detecting a deviation also
+requires the selected evidence to be processed and checked.
 
 ## Detection Tables
 
@@ -35,7 +30,7 @@ P(detection) = 1 - (1 - 1/N)^n
 | Pattern | Requests (n) | Detection Probability |
 |---|---|---|
 | Deviates on every request | 100 | 1 - 0.95^100 ≈ 99.4% |
-| Deviates on every request | 3,000 | ≈ 100% (certain) |
+| Deviates on every request | 3,000 | Rounds to 100% |
 | Deviates on 1% of requests | 10,000 | 1 - (1 - 0.0005)^10000 ≈ 99.3% |
 | Deviates on 1% of requests | 1,000,000 | ≈ 100% |
 
@@ -51,7 +46,7 @@ P(detection) = 1 - (1 - 1/N)^n
 | Deviates on 1% of requests | 1,000,000 | 1 - (1 - 0.00001)^1000000 ≈ 99.995% |
 | Deviates on 0.1% of requests | 100,000 | 9.5% |
 
-Source: Specification section 15
+Percentages are derived from the formula above. Rates are specified in [parameters](parameters.md).
 
 ## Interpretation
 
@@ -79,7 +74,7 @@ A provider that deviates on 1% of requests:
 
 What uniform sampling misses: deviations on a few specific high-value requests. A provider that deviates on 10 carefully chosen requests out of 1M has only a 1% chance of being caught by sampling at N=1,000.
 
-**Mitigation**: The on-demand challenge channel. Any holder can challenge any reply within the retention window. The provider cannot know which replies will be challenged, so it must serve honestly on all of them.
+**Mitigation**: The on-demand challenge channel. Any holder can challenge any reply within the retention window. The holder can ask for evidence about a reply even when sampling passed over it.
 
 ## Two-Channel Deterrence
 
@@ -178,7 +173,7 @@ This creates public accountability.
 
 | N | Proofs/day (550 req/day) | Detection (systematic) | Cost overhead |
 |---|---|---|---|
-| 1 | 550 | 100% in 5 requests | ~6,000% (1 per batch) |
+| 1 | 550 | Every logged reply selected | ~6,000% (1 per batch) |
 | 20 | 27.5 | 99.4% in 100 requests | ~357% to 465% |
 | 1,000 | 0.55 | 95% in 3,000 requests | ~7% to 9% |
 

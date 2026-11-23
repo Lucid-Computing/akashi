@@ -1,31 +1,25 @@
-# Verifier
+# Verify a reply offline
 
-Standalone proof verification tools for independent validation of receipts and ZK proofs.
+The `vig verify` command checks the holder’s original input and displayed reply
+against a signed receipt and log history. With a proof and the public verifier
+inputs, it also checks the reply against the committed integer model. Native
+verification requires a compatible Linux CPU. It reads local files and needs
+no model weights. [Verification contract](../specs/verifier-kit.md) ·
+[Recorded CLI session](../docs/demo/README.md#the-offline-check)
 
-## Purpose
+| Exit | Meaning |
+| --- | --- |
+| 0 | `CONFORMS`. The proof and holder checks passed. |
+| 10 | Receipt or signed history failed validation. |
+| 11 | Input rendering mismatch. |
+| 12 | Displayed text mismatch. |
+| 13 | Incomplete reply. |
+| 20 | `PROOF_REJECTED`. The proof failed verification. |
+| 21 | A deviation was proven. |
+| 30 | The holder obtained no model verdict. Read the JSON outcome to distinguish `RECEIPT_VERIFIED` from unavailable evidence or runtime. |
+| 64 | CLI usage error. |
 
-The verifier kit enables clients to independently verify receipts through 6 steps: receipt signature, transcript commitment, tree inclusion, tree consistency, render correctness, and optionally model conformance.
-
-## Specifications
-
-- `specs/verifier-kit.md`: Complete verification procedure and exit codes
-- `specs/facts-register.md`: F9 (cp_verify codes), F23, F25, F26 (performance)
-
-## Exit Codes
-
-From spec § 11.3:
-
-| Code | Meaning |
-|---|---|
-| 0 | conforms: every check passed |
-| 10 | receipt invalid (signature, `t`, inclusion) |
-| 11 | rendering mismatch |
-| 12 | text mismatch |
-| 13 | reply incomplete |
-| 20 | proof rejected (`cp_verify` exit 1) |
-| 21 | deviation proven |
-| 30 | no verdict (`cp_verify` 2-5, 14, 15; missing files) |
-| 64 | usage |
+[Complete error contract](../docs/spec/04-error-model.md#verification-errors)
 
 ## Install the development wheel
 
@@ -116,12 +110,6 @@ Provision the manifest independently of holder evidence. It contains `schema_ver
 For independent checking, pass `LeanVerifier(inputs, LeanConfig(checkout, lake, temp), timeout_seconds)` as the secondary checker. Provision the pinned FlashProve tree and its compiled `lean/.lake` cache following the upstream instructions, a trusted Lake executable, and a private scratch directory owned by the verifier account. The wrapper validates the pinned sources, serializes use of the compiled cache and checks the official script's exit and full verdict line. [Upstream Lean verifier](https://github.com/anthropics/FlashProve/tree/9e2bdd8ff5bf9c62f18263d7dac189b0400b260c/tools/lean-verify)
 
 Run `make test-proof-verification` for reconstruction, native outcome mapping and secondary disagreement. To exercise a real CPU, use a verified Maverick fixture directory containing `config/`, `ivk/`, `example.req`, `example.y` and `example.proof` from the public Maverick example. Run `python -m tests.native_verification --help` for its paths and host limits. The command independently regenerates the public next-token request, checks its proof, and exercises changed-input and missing-key controls. Whole-reply evidence uses a different range and is measured in M0 and M2.
-
-## Related Specifications
-
-- `specs/receipt-log.md`: Receipt format
-- `specs/audit-protocol.md`: Challenge submission
-- `specs/canonical-rendering.md`: Tokenizer and rendering
 
 ## Verify a holder bundle offline
 
