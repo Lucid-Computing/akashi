@@ -10,4 +10,4 @@ test-operational-alerts:
 
 .PHONY: test-retention
 test-retention:
-	$(UV) run --locked python -m unittest -v tests.test_escrow_store tests.test_escrow_sampler tests.test_pickup_store tests.test_mailbox_retention tests.test_engine_logs tests.test_spool_retention tests.test_retention_cli
+	$(UV) run --locked python -m unittest -v tests.test_escrow_store tests.test_escrow_sampler tests.test_pickup_store tests.test_mailbox_retention tests.test_engine_logs tests.test_spool_retention tests.test_retention_cli tests.test_audit_retention tests.test_selected_retention
