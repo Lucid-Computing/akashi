@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "run_id": "VIG-20261123T093939Z",
+  "scope": "One synthetic, nonstreaming greedy chat through an operator-run router. Separate roles under common administration.",
+  "revisions": {
+    "source_revision": "6b490814375a59ca8d8f0c46d5b460aae8b8df54",
+    "base_revision": "64f2fcb95818bdcbac014bc90f6f39aeb36e3547",
+    "flashprove_revision": "9e2bdd8ff5bf9c62f18263d7dac189b0400b260c"
+  },
+  "request": {
+    "prompt": "A basket holds seven apples. I add five more. How many apples are in the basket? Answer with just the number.",
+    "prompt_tokens": 35,
+    "max_tokens": 12,
+    "exact_reply": "12<|eot|>",
+    "reply_tokens": 2,
+    "native_batch_size": 1
+  },
+  "evidence": {
+    "commitment_id": "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46",
+    "statement_bytes": 4104,
+    "statement_sha256": "27f820ea46ec877f77b286f9bbbfba58be27ffaf996d793a6ef88a18f1144e54",
+    "leaf_hash": "1140d3caa1140a38677d3721cd80d2bad8fed827cb35246bcfe18bd920ca07cb",
+    "decoded_proof_bytes": 18771124,
+    "proof_sha256": "88152932723b8ae54bb007f890c91c870f3f1191fc84bc28e115b25d179440b8",
+    "encoded_http_body_bytes_per_fetch": 25036424,
+    "verifier_wheel_sha256": "b3a49ff02c4d1538c74d3d53d4ed7ca7d3ccf0597bada137ffdc37585a027187",
+    "changed_bits": 1
+  },
+  "clock": "Holder-host monotonic time for elapsed values in nanoseconds.",
+  "client_elapsed_ns": {
+    "chat_to_complete_reply": 3865425449,
+    "first_proof_received_after_post_ns": 52634455198,
+    "client_post_to_valid_exit_ns": 157886234050,
+    "client_post_to_control_exit_ns": 174510390112
+  },
+  "client_processes": {
+    "original": {
+      "outcome": "CONFORMS",
+      "exit_code": 0,
+      "warnings": [],
+      "elapsed_ns": 24123394316,
+      "argv": [
+        "<wheel-venv>/bin/vig",
+        "verify",
+        "bundle/holder.json",
+        "--descriptor",
+        "bundle/descriptor.json",
+        "--checkpoint",
+        "bundle/checkpoint.json",
+        "--assets",
+        "assets",
+        "--runtime",
+        "bundle/runtime.json",
+        "--observed-at",
+        "2026-11-23T10:19:53.699044+00:00"
+      ],
+      "stdout": "{\"exit_code\": 0, \"outcome\": \"CONFORMS\", \"schema_version\": 1, \"warnings\": []}\n"
+    },
+    "control": {
+      "outcome": "PROOF_REJECTED",
+      "exit_code": 20,
+      "warnings": [],
+      "elapsed_ns": 16613859706,
+      "argv": [
+        "<wheel-venv>/bin/vig",
+        "verify",
+        "bundle/control.json",
+        "--descriptor",
+        "bundle/descriptor.json",
+        "--checkpoint",
+        "bundle/checkpoint.json",
+        "--assets",
+        "assets",
+        "--runtime",
+        "bundle/runtime.json",
+        "--observed-at",
+        "2026-11-23T10:19:53.699044+00:00"
+      ],
+      "stdout": "{\"exit_code\": 20, \"outcome\": \"PROOF_REJECTED\", \"schema_version\": 1, \"warnings\": []}\n"
+    }
+  },
+  "recovery": {
+    "source_holder_no_verdict_count": 8,
+    "proof_download_count": 9,
+    "source_holder_success_ns": 24128633703
+  },
+  "restored_evidence_check": {
+    "status": "passed",
+    "receipt_outcome": "RECEIPT_VERIFIED",
+    "signed_auditor_outcome": "CONFORMS",
+    "signed_verdict_sha256": "cc3b76cb950ca5c5178228efe4f6fb53f2b34afa9af63166fa46f602939702e3",
+    "control_proof_sha256": "a17095b99e4f79121f75acbfe2d5b2bf050299f5c5b9de4a87007a5e46ddcc40"
+  },
+  "clean_offline_install_replay": {
+    "status": "passed",
+    "dependency_wheels": 31,
+    "matches_original_archive": true,
+    "plain_default_replay": {
+      "command": [
+        "sh",
+        "replay.sh"
+      ],
+      "duration_ns": 39470181121,
+      "ended_utc": "2026-11-23T10:35:50.933432+00:00",
+      "shell_exit": 0,
+      "started_utc": "2026-11-23T10:35:11.463171+00:00",
+      "stderr_bytes": 0,
+      "stdout_verdicts": [
+        {
+          "exit_code": 0,
+          "outcome": "CONFORMS",
+          "schema_version": 1,
+          "warnings": []
+        },
+        {
+          "exit_code": 20,
+          "outcome": "PROOF_REJECTED",
+          "schema_version": 1,
+          "warnings": []
+        }
+      ]
+    }
+  }
+}

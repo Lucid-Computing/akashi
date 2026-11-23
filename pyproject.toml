@@ -1,6 +1,9 @@
 [project]
 name = "verified-inference-gateway"
 version = "0.0.0"
+description = "An inference gateway with signed receipts and offline verification of FlashProve evidence"
+readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.10"
 dependencies = [
     "cryptography==50.0.2",
@@ -10,6 +13,10 @@ dependencies = [
     "rfc8785==0.1.4",
     "tokenizers==0.23.2",
 ]
+
+[project.urls]
+Repository = "https://github.com/AbdelStark/verified-inference-gateway"
+Issues = "https://github.com/AbdelStark/verified-inference-gateway/issues"
 
 [tool.uv]
 package = false

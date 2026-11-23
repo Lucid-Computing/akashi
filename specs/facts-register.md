@@ -105,3 +105,15 @@ From F22, F24, F31:
 - `audit-protocol.md`: Proving process from F23, F28, F29
 - `verifier-kit.md`: Verification from F9, F26
 - `capacity.md`: Throughput analysis from performance facts
+
+## Recorded gateway demo
+
+Run `VIG-20261123T093939Z` measured one nonstreaming greedy chat with the F4
+commitment and F37 tokenizer. A separate CPU host verified the original proof
+with exit 0 and rejected a one-bit change with exit 20. The decoded proof had
+18,771,124 bytes. The standalone checks took 24.123 s and 16.614 s, respectively.
+The client received the reply after 3.865 s and first received the complete proof
+after 52.634 s. It reached offline acceptance after 157.886 s, including a
+source-holder staging repair and repeated reads. These are observations of the
+recorded gateway deployment, separate from upstream F22–F26 measurements.
+[Run boundaries](../docs/demo/README.md#measurements) · [Run data and digests](../docs/demo/evidence.json)

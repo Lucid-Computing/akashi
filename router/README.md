@@ -1,4 +1,4 @@
-# Run the local router POC
+# Run the CPU router demo
 
 From the repository root, run the demo on a CPU.
 
@@ -17,7 +17,7 @@ The demo starts a loopback router in a separate process, a gateway with the pinn
 
 The demo first verifies a direct completion. It then exercises all four router modes and repeats transparent and opaque delivery with gateway streaming enabled. The holder waits for a finishing event and `[DONE]`, opens the envelope using the exact displayed text, verifies the signed promise and transcript commitment, and checks inclusion against a signed tree head. A different secret fails both lookup and decryption.
 
-A successful run prints `status: "passed"`, `pickup_store: "sqlite"` and six logged synthetic completions. The report limits its output to counts and check results. It records OQ3/OQ4 for this local mock router. Model conformance requires the independent proof and verifier gates. [Router contract](../docs/rfcs/RFC-0010-router-pickup.md#proposed-design)
+A successful run prints `"status": "passed"`, `"pickup_store": "sqlite"` and `"logged": 6`. The report limits its output to counts and check results. It records OQ3/OQ4 for this local mock router. For real proof verification on a separate CPU, see the [recorded Maverick run](../docs/demo/README.md). [Router contract](../docs/rfcs/RFC-0010-router-pickup.md#proposed-design)
 
 ## Connect to an existing gateway
 
