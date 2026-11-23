@@ -34,6 +34,11 @@ def expire_private(db: sqlite3.Connection, now_us: int) -> int:
         (cutoff,),
     ).rowcount
     if "audit_evidence" in tables:
+        # Older stores may already hold large proof blobs when retention first runs.
+        db.execute(
+            """CREATE INDEX IF NOT EXISTS evidence_live_expiry
+               ON audit_evidence(expires_us) WHERE ciphertext IS NOT NULL"""
+        )
         count += db.execute(
             """UPDATE audit_evidence SET ciphertext=NULL
                WHERE ciphertext IS NOT NULL AND expires_us<=?""",
