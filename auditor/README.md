@@ -44,3 +44,17 @@ installed. [Pinned quicknet chain information](https://api.drand.sh/52db9ba70e0c
 
 - `specs/verifier-kit.md`: Exit codes and verification procedure
 - `specs/facts-register.md`: F23, F26, F30-F33 (performance and soundness)
+
+## Audit job lifecycle
+
+Open `AuditJobs` on the challenge intake database with the same holder-tag key and the matching auditor private key. The store materializes demand jobs from accepted work even after a process restart. A `SampleBridge` periodically scans authenticated selections, signed log history and the auditor inbox. Its bounded cursor visits later indices when earlier ones are pending. It rechecks the original token binding and rendering before enqueuing selected evidence.
+
+Call `claim(lease_time=...)` with the worker lease configured for the deployment. A claim moves one job from pending to verifying. A restarted worker can reclaim expired leases and must present its current claim to dispatch or complete work. The prover spool receives a stable job identity, original statement and frozen deadline across retries. The 15-minute on-demand target is reported separately from the hard sampled deadline. Missing handoffs, expired samples and other unavailable outcomes retain their reason. Per-reader capabilities authorize private status. Each invocation of `make test-audit-jobs` exercises recovery, deadline boundaries, sample reconciliation and spool retries. [Auditor lifecycle](../docs/rfcs/RFC-0007-challenge-lifecycle.md#proposed-design) · [Timing parameters](../specs/parameters.md#service-parameters)
+
+A holder or auditor can calculate the sampled verdict deadline by adding 24 hours to the signed receipt’s `served_at` timestamp. A late auditor start preserves that deadline. [Timing parameters](../specs/parameters.md#service-parameters)
+
+## Verify and publish verdicts
+
+The auditor passes a leased private job and the authenticated prover result to `VerdictStore.settle`. Conformance requires native CPU verification of the original whole reply. For deviation, the auditor diagnoses the first differing token with the reference scorer, reconstructs that prefix and verifies the proof for the replacement. A spool error alone yields an unavailable outcome. An excused range failure requires independent evidence that the typed range failure lies in padding. Incomplete receipts require no proof.
+
+Verdicts sign `"vig/verdict/1" || JCS(verdict)` with Ed25519. Use `verify_signed` with an auditor key obtained through a trusted channel. The public commitment lookup, recent verdicts and statistics contain bounded outcomes and metadata. The private status and proof endpoints require the capability associated with that specific challenge ID. Proof and statement bytes stay in encrypted private storage. A private download checks its content against the digests in the signed verdict. The public verdict survives private artifact expiry. Run `make test-audit-api` to exercise the HTTP routes and signing, CPU-verifier outcomes, replay and expiry. [Auditor contract](../docs/rfcs/RFC-0007-challenge-lifecycle.md#proposed-design) · [Public and private routes](../docs/spec/02-public-api.md#interfaces)

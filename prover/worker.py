@@ -13,12 +13,17 @@ from dataclasses import dataclass
 from typing import Literal
 
 from prover.request import CandidateProof as CandidateProof  # noqa: PLC0414 -- preserve the existing public import
-from prover.submission import Submission, SubmissionStore, check_spool, guarded_spool
+from prover.submission import (
+    RetiredSubmission,
+    Submission,
+    SubmissionStore,
+    check_spool,
+)
 
 
 @dataclass(frozen=True)
 class Unavailable:
-    reason: Literal["spool_failure", "invalid_response", "deadline"]
+    reason: Literal["spool_failure", "invalid_response", "deadline", "handed_off"]
 
 
 def _read_response(
@@ -101,18 +106,16 @@ class ProofWorker:
             raise ValueError("positive operator proof size limit required")
         self.store = store
         self._limit, self._now = max_proof_bytes, now_ns
-        with store.transaction() as db:
-            db.execute(
-                "CREATE TABLE IF NOT EXISTS results (id TEXT PRIMARY KEY, reason TEXT, proof BLOB)"
-            )
 
     def poll(self, job_id: str) -> CandidateProof | Unavailable | None:
         """Snapshot the first terminal result. A missing final marker remains pending."""
-        item = self.store.get(job_id)
         with (
-            guarded_spool(self.store.spool_dir) as root,
+            self.store.spool() as root,
             self.store.transaction() as db,
         ):
+            item = self.store.lookup(db, job_id, now_ns=self._now())
+            if isinstance(item, RetiredSubmission):
+                return Unavailable(item.reason)
             row = db.execute(
                 "SELECT reason,proof FROM results WHERE id=?", (item.request_id,)
             ).fetchone()
@@ -126,8 +129,6 @@ class ProofWorker:
                 result = None
                 if self._now() < item.deadline_ns:
                     result = _read_response(root, item, self._limit)
-                if self._now() >= item.deadline_ns:
-                    result = Unavailable("deadline")
                 if result is not None:
                     db.execute(
                         "INSERT INTO results VALUES (?,?,?)",
@@ -140,13 +141,22 @@ class ProofWorker:
                         ),
                     )
             check_spool(root)
-            return result
+            # The result read/authentication may itself have crossed the boundary.
+            still_live = self.store.lookup(db, job_id, now_ns=self._now())
+            return (
+                Unavailable(still_live.reason)
+                if isinstance(still_live, RetiredSubmission)
+                else result
+            )
 
     def wait(self, job_id: str, *, poll_seconds: float) -> CandidateProof | Unavailable:
         """Resume a previously submitted durable job, using its original absolute deadline."""
         if not math.isfinite(poll_seconds) or poll_seconds <= 0:
             raise ValueError("positive finite proof polling interval required")
-        deadline = self.store.get(job_id).deadline_ns
+        try:
+            deadline = self.store.get(job_id).deadline_ns
+        except RetiredSubmission as exc:
+            return Unavailable(exc.reason)
         while (result := self.poll(job_id)) is None:
             time.sleep(min(poll_seconds, max(0, (deadline - self._now()) / 1e9)))
         return result
