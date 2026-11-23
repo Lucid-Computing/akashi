@@ -28,7 +28,7 @@ Configurable operational parameters:
 | `W_escrow` | 5 minutes (hard cap) | Longest life of an unselected transcript |
 | `W_pickup` | 7 days | Life of a sealed receipt in the pickup store |
 | `W_challenge` | 30 days | Window for on-demand challenges from delivery |
-| `D_sampled` | 24 hours | Deadline for a sampled verdict |
+| `D_sampled` | 24 hours | Deadline for a sampled verdict, measured from the signed receipt’s `served_at` |
 | `D_demand` | 15 minutes (p95 target) | Target for an on-demand verdict, warm prover |
 | `Q_max` | 4 | Maximum requests waiting at gateway (then 429) |
 
