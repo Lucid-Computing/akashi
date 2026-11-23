@@ -1,6 +1,6 @@
 # Verified Inference Gateway
 
-An OpenAI-compatible inference gateway that lets a client check whether a reply matches a specific model. It signs a receipt at delivery. For a challenged or sampled reply, [FlashProve][flashprove] supplies cryptographic evidence that the client can check offline on a CPU, without model weights.
+An OpenAI-compatible inference gateway that lets a client check whether a reply matches a specific model. It signs a receipt at delivery. For a challenged or sampled reply, the auditor can produce a [FlashProve][flashprove] proof that the client can check offline on a CPU without model weights.
 
 [Try it locally](#try-it-on-a-cpu) · [Recorded proof run](docs/demo/README.md) · [Verify a reply](verifier/README.md) · [Specification](SPEC.md)
 
@@ -33,11 +33,13 @@ The gateway appends a log entry before delivering a warranted reply. In router m
 
 ```mermaid
 flowchart LR
+    accTitle: From chat to offline proof verification
+    accDescr: The gateway logs and returns the reply. Either a holder challenge or beacon selection starts a proof job. A holder with the evidence can verify it on a CPU.
     A["Client sends chat"] --> B["Gateway logs and returns reply"]
     B --> C["Holder checks receipt and history"]
     C -->|"Holder challenge"| D["Auditor and FlashProve"]
     B -->|"Beacon-selected audit"| D
-    D --> E["Holder verifies proof on CPU"]
+    D --> E["Holder checks available proof on CPU"]
 ```
 
 The prototype targets one pinned integer conversion of **Llama 4 Maverick 17B-128E Instruct**, with greedy decoding and at most **1,024 tokens** across prompt and reply. The guarantee applies to audited replies and the committed function. Hardware identity, answer quality and data handling are outside its scope. [Model facts F3, F4 and F7](specs/facts-register.md#facts-register) · [Guarantee and trust assumptions](docs/spec/06-security.md#trust-and-evidence)
