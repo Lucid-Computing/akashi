@@ -48,3 +48,7 @@ The result records how the challenge age was measured. Use `python -m tools.m2_f
 Run `make setup gate-m3`. It runs R1–R19 with isolated synthetic fixtures on the CPU, including the independent holder, monitor and challenge admission paths. Set `VIG_RENDER_ASSETS` for offline use, as for M1. The real-model conformance and historical challenge measurements are recorded by M0 and M2.
 
 The aggregate at `build/gates/m3.json` records the source revision, working-tree status, environment, combined fixture digest and SHA-256 of each component report. It checks the specified outcome and every honest control for each scenario. R18 also reports selected long prompts and short controls. R19 reports both quota boundaries and the durable work checks. A failed rerun replaces earlier passing evidence. CPU CI archives all four reports. [Scenario outcomes](../../specs/redteam-suite.md) · [Release evidence requirements](../rfcs/RFC-0011-release-gates.md#proposed-design)
+
+## Running the M4 soak gate
+
+Use the local opaque router and a separate holder with a qualified engine. The gate requires 72 hours of measured synthetic traffic, signed reconciliation at N=1 and the completed earlier milestones. Run `make test-m4` for the fixture checks and `make gate-m4` for the physical evidence. [Soak run and evidence](../../soak/README.md)
