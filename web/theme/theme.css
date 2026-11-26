@@ -1,0 +1,16 @@
+/* Akashi theme. A project led by Lucid, without the Lucid brand.
+   Load order: taste/tokens.css, taste/base.css, then this file. Nothing else changes.
+
+   The accent is beni (紅), the crimson of Japanese safflower ink. It sits away from the red of an error and the green of a
+   pass, so a filled square reads as "checked" and never as a verdict colour. Measured (WCAG 2), see check.html:
+     #b0126a on paper #f3f4f0    6.05 to 1
+     #ffffff on #b0126a          6.69 to 1
+     #ff86c8 on night #07080c    9.05 to 1
+     #ffffff on #b0126a (night)  6.69 to 1 */
+:root, [data-theme="akashi"] {
+  --accent: #b0126a;
+  --on-accent: #ffffff;
+  --accent-light: #ff86c8;
+  --accent-night: #b0126a;
+  --on-accent-night: #ffffff;
+}

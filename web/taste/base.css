@@ -1,0 +1,377 @@
+/* Taste base. The classes of the foundation, built only on tokens.css.
+   Load order: taste/tokens.css, taste/base.css, then a theme (one small file that fills the accent slot).
+   Phone first: everything works from 320px; the grid widens at 701px and 1181px.
+   The contract for every class is taste/README.md. */
+
+/* ---------- reset ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--ground-night); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0; min-height: 100vh; overflow-x: clip;
+  background: var(--bg); color: var(--fg);
+  font: var(--weight-regular) var(--size-body)/var(--leading-body) var(--font-sans); letter-spacing: var(--track-body);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; font-kerning: normal;
+}
+h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, ol, ul, pre { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
+a { color: inherit; text-decoration: none; }
+b, strong { font-weight: inherit; }
+img, video { display: block; max-width: 100%; height: auto; }
+/* a canvas never inherits the page's letter-spacing: Chrome applies it to canvas text and pushes lattice characters off their cells */
+canvas { display: block; letter-spacing: 0; }
+button, input, select, textarea { font: inherit; letter-spacing: inherit; color: inherit; }
+button { cursor: pointer; }
+/* [hidden] always hides, even over a library's inline display (reveal.js needs an exception for its overview; see the contract) */
+[hidden] { display: none !important; }
+::selection { background: var(--fill); color: var(--on-fill); }
+
+/* ---------- grounds: each one sets the roles its contents read ---------- */
+.paper, .white, .night, .accent { background-color: var(--bg); color: var(--fg); }
+.white {
+  --bg: var(--ground-white); --field-bg: var(--ground-white);
+}
+.night {
+  --bg: var(--ground-night); --fg: var(--ink-night); --fg-mist: var(--mist-night);
+  --rule: var(--line-night); --rule-strong: var(--ink-night); --tag-line: var(--line-tag-night);
+  --signal: var(--accent-light); --fill: var(--accent-night); --on-fill: var(--on-accent-night); --focus: var(--ink-night);
+  --cipher: var(--cipher-night); --cipher-dim: var(--cipher-dim-night); --field-bg: transparent;
+}
+.accent {
+  --bg: var(--accent); --fg: var(--on-accent); --fg-mist: var(--mist-accent);
+  --rule: var(--line-accent); --rule-strong: var(--on-accent); --tag-line: var(--line-accent);
+  --signal: var(--on-accent); --fill: var(--on-accent); --on-fill: var(--accent); --focus: var(--on-accent);
+  --cipher: var(--cipher-accent); --cipher-dim: var(--cipher-dim-accent); --field-bg: transparent;
+}
+/* grain on a ground: taste.js bakes the element's own ground with grain into --grain-tile (data-grain="0.3" for more). Night and accent grounds only */
+.grain { background-image: var(--grain-tile); background-size: 256px 256px; }
+
+/* ---------- the page grid: a margin column, then the main column on one hard left axis ---------- */
+.wrap { position: relative; width: 100%; max-width: var(--grid-max); margin: 0 auto; padding-left: var(--grid-gutter); padding-right: var(--grid-gutter); }
+.r { display: block; }
+.m {
+  display: flex; flex-flow: row wrap; align-items: center; column-gap: var(--space-3); row-gap: var(--space-1);
+  min-width: 0; margin-bottom: var(--space-5);
+  font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist);
+}
+.m:empty { display: none; }
+.m b { color: var(--fg); }
+.m > span:not(.tag) { flex-basis: 100%; }
+.x { min-width: 0; }
+/* two tracks inside the main column: a label, then the rest */
+.split { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--space-3); align-items: baseline; }
+/* a part of a page: clear ground above its label line and under its last line */
+.part { padding-top: var(--space-top); padding-bottom: var(--space-end); }
+.part > .wrap > .r + .r { margin-top: var(--space-8); }
+.head { margin-bottom: var(--space-8); }
+/* the axis rule: a hairline down the page between the margin column and the main column */
+.ruled { background-image: none; }
+
+@media (min-width: 701px) {
+  .r { display: grid; grid-template-columns: var(--grid-margin) minmax(0, 1fr); column-gap: var(--grid-gap); align-items: baseline; }
+  .m { display: flex; flex-direction: column; align-items: stretch; gap: 2px; margin-bottom: 0; }
+  .m:empty { display: flex; }
+  .m > span:not(.tag) { flex-basis: auto; max-width: 18ch; }
+  .m .tag { align-self: flex-end; }
+  .split { grid-template-columns: var(--grid-label) minmax(0, 1fr); column-gap: var(--grid-gap); }
+  .ruled { background-image: linear-gradient(var(--rule), var(--rule)); background-repeat: no-repeat; background-size: 1px 100%;
+    background-position: calc(var(--grid-gutter) + var(--grid-margin) + var(--grid-gap) / 2) 0; }
+  .head { align-items: start; }
+}
+
+/* the running head: a part's number and a square that fills as the part is read (Taste.readProgress sets --p) */
+.rail { display: none; }
+@media (min-width: 1181px) {
+  .rail { display: block; position: absolute; left: var(--grid-gutter); top: 0; bottom: 0; width: var(--grid-rail); pointer-events: none; }
+  .run { position: sticky; top: 26px; display: flex; align-items: center; gap: 9px; padding-top: var(--space-6); }
+  .wrap:has(> .rail) .r > .m, .has-rail .r > .m { padding-left: var(--grid-rail); }
+  /* the running head carries its own ground, so margin notes slide under it instead of through it */
+  .run::before { content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 29px; background: var(--bg); z-index: -1; }
+}
+
+/* ---------- type ---------- */
+.xl, .tt { font-family: var(--font-sans); font-weight: var(--weight-claim); text-transform: uppercase; overflow-wrap: break-word; }
+.xl { font-size: var(--size-claim); line-height: var(--leading-claim); letter-spacing: var(--track-claim); text-wrap: balance; }
+.tt { font-size: var(--size-headline); line-height: var(--leading-headline); letter-spacing: var(--track-headline); text-wrap: balance; }
+.xl, .tt { text-box: trim-both cap alphabetic; }
+.lead { font-size: var(--size-lead); line-height: var(--leading-lead); letter-spacing: var(--track-lead); text-wrap: pretty; max-width: 30ch; }
+.sent { font-size: var(--size-sentence); line-height: var(--leading-sentence); letter-spacing: var(--track-sentence); text-wrap: pretty; max-width: 44ch; }
+.mono { font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist); }
+.mono b, .mono strong { color: var(--fg); }
+/* code inside a label keeps its case: a token name stays --accent, not --ACCENT */
+:is(.mono, .m, figcaption, .led-by) code { text-transform: none; letter-spacing: 0; }
+.val { font: var(--weight-regular) var(--size-value)/1 var(--font-mono); letter-spacing: 0; text-transform: uppercase; color: var(--fg); white-space: pre-wrap; overflow-wrap: anywhere; }
+.muted { color: var(--fg-mist); }
+.num { font-variant-numeric: tabular-nums; }
+/* running prose (an article, a document): paragraphs spaced, lists with a small square */
+.prose { font-size: var(--size-sentence); line-height: 1.45; letter-spacing: var(--track-sentence); max-width: 62ch; }
+.prose > * + * { margin-top: 0.9em; }
+.prose h2, .prose h3 { font-weight: var(--weight-claim); letter-spacing: -0.02em; line-height: 1.15; margin-top: 1.8em; }
+.prose h2 { font-size: 1.35em; }
+.prose h3 { font-size: 1.1em; }
+.prose ul, .prose ol { padding-left: 1.4em; }
+.prose ul { list-style: square; }
+.prose ol { list-style: decimal; }
+.prose li + li { margin-top: 0.35em; }
+.prose li::marker { color: var(--fg-mist); }
+.prose a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; text-decoration-color: var(--rule); }
+.prose a:hover { text-decoration-color: currentColor; }
+
+/* ---------- rules ---------- */
+hr, .rule { height: 0; margin: 0; border: 0; border-top: 1px solid var(--rule); }
+.rule-strong { border-top: 1px solid var(--rule-strong); }
+.rule-heavy { border-top: 2px solid var(--rule-strong); }
+/* a list of rows: a strong rule above and below, hairlines between */
+.list { border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule-strong); }
+.list > li { padding: var(--space-4) 0 calc(var(--space-4) + 2px); }
+.list > li + li { border-top: 1px solid var(--rule); }
+
+/* ---------- buttons: mono capitals, soft corners; outline by default ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px;
+  font: var(--weight-regular) var(--size-button)/1 var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase;
+  padding: 15px 20px; border-radius: var(--radius-control); border: 1px solid currentColor; background: transparent; color: var(--fg);
+  white-space: nowrap; cursor: pointer; text-decoration: none;
+  transition: background-color var(--dur-quick), border-color var(--dur-quick), color var(--dur-quick);
+}
+.btn.solid { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.btn.quiet { border-color: transparent; padding-left: 0; padding-right: 0; min-height: 0; }
+.btn.small { min-height: 32px; padding: 9px 12px; }
+.btn.quiet.small { padding-left: 0; padding-right: 0; }
+.btn:hover, .btn:active { background: var(--fill); border-color: var(--fill); color: var(--on-fill); }
+.btn.quiet:hover { background: transparent; border-color: transparent; color: var(--signal); padding-left: 0; padding-right: 0; }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: .4; pointer-events: none; }
+
+/* ---------- tags: a fact in a thin soft box ---------- */
+.tag {
+  display: inline-block; white-space: nowrap; vertical-align: baseline;
+  font: var(--weight-regular) var(--size-label)/14px var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase;
+  color: var(--fg); border: 1px solid var(--tag-line); border-radius: var(--radius-tag); padding: 3px 7px 2px;
+}
+
+/* ---------- sheets and panels ---------- */
+/* a part whose ground differs from the one before: laid over it, soft top corners, the earlier ground showing behind them */
+.sheet { position: relative; z-index: 1; border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; margin-top: calc(-1 * var(--radius-sheet)); }
+.sheet.whole { border-radius: var(--radius-sheet); margin-top: 0; }
+/* a panel in an app: a flat surface, white on paper, raised night on night. No border, no shadow */
+.panel { background: var(--ground-white); border-radius: var(--radius-panel); padding: var(--space-5); }
+.night .panel { background: var(--ground-night-panel); }
+.accent .panel { background: color-mix(in srgb, var(--on-accent) 10%, var(--accent)); }
+.panel:is(.paper, .white, .night, .accent) { background-color: var(--bg); }
+
+/* ---------- a figure: a box that holds a drawing ---------- */
+.figure { position: relative; display: block; width: 100%; aspect-ratio: var(--figure-ratio, auto); min-height: var(--figure-min, 0px); }
+.figure.square { --figure-ratio: 1; }
+.figure.wide { --figure-ratio: 16 / 9; }
+.figure.band { --figure-ratio: auto; min-height: clamp(360px, 70svh, 900px); }
+.figure > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.figure.box { border-radius: var(--radius-box); overflow: hidden; }
+figcaption { display: flex; justify-content: space-between; gap: var(--space-3); padding-top: var(--space-3);
+  font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist); }
+figcaption b { color: var(--fg); }
+/* a tall block with one pinned stage: the reader's scroll drives what happens on the stage */
+.pin { position: relative; height: var(--pin-length, 300svh); }
+.pin-stage { position: sticky; top: 0; height: 100svh; overflow: hidden; }
+
+/* ---------- records: rows of label, sentence, value, state ---------- */
+.record { width: 100%; border-collapse: collapse; border-top: 2px solid var(--rule-strong); border-bottom: 2px solid var(--rule-strong); }
+.record caption { caption-side: top; text-align: left; padding-bottom: var(--space-3);
+  font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist); }
+.record th, .record td { text-align: left; vertical-align: baseline; padding: var(--space-4) var(--space-5) calc(var(--space-4) + 2px) 0; }
+.record th:last-child, .record td:last-child { padding-right: 0; }
+.record thead th { padding-top: var(--space-3); padding-bottom: var(--space-3);
+  font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist); }
+.record tbody tr + tr, .record thead + tbody tr:first-child { border-top: 1px solid var(--rule); }
+.record tbody th { font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg); white-space: nowrap; }
+.record .what { max-width: 44ch; }
+.record .v { font-family: var(--font-mono); letter-spacing: 0; white-space: nowrap; }
+.record .n { text-align: right; font-family: var(--font-mono); letter-spacing: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.record .s { white-space: nowrap; width: 1%; }
+.record tbody tr[aria-selected="true"], .record tbody tr.on { background: color-mix(in srgb, var(--signal) 6%, transparent); }
+/* phones: each row stacks; a cell shows its column name from data-label */
+@media (max-width: 700px) {
+  .record:not(.keep) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .record:not(.keep), .record:not(.keep) tbody, .record:not(.keep) tr, .record:not(.keep) th, .record:not(.keep) td { display: block; width: auto; }
+  .record:not(.keep) tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-4); row-gap: var(--space-2); padding: var(--space-4) 0 calc(var(--space-4) + 2px); }
+  .record:not(.keep) th, .record:not(.keep) td { padding: 0; grid-column: 1 / -1; text-align: left; }
+  .record:not(.keep) tbody th { grid-column: 1; }
+  .record:not(.keep) .s { grid-column: 2; grid-row: 1; justify-self: end; width: auto; }
+  .record:not(.keep) .v, .record:not(.keep) .n { white-space: normal; overflow-wrap: anywhere; }
+  .record:not(.keep) td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px;
+    font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist); }
+  .record:not(.keep) td.s[data-label]::before, .record:not(.keep) td.what[data-label]::before { display: none; }
+}
+/* a table that must keep its columns on a phone scrolls inside its own box, never the page */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+
+/* key and value: a label in mono, then the value */
+.kv { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--rule-strong); }
+.kv > div { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px; padding: var(--space-3) 0 calc(var(--space-3) + 1px); border-bottom: 1px solid var(--rule); }
+.kv dt { font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist); }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+@media (min-width: 701px) {
+  .kv > div { grid-template-columns: var(--kv-label, var(--grid-label)) minmax(0, 1fr); column-gap: var(--grid-gap); align-items: baseline; }
+}
+
+/* ---------- states: the small square that fills ---------- */
+.sq { flex: none; display: inline-block; width: 9px; height: 9px; vertical-align: baseline;
+  box-shadow: inset 0 0 0 1px var(--fg); background: linear-gradient(to top, var(--signal) calc(var(--p, 0) * 100%), transparent 0); }
+.state { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg); }
+.state::before { content: ""; flex: none; width: 9px; height: 9px; box-shadow: inset 0 0 0 1px var(--fg); background: transparent; }
+.state[data-state="verified"]::before, .state[data-state="attested"]::before, .state[data-state="done"]::before { background: var(--signal); box-shadow: inset 0 0 0 1px var(--signal); }
+.state[data-state="pending"]::before { background: linear-gradient(var(--signal), var(--signal)) no-repeat bottom / 100% 50%; animation: taste-fill 2.4s var(--ease) infinite; }
+.state[data-state="failed"]::before { background: linear-gradient(to top right, transparent calc(50% - .75px), var(--fg) calc(50% - .75px), var(--fg) calc(50% + .75px), transparent calc(50% + .75px)); }
+.state[data-state="idle"] { color: var(--fg-mist); }
+.state[data-state="idle"]::before { box-shadow: inset 0 0 0 1px var(--fg-mist); }
+@keyframes taste-fill { 0%, 100% { background-size: 100% 20%; } 50% { background-size: 100% 80%; } }
+
+/* ---------- code, hashes, keys ---------- */
+code, kbd, samp, .code { font-family: var(--font-mono); font-size: 0.9em; letter-spacing: 0; }
+pre.code, .code-block {
+  display: block; overflow-x: auto; padding: var(--space-5); border-radius: var(--radius-panel);
+  background: var(--ground-night); color: var(--ink-night);
+  font: var(--weight-regular) var(--size-code)/1.55 var(--font-mono); letter-spacing: 0; white-space: pre; tab-size: 2;
+}
+.night pre.code, .night .code-block { background: var(--ground-night-panel); }
+pre.code .c, .code-block .c { color: var(--mist-night); }
+pre.code .k, .code-block .k { color: var(--accent-light); }
+.hash { font-family: var(--font-mono); letter-spacing: 0; text-transform: none; overflow-wrap: anywhere; word-break: break-all; font-variant-numeric: tabular-nums; }
+kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--tag-line); border-radius: var(--radius-tag); font-size: 0.85em; }
+
+/* ---------- forms: the same language as the record ---------- */
+.field { display: grid; gap: var(--space-2); min-width: 0; }
+.field > label, .field > .label, legend.label {
+  font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist); padding: 0; }
+.help { font-size: 14px; line-height: 1.4; color: var(--fg-mist); }
+.input, .select {
+  display: block; width: 100%; min-height: 44px; padding: 11px 14px;
+  font: var(--weight-regular) var(--size-body)/1.35 var(--font-sans); letter-spacing: var(--track-body); color: var(--fg);
+  background-color: var(--field-bg, transparent); border: 1px solid var(--rule); border-radius: var(--radius-control);
+  transition: border-color var(--dur-quick);
+}
+/* a value or a key typed in mono (named .code, so it never meets a component called .fact) */
+.input.code { font-family: var(--font-mono); letter-spacing: 0; }
+textarea.input { min-height: 120px; resize: vertical; }
+.input::placeholder { color: var(--fg-mist); opacity: 1; }
+.input:hover, .select:hover { border-color: color-mix(in srgb, var(--fg) 45%, transparent); }
+.input:focus, .select:focus { border-color: var(--fg); outline: none; }
+.input:focus-visible, .select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.input[aria-invalid="true"], .select[aria-invalid="true"] { border-color: var(--fg); border-style: dashed; }
+.select { appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--fg) 50%), linear-gradient(-45deg, transparent 50%, var(--fg) 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.select option { color: #07080c; background: #ffffff; }
+/* checkbox and radio: the small square, and a ring with a disc */
+.check, .radio { display: inline-flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer; }
+.check input, .radio input { appearance: none; -webkit-appearance: none; flex: none; margin: 0; width: 16px; height: 16px; cursor: pointer;
+  border: 1px solid var(--fg); background: transparent; transition: background-color var(--dur-quick), border-color var(--dur-quick); }
+.check input { border-radius: 3px; }
+.check input:checked { background: var(--signal); border-color: var(--signal);
+  background-image: linear-gradient(var(--bg), var(--bg)); background-size: 6px 6px; background-position: center; background-repeat: no-repeat; }
+.radio input { border-radius: 50%; }
+.radio input:checked { background: radial-gradient(circle, var(--signal) 0 3.5px, transparent 4px); border-color: var(--signal); }
+.check input:disabled, .radio input:disabled { opacity: .4; cursor: default; }
+/* a switch: a soft track with a square that slides and fills */
+.switch { display: inline-flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer; }
+.switch input { appearance: none; -webkit-appearance: none; flex: none; position: relative; margin: 0; width: 38px; height: 22px; border-radius: 7px;
+  border: 1px solid var(--fg); background: transparent; cursor: pointer; transition: background-color var(--dur-quick), border-color var(--dur-quick); }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 4px; background: var(--fg);
+  transition: transform var(--dur-quick) var(--ease), background-color var(--dur-quick); }
+.switch input:checked { background: var(--signal); border-color: var(--signal); }
+.switch input:checked::after { transform: translateX(16px); background: var(--bg); }
+.switch input:disabled { opacity: .4; cursor: default; }
+.check input:focus-visible, .radio input:focus-visible, .switch input:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+
+/* ---------- a bar at the top of a page or an app ---------- */
+.bar { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); min-height: 60px; }
+.bar::after { content: ""; position: absolute; left: var(--grid-gutter); right: var(--grid-gutter); bottom: 0; height: 1px; background: var(--rule); }
+.bar.wrap::after { left: var(--grid-gutter); right: var(--grid-gutter); }
+.nav { display: flex; flex-wrap: wrap; column-gap: var(--space-5); row-gap: var(--space-1); }
+.nav a, .nav button { font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist);
+  background: none; border: 0; padding: 12px 0; margin: -12px 0; transition: color var(--dur-quick); }
+.nav a:hover, .nav button:hover, .nav a[aria-current] { color: var(--fg); }
+@media (min-width: 1181px) { .bar { min-height: 68px; } .nav { column-gap: 30px; } }
+
+/* ---------- a segmented control: one choice of a few. Buttons with aria-pressed, or radios inside labels (in a fieldset) ---------- */
+.seg { display: inline-flex; flex-wrap: wrap; gap: 2px; min-width: 0; margin: 0; padding: 3px; border: 1px solid var(--rule); border-radius: var(--radius-control); }
+.seg > legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.seg > label { position: relative; display: inline-flex; cursor: pointer; }
+.seg > label > input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: pointer; }
+.seg > button, .seg > label > span { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 5px; background: none; white-space: nowrap;
+  font: var(--weight-regular) var(--size-label)/1 var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist);
+  transition: background-color var(--dur-quick), color var(--dur-quick); }
+.seg > button:hover, .seg > label:hover > span { color: var(--fg); }
+.seg > button[aria-pressed="true"], .seg > label > input:checked + span { background: var(--fg); color: var(--bg); }
+.seg > button:focus-visible { outline-offset: 1px; }
+.seg > label > input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 1px; }
+.seg .n { font-variant-numeric: tabular-nums; opacity: .7; }
+
+/* ---------- the line that names who leads a project: one mono line, in the colophon or footer only ---------- */
+.led-by { font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--fg-mist); }
+.led-by b, .led-by a { color: var(--fg); }
+.led-by a:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+
+/* small layout helpers */
+.stack { display: grid; gap: var(--gap, var(--space-4)); align-content: start; min-width: 0; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap, var(--space-3)); }
+
+/* ---------- motion: a heading crossed by a pass of light the first time it is seen (Taste.reveal) ---------- */
+@property --taste-r { syntax: '<percentage>'; inherits: false; initial-value: -2%; }
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .rv.rv-on:not(.rv-done) {
+    --rv-on: var(--fg); --rv-off: color-mix(in srgb, var(--fg) 11%, transparent); --rv-edge: var(--signal);
+    padding-block: .14em; margin-block: -.14em;
+    background: linear-gradient(102deg, var(--rv-on) calc(var(--taste-r) - .7%), var(--rv-edge) calc(var(--taste-r) - .7%), var(--rv-edge) var(--taste-r), var(--rv-off) var(--taste-r));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    transition: --taste-r var(--dur-reveal) var(--ease);
+  }
+  .rv.rv-on.rv-in:not(.rv-done) { --taste-r: 102%; }
+}
+
+/* ---------- text through the cipher (Taste.cipherText and the decode figure) ---------- */
+.t-w { white-space: nowrap; }
+.t-ch { position: relative; }
+.t-ch.t-x { color: transparent; }
+.t-ch.t-x::after { content: attr(data-g); position: absolute; inset: 0; display: grid; place-items: center;
+  font: 400 .62em/1 var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--signal); }
+.t-mono .t-ch.t-x::after { font-size: 1em; }
+.t-ch.t-off { visibility: hidden; }
+/* the decode figure: one cell of the lattice per character. Ciphered, the character stays in the page but is not painted */
+.t-c { position: relative; display: inline-block; width: .72em; text-align: center; }
+.t-c[data-l] { color: transparent; }
+.t-c[data-l]::after { position: absolute; left: 0; right: 0; top: 0; text-align: center; color: var(--fg-mist); content: attr(data-c); }
+.t-c[data-l="h"]::after { color: var(--signal); }
+.t-c[data-l="s"]::after { content: ""; left: 50%; top: 50%; width: .56em; height: .56em; margin: -.31em 0 0 -.28em; background: var(--fg); transform: rotate(calc(var(--t-o, 0) * 90deg)); }
+.t-c[data-l="s"][data-a]::after { background: var(--signal); }
+.t-c[data-k="dot"]::after { transform: scale(.17); }
+.t-c[data-k="disc"]::after { border-radius: 50%; transform: scale(.94); }
+.t-c[data-k="diamond"]::after { transform: rotate(45deg) scale(.61); }
+.t-c[data-k="q"]::after { border-bottom-right-radius: 100%; }
+.t-c[data-k="ring"]::after { background: radial-gradient(circle at 0 0, #0000 24.9%, var(--fg) 25.2% 31.4%, #0000 31.7% 57.5%, var(--fg) 57.8% 64%, #0000 64.3%); }
+.t-c[data-k="ring"][data-a]::after { background: radial-gradient(circle at 0 0, #0000 24.9%, var(--signal) 25.2% 31.4%, #0000 31.7% 57.5%, var(--signal) 57.8% 64%, #0000 64.3%); }
+.t-c[data-k="star"]::after { -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 2'%3E%3Cpath d='M1 0A1 1 0 0 0 2 1A1 1 0 0 0 1 2A1 1 0 0 0 0 1A1 1 0 0 0 1 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2 2'%3E%3Cpath d='M1 0A1 1 0 0 0 2 1A1 1 0 0 0 1 2A1 1 0 0 0 0 1A1 1 0 0 0 1 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+.t-c[data-k="boxchar"]::after { content: attr(data-c); color: var(--bg); font-size: .42em; width: 1.34em; height: 1.34em; line-height: 1.34em; margin: -.74em 0 0 -.67em; transform: none; }
+/* the wave figure: a letter under the wave steps aside while the lattice stands in for it */
+.t-g.t-x { color: transparent; }
+.t-wave-stage { position: absolute; pointer-events: none; z-index: -1; }
+.t-wave-stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ---------- focus and the visually hidden ---------- */
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- reduced motion: nothing moves on its own ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------- print: grounds and figures as they are ---------- */
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .run { position: static; }
+  .pin { height: auto; }
+  .pin-stage { position: relative; height: 100vh; }
+}

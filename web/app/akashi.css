@@ -1,0 +1,62 @@
+/* Akashi: what these screens need beyond taste/base.css and app.css. Roles and tokens only, so it is right on paper and on
+   night. Added here, not in the kit: the sign before the name, the lattice block and its legend, the odds slider, the sealed
+   transcript, the playground layout, the bundle field and the verify outcome. */
+
+/* the sign before the name: one square in the accent, as in the favicon */
+.ak-sign { flex: none; width: 12px; height: 12px; border-radius: 2px; background: var(--signal); }
+.app-home .tag { margin-left: 2px; }
+.ak-narrow { display: none; }
+@media (max-width: 520px) { .ak-wide { display: none; } .ak-narrow { display: inline; } .app-home .tag { display: none; } }
+
+.ak-note { padding-top: var(--space-3); }
+.ak-more { padding-top: var(--space-4); }
+.ak-more [hidden] { display: none; }
+
+/* the lattice: its own block, never behind text */
+.ak-figure { border-top: 2px solid var(--rule-strong); border-bottom: 1px solid var(--rule); padding: var(--space-4) 0 var(--space-4); }
+.ak-figure .figure { height: clamp(240px, 38vh, 440px); }
+.ak-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); padding-top: var(--space-4); }
+.ak-key { display: inline-flex; align-items: center; gap: 8px; }
+.ak-glyph { position: relative; display: inline-block; width: 15px; height: 15px; flex: none; }
+
+/* what the rate buys: a sentence, a value, a slider */
+.ak-odds { display: grid; gap: var(--space-5); padding: var(--space-5) 0 var(--space-6); border-top: 2px solid var(--rule-strong); border-bottom: 1px solid var(--rule); }
+.ak-odds .sent { max-width: 34ch; }
+.ak-odds .val { line-height: .9; }
+.ak-range { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.ak-range input { width: 100%; accent-color: var(--signal); margin: 0; min-height: 32px; }
+.ak-range b { font-variant-numeric: tabular-nums; }
+@container main (min-width: 520px) { .ak-range { grid-template-columns: auto minmax(0, 1fr) 4ch; align-items: center; gap: var(--space-4); } .ak-range b { text-align: right; } }
+
+/* a transcript that is not public: words, not a picture */
+.ak-sealed { display: grid; gap: var(--space-4); padding: var(--space-5) 0 var(--space-6); border-top: 2px solid var(--rule-strong); border-bottom: 1px solid var(--rule); }
+.ak-sealed .sent { max-width: 46ch; }
+
+/* the playground: the request on the left, the reply on the right from 900px */
+.ak-fields { display: grid; gap: var(--space-5); padding: var(--space-5) 0 var(--space-6); border-bottom: 1px solid var(--rule); }
+.ak-fields textarea.input { min-height: 112px; resize: vertical; line-height: 1.45; }
+.ak-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); }
+@container main (min-width: 520px) { .ak-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.ak-play .form-actions { padding-top: var(--space-5); }
+.ak-reply { min-height: 140px; padding: var(--space-5) 0 var(--space-6); border-top: 2px solid var(--rule-strong); border-bottom: 1px solid var(--rule); }
+.ak-reply .lead { white-space: pre-line; max-width: 26ch; }
+#p-kv { margin-top: var(--space-4); }
+.ak-after { padding-top: var(--space-5); }
+.ak-play .block-head .state { white-space: nowrap; }
+
+/* code: values stay in one line and scroll inside the block, never the page */
+pre.code { overflow-x: auto; }
+
+/* verify: the bundle and the outcome */
+.ak-bundle { min-height: 168px; font-size: 13px; line-height: 1.5; resize: vertical; white-space: pre; overflow-x: auto; }
+#v-src { margin-left: var(--space-3); }
+.ak-outcome { display: grid; gap: var(--space-4); padding: var(--space-5) 0 var(--space-6); border-top: 2px solid var(--rule-strong); border-bottom: 2px solid var(--rule-strong); }
+.ak-outcome .val { line-height: .95; overflow-wrap: anywhere; }
+.ak-outcome .sent { max-width: 44ch; color: var(--fg-mist); }
+
+/* long values in a key and value record break anywhere rather than push the page sideways */
+.kv dd { min-width: 0; overflow-wrap: anywhere; }
+
+/* a column head over numbers: right aligned, in the head's own type */
+.record thead th.ak-r { text-align: right; }
+.ak-pair { align-items: start; }
