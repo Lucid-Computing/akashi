@@ -2,7 +2,7 @@
 
 A clickable preview of the Akashi platform: a network of models whose replies are signed, logged, sampled for proof and open to challenge. **Everything in it is sample data.** No model runs, no proof is checked and nothing is sent anywhere. It exists to settle the interface before real features are wired in.
 
-Open `app/index.html` in a browser. No build step, no server, no network access.
+Live at <https://lucid-computing.github.io/akashi/app/>, deployed from `main` by `.github/workflows/pages.yml`. Or open `app/index.html` in a browser: no build step, no server, no network access.
 
 | Screen | Address | What it shows |
 | --- | --- | --- |

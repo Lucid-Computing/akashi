@@ -13,16 +13,16 @@ When you call a hosted model, you take the provider's word for which model answe
 
 <table>
   <tr>
-    <td width="50%"><a href="web/README.md"><img src="docs/images/preview-network.png" alt="Network overview: replies logged, selected by the beacon, proved conformant and deviations proved in the last hour, with live traffic below"></a><br><sub><b>Network</b> · every reply signed and logged before delivery</sub></td>
-    <td width="50%"><a href="web/README.md"><img src="docs/images/preview-sampling.png" alt="The sampling lattice: one cell per logged reply, with the few selected by the beacon shown as filled squares, and a selection recomputed below"></a><br><sub><b>Sampling</b> · one reply in 20, chosen by a public beacon round</sub></td>
+    <td width="50%"><a href="https://lucid-computing.github.io/akashi/app/"><img src="docs/images/preview-network.png" alt="Network overview: replies logged, selected by the beacon, proved conformant and deviations proved in the last hour, with live traffic below"></a><br><sub><b>Network</b> · every reply signed and logged before delivery</sub></td>
+    <td width="50%"><a href="https://lucid-computing.github.io/akashi/app/"><img src="docs/images/preview-sampling.png" alt="The sampling lattice: one cell per logged reply, with the few selected by the beacon shown as filled squares, and a selection recomputed below"></a><br><sub><b>Sampling</b> · one reply in 20, chosen by a public beacon round</sub></td>
   </tr>
   <tr>
-    <td width="50%"><a href="web/README.md"><img src="docs/images/preview-challenge.png" alt="A regulator's challenge moving through filed, admitted, transcript released, proving and verdict signed, ending in a proved deviation"></a><br><sub><b>Challenge</b> · a regulator asks for a proof and a deviation is proved</sub></td>
-    <td width="50%"><a href="web/README.md"><img src="docs/images/preview-verify.png" alt="Offline verification of a bundle with one bit changed: four checks pass, the proof check fails, outcome rejected with exit 20"></a><br><sub><b>Verify</b> · change one bit of a proof and the CPU check rejects it</sub></td>
+    <td width="50%"><a href="https://lucid-computing.github.io/akashi/app/"><img src="docs/images/preview-challenge.png" alt="A regulator's challenge moving through filed, admitted, transcript released, proving and verdict signed, ending in a proved deviation"></a><br><sub><b>Challenge</b> · a regulator asks for a proof and a deviation is proved</sub></td>
+    <td width="50%"><a href="https://lucid-computing.github.io/akashi/app/"><img src="docs/images/preview-verify.png" alt="Offline verification of a bundle with one bit changed: four checks pass, the proof check fails, outcome rejected with exit 20"></a><br><sub><b>Verify</b> · change one bit of a proof and the CPU check rejects it</sub></td>
   </tr>
 </table>
 
-<sub>The [web preview](web/README.md), with sample data. No model or prover runs behind it.</sub>
+<sub>The [web preview](https://lucid-computing.github.io/akashi/app/) ([source](web/README.md)), with sample data. No model or prover runs behind it.</sub>
 
 One real request went through an opaque router to Llama 4 Maverick and came back as `12<|eot|>`. A separate, disconnected CPU accepted the original proof and rejected a copy with one bit changed. [Commands, measurements and evidence](docs/demo/README.md)
 
