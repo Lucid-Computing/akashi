@@ -2,11 +2,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "akashi",
+  "account_id": "55b12adfea92ffa1eada43ead398c34d",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-01",
   "routes": [{ "pattern": "akashi.lucidcomputing.ai", "custom_domain": true }],
   "assets": { "directory": "../web", "run_worker_first": ["/api/*"] },
-  "d1_databases": [{ "binding": "DB", "database_name": "akashi", "migrations_dir": "migrations" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "akashi", "database_id": "fe800ee7-c4b7-4513-b8e0-82da45ed31b5", "migrations_dir": "migrations" }],
   // Each minute: settle jobs whose leases ran out, and drive the mock GPUs.
   "triggers": { "crons": ["* * * * *"] },
   "vars": {
