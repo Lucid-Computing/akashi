@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Theme check</title>
+<!-- Open this file beside your theme.css. It measures the four contrasts the theme must keep, and shows the accent on paper,
+     on night and as a ground, in controls and in a figure. In the kit it links ../taste/; new-project.sh makes that ../taste/. -->
+<link rel="stylesheet" href="../taste/tokens.css">
+<link rel="stylesheet" href="../taste/base.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .grounds { display: grid; gap: var(--space-4); }
+  @media (min-width: 901px) { .grounds { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .ground { border-radius: var(--radius-panel); padding: var(--space-5); display: grid; gap: var(--space-5); align-content: start; }
+  .ground .figure { --figure-ratio: 4 / 3; }
+</style>
+</head>
+<body>
+<header class="night"><div class="wrap bar"><b class="mono">Theme check</b><span class="mono">theme.css</span></div></header>
+<main>
+  <section class="paper part">
+    <div class="wrap ruled">
+      <div class="r head">
+        <div class="m"><b>Contrast</b><span>Each 4.5 to 1 or more</span></div>
+        <div class="x"><h1 class="tt">The four contrasts of the theme.</h1></div>
+      </div>
+      <div class="r">
+        <div class="m"><b>Measured</b><span>WCAG 2</span></div>
+        <div class="x">
+          <table class="record" id="ratios">
+            <thead><tr><th scope="col">Pair</th><th scope="col">Where it is used</th><th scope="col">Ratio</th><th scope="col">State</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="r">
+        <div class="m"><b>Grounds</b><span>The accent as it reads on each</span></div>
+        <div class="x grounds">
+          <div class="ground white"><p class="mono"><b>Paper and white</b> · accent</p><div class="cluster"><a class="btn solid" href="#">Action</a><a class="btn" href="#">Hover me</a><span class="state" data-state="verified">Verified</span></div><label class="check"><input type="checkbox" checked> Checked</label><div class="figure" data-f role="img" aria-label="A field of cipher cells on paper"></div></div>
+          <div class="ground night"><p class="mono"><b>Night</b> · accent light</p><div class="cluster"><a class="btn solid" href="#">Action</a><a class="btn" href="#">Hover me</a><span class="state" data-state="verified">Verified</span></div><label class="check"><input type="checkbox" checked> Checked</label><div class="figure" data-f role="img" aria-label="A field of cipher cells on night"></div></div>
+          <div class="ground accent grain"><p class="mono"><b>Accent</b> · the band</p><div class="cluster"><a class="btn solid" href="#">Action</a><a class="btn" href="#">Hover me</a><span class="state" data-state="verified">Verified</span></div><label class="check"><input type="checkbox" checked> Checked</label><div class="figure" data-f role="img" aria-label="A field of cipher cells on the accent"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../taste/engine/taste.js"></script>
+<script>
+  const lum = (c) => [c.r, c.g, c.b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const tok = (n) => Taste.token(n, document.body, 'colour');
+  const pairs = [
+    ['--accent', '--ground-paper', 'Text, marks and checked boxes on paper'],
+    ['--on-accent', '--accent', 'Words on the accent band and a filled button'],
+    ['--accent-light', '--ground-night', 'Waves, live marks and checked boxes on night'],
+    ['--on-accent-night', '--accent-night', 'A filled button on night'],
+  ];
+  const body = document.querySelector('#ratios tbody');
+  for (const [a, b, use] of pairs) {
+    const r = ratio(tok(a), tok(b)), ok = r >= 4.5, tr = document.createElement('tr');
+    tr.innerHTML = `<th scope="row"></th><td class="what" data-label="Where it is used"></td><td class="n" data-label="Ratio"></td><td class="s"><span class="state"></span></td>`;
+    tr.children[0].textContent = `${a} on ${b}`; tr.children[1].textContent = use; tr.children[2].textContent = r.toFixed(2) + ' to 1';
+    const st = tr.querySelector('.state'); st.dataset.state = ok ? 'done' : 'failed'; st.textContent = ok ? 'Passes' : 'Too low';
+    body.appendChild(tr);
+  }
+  document.querySelectorAll('[data-f]').forEach((el) => Taste.figures.field(el, { drive: 'time', cell: 11, density: 0.6, still: 0.75 }));
+</script>
+</body>
+</html>

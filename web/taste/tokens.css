@@ -1,0 +1,159 @@
+/* Taste tokens. The foundation every project uses, branded or not.
+   Load this first, then base.css, then a theme (one small file that fills the accent slot).
+   Every name here is neutral. A theme changes values, never names.
+
+   Three kinds of token:
+   1. Fixed values: grounds, ink, mist, lines, type, spacing, radii, grid, motion.
+   2. The accent slot: five values a theme sets. The defaults are a neutral that works alone
+      (ink on paper, white on night), so a page with no theme is correct and merely colourless.
+   3. Roles: what the current ground means (its background, its text, its rules, the accent as it
+      reads there). The ground classes in base.css (.paper .white .night .accent) set them.
+      Components and figures read roles, so they are right on every ground. */
+
+@font-face { font-family: "Geist"; src: url("fonts/geist.woff2") format("woff2"); font-weight: 400 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url("fonts/geistmono.woff2") format("woff2"); font-weight: 300 700; font-style: normal; font-display: swap; }
+
+:root {
+  /* ---------- grounds and ink ---------- */
+  --ground-night: #07080c;          /* the dark ground */
+  --ground-paper: #f3f4f0;          /* the light ground */
+  --ground-white: #ffffff;          /* panels laid on paper */
+  --ground-night-panel: #111218;    /* panels laid on night */
+  --ink: #07080c;                   /* text and solid marks on paper */
+  --ink-night: #ffffff;             /* text and solid marks on night */
+
+  /* ---------- the accent slot (a theme sets these five) ---------- */
+  --accent: #07080c;                /* the one colour: fills, and marks on paper */
+  --on-accent: #ffffff;             /* text and marks on an accent fill */
+  --accent-light: #ffffff;          /* the accent as light on night: waves, live marks */
+  --accent-night: #ffffff;          /* the accent as a fill on night (a pressed button) */
+  --on-accent-night: #07080c;       /* text on that fill */
+
+  /* ---------- mist: labels and quiet text ---------- */
+  --mist: #686e88;                  /* labels on paper and white */
+  --mist-night: #8a8d97;            /* labels on night */
+  --mist-accent: color-mix(in srgb, var(--on-accent) 82%, var(--accent));   /* labels on an accent ground */
+
+  /* ---------- lines ---------- */
+  --line: #07080c26;                /* hairline on paper */
+  --line-night: #ffffff26;          /* hairline on night */
+  --line-accent: color-mix(in srgb, var(--on-accent) 32%, transparent);      /* hairline on an accent ground */
+  --line-tag: #07080c45;            /* the edge of a tag on paper */
+  --line-tag-night: #ffffff4d;      /* the edge of a tag on night */
+
+  /* ---------- cipher: the greys of characters in figures ---------- */
+  --cipher-paper: #6b718b;          /* cipher characters on paper */
+  --cipher-dim-paper: #a3a7b8;      /* faint cipher on paper */
+  --cipher-night: #98a0c4;          /* cipher characters on night */
+  --cipher-dim-night: #4d536b;      /* faint cipher on night */
+  --cipher-accent: color-mix(in srgb, var(--on-accent) 78%, var(--accent));
+  --cipher-dim-accent: color-mix(in srgb, var(--on-accent) 45%, var(--accent));
+
+  /* ---------- type ---------- */
+  --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --size-claim: clamp(40px, 6.5vw, 104px);      /* the one claim of a screen: Semibold, capitals */
+  --leading-claim: 0.9;
+  --track-claim: -0.042em;
+  --size-headline: clamp(28px, 3.1vw, 46px);    /* a smaller headline: Semibold, capitals */
+  --leading-headline: 0.95;
+  --track-headline: -0.035em;
+  --size-lead: clamp(22px, 2.3vw, 38px);        /* a large sentence: Regular, sentence case */
+  --leading-lead: 1.15;
+  --track-lead: -0.025em;
+  --size-sentence: clamp(18px, 1.5vw, 23px);    /* a sentence that carries meaning */
+  --leading-sentence: 1.3;
+  --track-sentence: -0.015em;
+  --size-body: 16px;                            /* running text and controls */
+  --leading-body: 1.45;
+  --track-body: -0.01em;
+  --size-value: clamp(22px, 3.15vw, 56px);      /* a fact shown large, in mono */
+  --size-label: 11px;                           /* labels and facts: mono, capitals, wide */
+  --leading-label: 16px;
+  --track-label: 0.07em;
+  --size-button: 12px;                          /* button labels: mono, capitals */
+  --size-code: 13px;                            /* code blocks */
+  --weight-regular: 400;
+  --weight-claim: 600;
+
+  /* ---------- spacing ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: clamp(56px, 6vw, 96px);
+  --space-9: clamp(72px, 8vw, 136px);
+  --space-top: clamp(48px, 6.5vw, 100px);       /* from a part's top edge to its label line */
+  --space-end: clamp(96px, 11vw, 168px);        /* clear ground under a part's last line */
+
+  /* ---------- radii ---------- */
+  --radius-sheet: clamp(26px, 4vw, 56px);       /* the soft corner of a sheet laid over another ground */
+  --radius-box: 14%;                            /* a square figure: 14 on 100, the softness of a box */
+  --radius-panel: 14px;                         /* a panel in an app */
+  --radius-control: 7px;                        /* buttons, inputs */
+  --radius-tag: 4px;                            /* tags */
+
+  /* ---------- grid (phone first; base.css widens it at 701px and 1181px) ---------- */
+  --grid-max: 1560px;                           /* widest the page grid gets */
+  --grid-gutter: clamp(16px, 2.4vw, 36px);      /* page edge to content */
+  --grid-margin: 0px;                           /* the margin column: folds away on phones */
+  --grid-gap: 20px;                             /* between the margin column and the main column */
+  --grid-label: 168px;                          /* a label track inside the main column */
+  --grid-value: 200px;                          /* a value track inside the main column */
+  --grid-rail: 52px;                            /* the running head inside the margin column */
+
+  /* ---------- motion ---------- */
+  --ease: cubic-bezier(.3, .6, .2, 1);
+  --dur-quick: .2s;                             /* colour changes on hover and focus */
+  --dur-reveal: 1.3s;                           /* a heading crossed by a pass of light */
+  --cipher-step: 46ms;                          /* one step of text through the cipher */
+
+  /* ---------- grain (taste.js fills this with a baked texture; none without it) ---------- */
+  --grain-tile: none;
+}
+
+@media (min-width: 701px) {
+  :root { --grid-margin: 132px; --grid-gap: 28px; }
+}
+@media (min-width: 1181px) {
+  :root { --grid-margin: 188px; --grid-gap: 40px; --grid-label: 216px; --grid-value: 248px; }
+}
+
+/* ---------- a theme scoped to part of a page (data-theme="name" on an element, or on <html>) ----------
+   The four derived tokens are worked out again wherever a theme is set, so they follow that theme's accent and not the root's.
+   A theme that sets them exactly (brand/lucid.css does) declares them on its own [data-theme] selector, which comes later */
+:root[data-theme], [data-theme] {
+  --mist-accent: color-mix(in srgb, var(--on-accent) 82%, var(--accent));
+  --line-accent: color-mix(in srgb, var(--on-accent) 32%, transparent);
+  --cipher-accent: color-mix(in srgb, var(--on-accent) 78%, var(--accent));
+  --cipher-dim-accent: color-mix(in srgb, var(--on-accent) 45%, var(--accent));
+}
+/* data-theme="none": back to the neutral slot, whatever theme is loaded (a preview without colour, a part kept colourless) */
+:root[data-theme="none"], [data-theme="none"] {
+  --accent: #07080c;
+  --on-accent: #ffffff;
+  --accent-light: #ffffff;
+  --accent-night: #ffffff;
+  --on-accent-night: #07080c;
+}
+
+/* ---------- roles: the paper ground by default (and on .paper and .white). base.css redefines them for .white .night .accent ---------- */
+:root, [data-theme], .paper, .white {
+  --bg: var(--ground-paper);
+  --fg: var(--ink);
+  --fg-mist: var(--mist);
+  --rule: var(--line);
+  --rule-strong: var(--ink);
+  --tag-line: var(--line-tag);
+  --signal: var(--accent);                      /* the accent as it reads on this ground */
+  --fill: var(--accent);                        /* what a control fills with when pressed or hovered */
+  --on-fill: var(--on-accent);
+  --focus: var(--accent);
+  --cipher: var(--cipher-paper);                /* cipher characters on this ground */
+  --cipher-dim: var(--cipher-dim-paper);
+  --field-bg: transparent;                      /* the inside of an input on this ground */
+}

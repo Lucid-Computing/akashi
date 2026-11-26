@@ -1,0 +1,231 @@
+/* App: the parts a product screen needs that taste/base.css does not have yet.
+   Load order: taste/tokens.css, taste/base.css, a theme (brand/lucid.css or your project's theme.css), then this file.
+   Built only on tokens and roles, so it is right on paper and on night and with any accent.
+   Night mode is one attribute: the class "night" on <html>. Everything here reads roles (--bg --fg --fg-mist --rule
+   --rule-strong --signal), never fixed colours. No shadows, no borders-and-cards, no gradients as backgrounds.
+   Every class is listed in templates/app/README.md. */
+
+/* ---------- the shell: a slim bar, a margin column holding the navigation, the main column ---------- */
+.app { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.app-top { position: sticky; top: 0; z-index: 30; background: var(--bg); }
+.app-top .bar { min-height: var(--app-bar, 56px); gap: var(--space-4); }
+.app-home { display: inline-flex; align-items: center; gap: 14px; min-height: 44px; min-width: 0; }
+.app-home [data-lucid-lockup] { --lockup-size: 21px; }
+.app-sep { flex: none; width: 1px; height: 20px; background: var(--rule-strong); opacity: .35; }
+.app-product { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.app-tools { display: flex; align-items: center; gap: var(--space-5); }
+
+/* a button in the language of the nav: mono capitals, a square that fills when it is on */
+.app-toggle { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 0; border: 0; background: none;
+  font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase;
+  color: var(--fg-mist); transition: color var(--dur-quick); }
+.app-toggle:hover, .app-toggle[aria-pressed="true"], .app-toggle[aria-expanded="true"] { color: var(--fg); }
+.app-toggle .sq, .app-nav .sq { box-shadow: inset 0 0 0 1px currentColor; }
+.app-toggle[aria-pressed="true"] .sq, .app-toggle[aria-expanded="true"] .sq { --p: 1; }
+.app-menu { display: none; }
+
+.app-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.app-main { min-width: 0; padding: var(--space-6) 0 var(--space-9); container-type: inline-size; container-name: main; }
+.app-main:focus { outline: none; }
+
+/* the navigation: a mono list in the margin column, numbered, the current screen's square filled */
+.app-nav { display: none; padding: var(--space-4) 0 var(--space-5); border-bottom: 2px solid var(--rule-strong);
+  font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; }
+.app-nav.open { display: block; }
+/* room for the focus ring inside the scrolling nav */
+.app-nav ul { margin: 0 -5px; }
+.app-nav li > a, .app-nav li > button { padding: 0 5px; }
+.app-nav a:focus-visible, .app-nav button:focus-visible { outline-offset: -1px; border-radius: 3px; }
+.app-nav h2 { color: var(--fg-mist); padding: var(--space-2) 0; }
+.app-nav ul + h2 { margin-top: var(--space-5); }
+.app-nav a, .app-nav button { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 36px; padding: 0; border: 0; background: none; text-align: left;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: var(--fg-mist); transition: color var(--dur-quick); }
+.app-nav a:hover, .app-nav button:hover { color: var(--fg); }
+.app-nav a[aria-current] { color: var(--fg); }
+.app-nav a[aria-current] .sq { --p: 1; box-shadow: inset 0 0 0 1px var(--signal); }
+.app-nav b { color: inherit; }
+.app-nav .n { margin-left: auto; font-variant-numeric: tabular-nums; }
+.app-nav .app-foot { display: grid; gap: 2px; margin-top: var(--space-6); color: var(--fg-mist); }
+
+@media (max-width: 700px) {
+  .app-menu { display: inline-flex; }
+}
+@media (min-width: 701px) {
+  .app-body { grid-template-columns: var(--grid-margin) minmax(0, 1fr); column-gap: var(--grid-gap); }
+  .app-nav { display: block; position: sticky; top: var(--app-bar, 56px); max-height: calc(100vh - var(--app-bar, 56px)); overflow-y: auto;
+    padding: var(--space-6) 0 var(--space-6); border-bottom: 0; }
+  .app-main { padding-top: var(--space-6); }
+}
+@media (min-width: 1181px) { .app-main { padding-top: var(--space-7); } }
+
+/* the link that skips to the main column, seen only when focused */
+.skip { position: absolute; left: var(--grid-gutter); top: -100px; z-index: 60; padding: 10px 14px; border-radius: var(--radius-control);
+  background: var(--fg); color: var(--bg); font: var(--weight-regular) var(--size-label)/1 var(--font-mono); letter-spacing: var(--track-label); text-transform: uppercase; }
+.skip:focus { top: 8px; }
+
+/* ---------- a screen: a head (label line, headline, one sentence, actions), then blocks ---------- */
+.screen-head { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--space-4); padding-bottom: var(--space-7); }
+.screen-head .mono { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.screen-head h1 { scroll-margin-top: 100px; }
+.screen-head h1:focus { outline: none; }
+.screen-head .sent { color: var(--fg-mist); }
+.screen-head .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+@container main (min-width: 720px) {
+  .screen-head { grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-6); }
+  .screen-head > * { grid-column: 1; }
+  .screen-head .actions { grid-column: 2; grid-row: 2 / span 2; align-self: end; justify-content: flex-end; }
+}
+.block + .block { margin-top: var(--app-gap, clamp(48px, 5vw, 80px)); }
+.blocks > .block { margin-top: 0; }
+.block-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-4); padding-bottom: var(--space-3); }
+.blocks { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--app-gap, clamp(48px, 5vw, 80px)) var(--grid-gap); }
+.blocks + .block, .block + .blocks { margin-top: var(--app-gap, clamp(48px, 5vw, 80px)); }
+@container main (min-width: 900px) { .blocks.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+
+/* ---------- facts: three or four values shown large in mono, each with a label and its source ---------- */
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--rule); border-top: 2px solid var(--rule-strong); border-bottom: 1px solid var(--rule); }
+.keyfact { display: grid; grid-template-rows: auto 1fr auto; gap: var(--space-5); min-width: 0; padding: var(--space-4) var(--space-4) var(--space-4) 0; background: var(--bg); }
+.keyfact:nth-child(2n) { padding-left: var(--space-4); }
+.keyfact .val { align-self: end; font-size: clamp(22px, 7.4cqi, 56px); line-height: .9; white-space: nowrap; }
+.keyfact .val small { font-size: .42em; letter-spacing: var(--track-label); color: var(--fg-mist); }
+@container main (min-width: 720px) {
+  .facts { grid-template-columns: repeat(var(--facts, 4), minmax(0, 1fr)); }
+  .keyfact { padding: var(--space-4) var(--space-5) var(--space-5) var(--space-4); min-height: 176px; }
+  .keyfact:first-child { padding-left: 0; }
+  .keyfact .val { font-size: clamp(30px, 4.1cqi, 56px); }
+}
+
+/* a value that loads: it waits at the deepest level of the cipher and climbs to itself (App.loading). Each character takes one
+   cell of the lattice (.72em), so a value keeps its width from the first shape to the last letter */
+[data-value] { letter-spacing: 0; }
+
+/* ---------- rows that link somewhere: state, sentence, a fact on the right ---------- */
+.rows { border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule-strong); }
+.rows > li + li { border-top: 1px solid var(--rule); }
+.row { display: grid; grid-template-columns: 10.5em minmax(0, 1fr) auto; column-gap: var(--space-4); align-items: baseline; padding: var(--space-4) 0 calc(var(--space-4) + 2px); }
+.row .mono:last-child { text-align: right; white-space: nowrap; }
+a.row { transition: color var(--dur-quick); }
+a.row:hover .row-t { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+@container main (max-width: 520px) {
+  .row { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-2); }
+  .row .row-t { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* ---------- the toolbar above a record: filters, search, a count ---------- */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-5); padding-bottom: var(--space-4); }
+.toolbar .cluster { gap: var(--space-3) var(--space-4); }
+/* the segmented filter is .seg from taste/base.css; on a narrow main column its counts give way */
+@container main (max-width: 420px) { .seg .n { display: none; } .seg > button { padding: 0 9px; } }
+.input.small, .select.small { min-height: 40px; padding-top: 8px; padding-bottom: 8px; font-size: 15px; }
+.search { width: min(100%, 320px); }
+@container main (max-width: 640px) { .toolbar > :not(.vh) { width: 100%; } .search { width: 100%; } }
+
+/* a sortable column head: the whole head is a button; the arrow says the order */
+.record th[aria-sort] { padding-right: var(--space-5); }
+.sort { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; transition: color var(--dur-quick); }
+.sort:hover, th[aria-sort="ascending"] .sort, th[aria-sort="descending"] .sort { color: var(--fg); }
+.sort i { font-style: normal; display: inline-block; width: 1ch; }
+.sort i::after { content: "\2195"; opacity: .45; }
+th[aria-sort="ascending"] .sort i::after { content: "\2191"; opacity: 1; }
+th[aria-sort="descending"] .sort i::after { content: "\2193"; opacity: 1; }
+
+/* rows of a record that open something: the row takes a faint wash of the signal on hover */
+.record.rows-link tbody tr { cursor: pointer; transition: background-color var(--dur-quick); }
+.record.rows-link tbody tr:hover { background: color-mix(in srgb, var(--signal) 5%, transparent); }
+.record.rows-link tbody th a:hover { text-decoration: underline; text-underline-offset: .2em; }
+.record.rows-link .v, .record.rows-link .n { font-size: 14px; }
+.record .t-new { background: color-mix(in srgb, var(--signal) 7%, transparent); }
+.record td.none { color: var(--fg-mist); padding-top: var(--space-6); padding-bottom: var(--space-6); }
+@container main (max-width: 860px) { .record th.wide-only, .record td.wide-only { display: none; } }
+
+/* ---------- a receipt: one record, four checks, each a label, a sentence, a value and a state ---------- */
+.receipt { border-top: 2px solid var(--rule-strong); border-bottom: 2px solid var(--rule-strong); }
+.receipt > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l s" "w w" "v v"; gap: var(--space-2) var(--space-4);
+  align-items: baseline; padding: var(--space-4) 0 var(--space-5); }
+.receipt > li + li { border-top: 1px solid var(--rule); }
+.receipt .l { grid-area: l; }
+.receipt .w { grid-area: w; max-width: 46ch; }
+.receipt .v { grid-area: v; font: var(--weight-regular) clamp(17px, 1.3vw, 21px)/1.15 var(--font-mono); letter-spacing: 0; text-transform: uppercase; overflow-wrap: anywhere; padding-top: var(--space-2); }
+.receipt .s { grid-area: s; justify-self: end; }
+.receipt .note { display: block; margin-top: 6px; font: var(--weight-regular) var(--size-label)/var(--leading-label) var(--font-mono); letter-spacing: var(--track-label); color: var(--fg-mist); }
+@container main (min-width: 860px) {
+  .receipt > li { grid-template-columns: var(--grid-label) minmax(0, 1fr) auto 8.5em; grid-template-areas: "l w v s"; column-gap: var(--space-6); padding: var(--space-5) 0 calc(var(--space-5) + 2px); }
+  .receipt .t-cells { white-space: nowrap; }
+  .receipt .v { padding-top: 0; }
+}
+
+/* a value with a copy button beside it */
+.copy { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); min-width: 0; }
+.copy .hash { flex: 1; min-width: 0; font-size: 14px; line-height: 1.5; }
+.copy .btn { flex: none; min-width: 9.5ch; }
+
+/* ---------- forms laid out as a record: a group label in the label track, its fields beside it ---------- */
+.form-rows { border-top: 2px solid var(--rule-strong); }
+.form-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4) var(--grid-gap); padding: var(--space-5) 0 var(--space-6); border-bottom: 1px solid var(--rule); }
+/* a floated legend becomes an ordinary grid item, so it can sit in the label track */
+.form-row > legend { float: left; width: 100%; padding: 0; }
+.form-row .fields > .field { align-content: start; }
+.form-row .fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); min-width: 0; }
+.form-row .fields .stack { --gap: var(--space-1); }
+@container main (min-width: 760px) {
+  .form-row { grid-template-columns: var(--grid-label) minmax(0, 1fr); }
+  .form-row > legend { width: auto; grid-column: 1; grid-row: 1; padding-top: 1px; }
+  .form-row .fields { grid-column: 2; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-5); max-width: 820px; }
+  .form-row .fields > .full { grid-column: 1 / -1; }
+}
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding-top: var(--space-6); }
+.form-actions .btn.quiet { margin-left: var(--space-3); }
+.form-row > legend.label { display: block; }
+/* a message under a control that did not pass: a sentence after the struck square of a failed state */
+.msg { display: flex; align-items: baseline; gap: 9px; font-size: 14px; line-height: 1.4; color: var(--fg); }
+.msg:empty { display: none; }
+.msg::before { content: ""; flex: none; width: 9px; height: 9px; transform: translateY(1px); box-shadow: inset 0 0 0 1px var(--fg);
+  background: linear-gradient(to top right, transparent calc(50% - .75px), var(--fg) calc(50% - .75px), var(--fg) calc(50% + .75px), transparent calc(50% + .75px)); }
+
+/* ---------- an empty state: the record with nothing in it yet, and the one thing to do ---------- */
+.empty { display: grid; justify-items: start; gap: var(--space-5); padding: var(--space-8) 0 var(--space-8); border-top: 2px solid var(--rule-strong); border-bottom: 2px solid var(--rule-strong); }
+.empty .lead { max-width: 22ch; }
+.empty .sent { color: var(--fg-mist); }
+.empty .cluster { padding-top: var(--space-2); }
+@container main (min-width: 760px) {
+  .empty { grid-template-columns: var(--grid-label) minmax(0, 1fr); column-gap: var(--grid-gap); }
+  .empty > * { grid-column: 2; }
+  .empty > .mono:first-child { grid-column: 1; grid-row: 1; align-self: baseline; padding-top: .55em; }
+}
+
+/* ---------- a confirmation dialog: a panel laid over the screen; a sheet from below on phones ---------- */
+.dialog { width: min(560px, calc(100vw - 2 * var(--grid-gutter))); max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 0; border: 0;
+  border-radius: var(--radius-panel); background: var(--ground-white); color: var(--fg); overflow: auto; }
+.night .dialog { background: var(--ground-night-panel); box-shadow: inset 0 0 0 1px var(--rule); }
+.dialog::backdrop { background: color-mix(in srgb, var(--ground-night) 58%, transparent); }
+.dialog-in { display: grid; gap: var(--space-4); padding: var(--space-6); }
+.dialog .tt { font-size: clamp(24px, 2.2vw, 32px); padding-top: var(--space-2); }
+.dialog .kv { margin-top: var(--space-2); --kv-label: 9.5em; }
+.dialog .kv > div { grid-template-columns: var(--kv-label) minmax(0, 1fr); column-gap: var(--space-4); }
+.dialog .kv dd { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0; overflow-wrap: anywhere; }
+.dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-3); padding-top: var(--space-4); }
+@media (max-width: 700px) {
+  .dialog { width: 100%; margin: auto 0 0; max-height: calc(100dvh - 48px); border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; }
+  .dialog-in { padding: var(--space-6) var(--grid-gutter) var(--space-6); }
+  .dialog-actions { flex-direction: column-reverse; }
+  .dialog-actions .btn { width: 100%; }
+}
+
+/* ---------- a toast: one line that says what just happened. It appears at once and its words come through the cipher ---------- */
+.toasts { position: fixed; z-index: 40; right: var(--grid-gutter); bottom: var(--grid-gutter); display: grid; gap: var(--space-2);
+  width: min(440px, calc(100vw - 2 * var(--grid-gutter))); pointer-events: none; }
+.toast { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3) var(--space-4); min-height: 56px;
+  padding: 10px 10px 10px 18px; border-radius: var(--radius-panel); pointer-events: auto; }
+.toast .state { gap: 0; }
+.toast p { font-size: 15px; line-height: 1.35; letter-spacing: var(--track-body); }
+.toast .cluster { --gap: var(--space-1); flex-wrap: nowrap; }
+.toast .btn.small { min-height: 34px; padding: 0 10px; border-color: transparent; }
+.toast .btn.small:hover { border-color: var(--fill); }
+@media (max-width: 700px) { .toasts { left: var(--grid-gutter); right: var(--grid-gutter); bottom: 12px; width: auto; } }
+
+/* ---------- print: the record without the shell ---------- */
+@media print {
+  .app-top, .app-nav, .toasts, .actions, .toolbar { display: none !important; }
+  .app-body { display: block; }
+}
