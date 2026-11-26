@@ -44,7 +44,7 @@ Eight source-holder checks returned `NO_VERDICT` because the staged copy omitted
 
 ## Reproduce what you can inspect
 
-- Run [the CPU router quickstart](../../README.md#try-it-on-a-cpu) to exercise signed receipts and sealed pickup with a synthetic engine.
+- Run [the CPU router quickstart](../../README.md#try-it) to exercise signed receipts and sealed pickup with a synthetic engine.
 - Run [the package check](../../CONTRIBUTING.md#build-and-check-the-verifier-wheel) to install the development wheel and check the signed fixture. The native verifier’s separate clean-install report includes a real whole-reply proof and a changed-proof control. [Native clean-install report](../../distribution/verifier/evidence/native-clean-install.json)
 - Follow [the real engine and prover setup](../../engine/README.md) for another live deployment. Run-specific holder inputs and original proof bytes remain in private custody. [Exact provider source](https://github.com/Lucid-Computing/akashi/commit/6b490814375a59ca8d8f0c46d5b460aae8b8df54) · [Exact holder source](https://github.com/Lucid-Computing/akashi/commit/64f2fcb95818bdcbac014bc90f6f39aeb36e3547)
 - Use [the release gate](../../release/README.md) to qualify a candidate. The longer historical challenge and continuous soak have their own requirements.
