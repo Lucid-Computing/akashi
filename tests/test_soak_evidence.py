@@ -58,7 +58,7 @@ class SoakEvidenceTests(unittest.TestCase):
             leaf = log.receipt(i)
             verdict = sign_verdict(
                 {
-                    "version": "vig-verdict/1",
+                    "version": "akashi-verdict/1",
                     "challenge_id": str(uuid.UUID(int=i + 1)),
                     "transcript_commitment": t,
                     "outcome": "CONFORMS",

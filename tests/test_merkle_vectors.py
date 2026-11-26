@@ -1,10 +1,11 @@
 """Fixed roots and proofs from github.com/transparency-dev/merkle v0.0.2.
 
-The Go reference testonly.Tree.AppendData received each binary VIG leaf digest.
+The Go reference testonly.Tree.AppendData received each binary leaf digest.
 For every tree size, HashAt, InclusionProof and ConsistencyProof produced the
 fixture; proof.VerifyInclusion and proof.VerifyConsistency checked each result.
-The first input is the signed VIG/1 sample leaf from the receipt vectors. The
-others are SHA-256 of UTF-8 "vig fixture leaf i" for i = 1 through 8.
+The first input is the sample leaf the receipt vectors signed before the rename
+to Akashi, under the old `vig/leaf/1` domain. The others are SHA-256 of UTF-8
+"vig fixture leaf i" for i = 1 through 8. Merkle hashing treats leaves as opaque.
 
 Inclusion paths are indexed by [tree size][leaf index], consistency paths by
 [new size][old size]. Every entry in a path is an index into node_hashes. This

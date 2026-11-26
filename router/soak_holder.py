@@ -395,7 +395,7 @@ class SoakHolder:
                         and isinstance(reply.get("error"), dict)
                         and reply["error"].get("code") == "unwarranted_reply"
                         and "verification" not in reply
-                        and "x-vig-receipt" not in headers
+                        and "x-akashi-receipt" not in headers
                     ):
                         self._save(name, phase, "unwarranted", state)
                         return _report("unwarranted", state)
@@ -407,7 +407,7 @@ class SoakHolder:
                         and isinstance(reply, dict)
                         and "verification" not in reply
                         and "pickup_id" not in reply
-                        and "x-vig-receipt" not in headers
+                        and "x-akashi-receipt" not in headers
                         and reply["object"] == "chat.completion"
                         and reply["model"] == body["model"]
                         and len(reply["choices"]) == 1

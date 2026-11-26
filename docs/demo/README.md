@@ -8,7 +8,7 @@ The exact reply was `12<|eot|>`. The suffix is the decoded end-of-turn token. Th
 
 ## The offline check
 
-The working directory paths below are relative to the captured replay. Both invocations used the installed `vig-verify` wheel, the same descriptor and checkpoint, and the same public statement. The verification processes saw loopback only, with no GPU or model weights. The only change to the second bundle was one bit of the decoded proof.
+The working directory paths below are relative to the captured replay. Both invocations used the installed `vig-verify` wheel (the verifier's name before the project became Akashi; it now ships as `akashi-verify`), the same descriptor and checkpoint, and the same public statement. The verification processes saw loopback only, with no GPU or model weights. The only change to the second bundle was one bit of the decoded proof.
 
 ```sh
 .venv/bin/vig verify bundle/holder.json --descriptor bundle/descriptor.json \
@@ -46,7 +46,7 @@ Eight source-holder checks returned `NO_VERDICT` because the staged copy omitted
 
 - Run [the CPU router quickstart](../../README.md#try-it-on-a-cpu) to exercise signed receipts and sealed pickup with a synthetic engine.
 - Run [the package check](../../CONTRIBUTING.md#build-and-check-the-verifier-wheel) to install the development wheel and check the signed fixture. The native verifier’s separate clean-install report includes a real whole-reply proof and a changed-proof control. [Native clean-install report](../../distribution/verifier/evidence/native-clean-install.json)
-- Follow [the real engine and prover setup](../../engine/README.md) for another live deployment. Run-specific holder inputs and original proof bytes remain in private custody. [Exact provider source](https://github.com/AbdelStark/verified-inference-gateway/commit/6b490814375a59ca8d8f0c46d5b460aae8b8df54) · [Exact holder source](https://github.com/AbdelStark/verified-inference-gateway/commit/64f2fcb95818bdcbac014bc90f6f39aeb36e3547)
+- Follow [the real engine and prover setup](../../engine/README.md) for another live deployment. Run-specific holder inputs and original proof bytes remain in private custody. [Exact provider source](https://github.com/Lucid-Computing/akashi/commit/6b490814375a59ca8d8f0c46d5b460aae8b8df54) · [Exact holder source](https://github.com/Lucid-Computing/akashi/commit/64f2fcb95818bdcbac014bc90f6f39aeb36e3547)
 - Use [the release gate](../../release/README.md) to qualify a candidate. The longer historical challenge and continuous soak have their own requirements.
 
 A separate clean offline install replayed the same archived proof and reproduced both exits. The proof establishes greedy token conformance for this transcript and the committed model. [Security guarantee](../../specs/guarantee.md) · [Release testing strategy](../spec/07-testing-strategy.md#release-gates)

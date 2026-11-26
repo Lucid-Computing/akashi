@@ -179,7 +179,7 @@ class DeploymentTest(unittest.TestCase):
 
     def test_primary_evidence_and_live_roles(self) -> None:
         env = {
-            "VIG_M4_" + k: str(path)
+            "AKASHI_M4_" + k: str(path)
             for k, path in {
                 "ROOT": self.root,
                 "PRIMARY_READY": self.previous,

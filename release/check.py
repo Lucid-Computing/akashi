@@ -135,7 +135,7 @@ def qualify(directory: Path | None, trusted: str | None, output: Path) -> bool:
             require(
                 isinstance(name, str)
                 and re.fullmatch(
-                    r"vig_verify-[A-Za-z0-9_.]+-py3-none-linux_x86_64\.whl", name
+                    r"akashi_verify-[A-Za-z0-9_.]+-py3-none-linux_x86_64\.whl", name
                 ),
                 "invalid wheel filename",
             )
@@ -196,7 +196,7 @@ def qualify(directory: Path | None, trusted: str | None, output: Path) -> bool:
             source = {
                 "schema_version": 1,
                 "source_revision": revision,
-                "source_url": "https://github.com/AbdelStark/verified-inference-gateway/tree/"
+                "source_url": "https://github.com/Lucid-Computing/akashi/tree/"
                 + revision,
                 "wheel_sha256": package["wheel_sha256"],
                 "locked_requirements_sha256": package["lock_sha256"],
@@ -237,10 +237,10 @@ def qualify(directory: Path | None, trusted: str | None, output: Path) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--evidence", type=Path, default=os.environ.get("VIG_RELEASE_EVIDENCE")
+        "--evidence", type=Path, default=os.environ.get("AKASHI_RELEASE_EVIDENCE")
     )
     parser.add_argument(
-        "--manifest-sha256", default=os.environ.get("VIG_RELEASE_MANIFEST_SHA256")
+        "--manifest-sha256", default=os.environ.get("AKASHI_RELEASE_MANIFEST_SHA256")
     )
     parser.add_argument("--output", type=Path, default=ROOT / "build/release")
     args = parser.parse_args()

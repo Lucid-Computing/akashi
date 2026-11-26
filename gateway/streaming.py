@@ -35,7 +35,7 @@ def _frames(completion: Completion, mode: Mode, usage: bool) -> tuple[bytes, byt
         or len(choices) != 1
         or not isinstance(choices[0], dict)
         or not isinstance(verification, dict)
-        or verification.get("version") != "vig/1"
+        or verification.get("version") != "akashi/1"
         or not isinstance(verification.get("receipt"), dict)
     ):
         raise ValueError("Incomplete stream result")
@@ -151,7 +151,7 @@ class StreamDelivery(Iterator[bytes]):
                 try:
                     self._control.check()
                     threading.Thread(
-                        target=self._work, args=(run,), daemon=True, name="vig-stream"
+                        target=self._work, args=(run,), daemon=True, name="akashi-stream"
                     ).start()
                 except Exception:  # noqa: BLE001 -- launch failure has no public diagnostics.
                     self._release()

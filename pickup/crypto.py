@@ -12,7 +12,7 @@ import rfc8785
 from nacl import bindings
 from nacl.exceptions import CryptoError
 
-VERSION = "vig-pickup/1"
+VERSION = "akashi-pickup/1"
 _UINT32_MAX = (1 << 32) - 1
 _VOCABULARY_SIZE = 202_048  # F37, specs/parameters.md
 _JSON: TypeAlias = str | bool | int | float | None | list["_JSON"] | dict[str, "_JSON"]
@@ -40,7 +40,7 @@ def parse_holder_secret(user: object) -> bytes | None:
         return None
     if not isinstance(user, str):
         raise PickupError("Invalid user field")
-    if not user.startswith("vig-pickup/"):
+    if not user.startswith("akashi-pickup/"):
         return None
     prefix = VERSION + ":"
     if not user.startswith(prefix):
@@ -80,7 +80,7 @@ def _material(
     except UnicodeEncodeError:
         raise PickupError("Invalid reply text") from None
     k = hashlib.sha256(
-        b"vig/pickup/v1"
+        b"akashi/pickup/v1"
         + holder_secret
         + _frame(_canonical(original_chat))
         + budget.to_bytes(4, "little")
@@ -104,7 +104,7 @@ def _key(k: bytes) -> bytes:
 
 
 def _verification(value: object, digest: bytes) -> dict[str, object]:
-    if not isinstance(value, dict) or value.get("version") != "vig/1":
+    if not isinstance(value, dict) or value.get("version") != "akashi/1":
         raise PickupError("Invalid verification object")
     if not isinstance(value.get("receipt"), dict):
         raise PickupError("Invalid verification receipt")

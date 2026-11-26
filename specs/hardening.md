@@ -233,7 +233,7 @@ new_key_id = generate_key_id()
 write_key(f"/keys/{component}_{new_key_id}", new_key)
 
 # Old key stays valid for verification
-# Publish both key IDs in /.well-known/vig.json
+# Publish both key IDs in /.well-known/akashi.json
 ```
 
 ## Supply Chain Security
@@ -357,4 +357,4 @@ Run `make test-service-boundaries` with HAProxy, the OpenSSL CLI, Node.js and uv
 
 Keep one public-key archive per trusted deployment in an operator-owned directory. Before switching the log or auditor signer, call `PublicKeyArchive.rotate(role, new_id, raw_public_key, replaces=previous_id)`, publish the snapshot, then activate the signer. For the first key, omit `replaces`. The operator can retry a completed rotation with the same ID and public key. Back up the archive with public checkpoints. Historical verification selects both the signing role and the key ID.
 
-Generate the public file with `python -m operations.publish_keys base-discovery.json verification.sqlite3 public/.well-known/vig.json`. Use the gateway's trusted discovery descriptor for the base and serve the resulting file at `/.well-known/vig.json`. The implementation adds a proposed `verification_keys` array of public role, key ID, key bytes (hex) and active status, and updates the existing current-key fields. Holders authenticate the descriptor through their configured trust source before accepting its keys.
+Generate the public file with `python -m operations.publish_keys base-discovery.json verification.sqlite3 public/.well-known/akashi.json`. Use the gateway's trusted discovery descriptor for the base and serve the resulting file at `/.well-known/akashi.json`. The implementation adds a proposed `verification_keys` array of public role, key ID, key bytes (hex) and active status, and updates the existing current-key fields. Holders authenticate the descriptor through their configured trust source before accepting its keys.

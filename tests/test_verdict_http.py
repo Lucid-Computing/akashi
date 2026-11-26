@@ -35,7 +35,7 @@ class VerdictHttpTests(unittest.TestCase):
         self.key = Ed25519PrivateKey.generate()
         self.verdict = sign_verdict(
             {
-                "version": "vig-verdict/1",
+                "version": "akashi-verdict/1",
                 "challenge_id": _ID,
                 "transcript_commitment": _T,
                 "outcome": "CONFORMS",

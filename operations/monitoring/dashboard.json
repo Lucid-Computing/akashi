@@ -1,9 +1,9 @@
 {
-  "uid": "vig-operations",
+  "uid": "akashi-operations",
   "title": "Verified inference operations",
   "schemaVersion": 39,
   "tags": [
-    "vig"
+    "akashi"
   ],
   "time": {
     "from": "now-1h",
@@ -41,7 +41,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "vig_observation_coverage",
+          "expr": "akashi_observation_coverage",
           "legendFormat": "{{service}} · {{instance}}"
         }
       ],
@@ -74,7 +74,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "vig_sampling_coverage == 1",
+          "expr": "akashi_sampling_coverage == 1",
           "legendFormat": "{{state}} · {{instance}}"
         }
       ],
@@ -107,7 +107,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "vig_engine_startup_gate_failed",
+          "expr": "akashi_engine_startup_gate_failed",
           "legendFormat": "{{instance}}"
         }
       ],
@@ -140,7 +140,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "sum by (job,instance,mode) (increase(vig_unwarranted_total{service=\"engine\"}[1h])) / sum by (job,instance,mode) (increase(vig_engine_requests_total{service=\"engine\"}[1h]))",
+          "expr": "sum by (job,instance,mode) (increase(akashi_unwarranted_total{service=\"engine\"}[1h])) / sum by (job,instance,mode) (increase(akashi_engine_requests_total{service=\"engine\"}[1h]))",
           "legendFormat": "{{instance}}"
         }
       ],
@@ -173,7 +173,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "vig_beacon_available",
+          "expr": "akashi_beacon_available",
           "legendFormat": "{{instance}}"
         }
       ],
@@ -206,7 +206,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "vig_beacon_lag_seconds",
+          "expr": "akashi_beacon_lag_seconds",
           "legendFormat": "{{instance}}"
         }
       ],
@@ -239,7 +239,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "vig_signed_deviations_last_5m",
+          "expr": "akashi_signed_deviations_last_5m",
           "legendFormat": "{{instance}}"
         }
       ],
@@ -272,7 +272,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "vig_log_tree_size",
+          "expr": "akashi_log_tree_size",
           "legendFormat": "{{instance}}"
         }
       ],
@@ -305,7 +305,7 @@
             "type": "prometheus",
             "uid": "${source}"
           },
-          "expr": "sum by (instance,kind) (vig_log_incidents_total)",
+          "expr": "sum by (instance,kind) (akashi_log_incidents_total)",
           "legendFormat": "{{kind}} · {{instance}}"
         }
       ],

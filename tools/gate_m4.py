@@ -235,7 +235,7 @@ def gate(config_path: Path | None, target: Path) -> bool:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=os.environ.get("VIG_M4_CONFIG"))
+    parser.add_argument("--config", type=Path, default=os.environ.get("AKASHI_M4_CONFIG"))
     parser.add_argument("--output", type=Path, default=ROOT / "build/gates/m4.json")
     args = parser.parse_args()
     success = gate(args.config, args.output)

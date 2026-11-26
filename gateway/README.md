@@ -44,7 +44,7 @@ display text. [Canonical rendering contract](../docs/rfcs/RFC-0002-canonical-ren
 
 Run `make test-renderer` at the repository root. The gate downloads the two
 pinned public files into a temporary directory. For offline runs, set
-`VIG_RENDER_ASSETS` to the directory containing `tokenizer.json` and
+`AKASHI_RENDER_ASSETS` to the directory containing `tokenizer.json` and
 `tokenizer_config.json` before invoking Make.
 [Pinned assets](https://huggingface.co/unsloth/Llama-4-Maverick-17B-128E-Instruct/tree/86c5ecb6f2fbddf604c60120125fb202e09f2556)
 
@@ -66,7 +66,7 @@ Only the normalized engine fields proceed to dispatch.
 
 Mount `gateway.discovery.DiscoveryApp(config)` in the gateway WSGI stack.
 `GET /v1/models` returns the operator's model name, owner and creation time.
-`GET /.well-known/vig.json` publishes the window, token cap, commitment,
+`GET /.well-known/akashi.json` publishes the window, token cap, commitment,
 render profiles, beacon chain, public verification identities and service
 addresses. Use the same `ServiceConfig` for request admission so the served
 model name and limit agree with the descriptor.
@@ -85,11 +85,11 @@ For opted-in chat, the pickup writer durably reserves the lookup ID, leaf hash a
 
 ## Direct buffered inference
 
-Mount `gateway.http.ServingApp` behind the deployment's TLS ingress. Configure one `Serving` coordinator per engine with the discovery descriptor, pinned chat renderer, engine adapter, delivery committer and bearer-key validator. The same app serves discovery and both POST routes. It enforces the configured request deadline and advertises the operator's retry interval on a full queue. One request holds the slot through delivery assembly, with up to four waiting (see `Q_max` in `specs/parameters.md`). A server that detects a disconnect can supply a `RequestControl` in the WSGI environment under `vig.request_control` and call its `cancel()` method.
+Mount `gateway.http.ServingApp` behind the deployment's TLS ingress. Configure one `Serving` coordinator per engine with the discovery descriptor, pinned chat renderer, engine adapter, delivery committer and bearer-key validator. The same app serves discovery and both POST routes. It enforces the configured request deadline and advertises the operator's retry interval on a full queue. One request holds the slot through delivery assembly, with up to four waiting (see `Q_max` in `specs/parameters.md`). A server that detects a disconnect can supply a `RequestControl` in the WSGI environment under `akashi.request_control` and call its `cancel()` method.
 
-A successful direct response carries the signed receipt in both `verification.receipt` and the base64url `x-vig-receipt` header. Chat uses the pinned display decoder. Raw results expose token IDs with null display text. The proposed transport error codes `request_cancelled` and `commit_failed` identify a cancelled delivery and an unverified or unavailable append. Both responses omit the receipt.
+A successful direct response carries the signed receipt in both `verification.receipt` and the base64url `x-akashi-receipt` header. Chat uses the pinned display decoder. Raw results expose token IDs with null display text. The proposed transport error codes `request_cancelled` and `commit_failed` identify a cancelled delivery and an unverified or unavailable append. Both responses omit the receipt.
 
-Run `make test-serving` with `VIG_RENDER_ASSETS` pointing to the pinned tokenizer and configuration. The tests exercise actual loopback HTTP, encrypted escrow and signed log storage, FIFO admission, disconnects, invalid tokens and promise failures.
+Run `make test-serving` with `AKASHI_RENDER_ASSETS` pointing to the pinned tokenizer and configuration. The tests exercise actual loopback HTTP, encrypted escrow and signed log storage, FIFO admission, disconnects, invalid tokens and promise failures.
 
 ## Streaming delivery
 

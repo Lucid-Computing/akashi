@@ -25,7 +25,7 @@ class PickupStoreTests(unittest.TestCase):
         self.tag = os.urandom(32).hex()
         self.identity = lookup_id(self.chat, 2, "display", self.secret)
         self.bundle = {
-            "version": "vig/1",
+            "version": "akashi/1",
             "receipt": {"test": "private receipt canary"},
             "prompt_token_ids": [10],
             "reply_token_ids": [4, 5],

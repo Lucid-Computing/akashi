@@ -31,9 +31,9 @@ Exit criteria from spec § 19.2:
 
 ## Transcript and log evidence
 
-Run `make test-evidence-regressions`. It writes `build/gates/m3-evidence.json` with per-scenario trial and control counts for R10–R17. To use an offline checkout of the pinned F37 assets, set `VIG_RENDER_ASSETS`. The report records the source revision and fixture digests. The proof replay and commitment controls exercise synthetic F9 terminal records through the holder's statement and verifier policy. Physical proof verification has its own milestone evidence. [M3 criteria](../specs/build-plan.md#m3-red-team) · [F9](../specs/facts-register.md#flashprove-foundation)
+Run `make test-evidence-regressions`. It writes `build/gates/m3-evidence.json` with per-scenario trial and control counts for R10–R17. To use an offline checkout of the pinned F37 assets, set `AKASHI_RENDER_ASSETS`. The report records the source revision and fixture digests. The proof replay and commitment controls exercise synthetic F9 terminal records through the holder's statement and verifier policy. Physical proof verification has its own milestone evidence. [M3 criteria](../specs/build-plan.md#m3-red-team) · [F9](../specs/facts-register.md#flashprove-foundation)
 
-For a live delivery, a holder can record when it received the signed promise and supply that UTC timestamp to `vig verify` with `--observed-at`. The monitor accepts the same contemporaneous observation via `hold(receipt, observed_at=...)`. An observation more than 30 seconds after the signed time produces a warning and a monitor incident. It records a timing discrepancy that can include delivery latency. When verifying an archived receipt, leave the option unset unless the original delivery observation is available. [R17](../specs/redteam-suite.md)
+For a live delivery, a holder can record when it received the signed promise and supply that UTC timestamp to `akashi verify` with `--observed-at`. The monitor accepts the same contemporaneous observation via `hold(receipt, observed_at=...)`. An observation more than 30 seconds after the signed time produces a warning and a monitor incident. It records a timing discrepancy that can include delivery latency. When verifying an archived receipt, leave the option unset unless the original delivery observation is available. [R17](../specs/redteam-suite.md)
 
 ## Model outcomes
 

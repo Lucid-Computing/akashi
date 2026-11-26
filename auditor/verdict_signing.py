@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
-_DOMAIN = b"vig/verdict/1"
+_DOMAIN = b"akashi/verdict/1"
 _REASONS = {
     "CONFORMS": {"exact_match"},
     "DEVIATES": {"first_divergence"},
@@ -56,7 +56,7 @@ def _checked(value: object, *, signed: bool) -> dict[str, Any]:
             fields |= {"proof_sha256", "statement_sha256"}
         if (
             value.keys() != fields
-            or value["version"] != "vig-verdict/1"
+            or value["version"] != "akashi-verdict/1"
             or value["reason"] not in _REASONS[outcome]
             or str(uuid.UUID(value["challenge_id"])) != value["challenge_id"]
             or not _STAMP.fullmatch(value["verified_at"])

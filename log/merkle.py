@@ -1,4 +1,4 @@
-"""RFC 6962 Merkle roots and proofs over the 32-byte VIG public leaf digests."""
+"""RFC 6962 Merkle roots and proofs over the 32-byte AKASHI public leaf digests."""
 
 import hashlib
 from collections.abc import Callable

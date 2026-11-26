@@ -1,6 +1,6 @@
 # Verify a reply offline
 
-The `vig verify` command checks the holder’s original input and displayed reply
+The `akashi verify` command checks the holder’s original input and displayed reply
 against a signed receipt and log history. With a proof and the public verifier
 inputs, it also checks the reply against the committed integer model. Native
 verification requires a compatible Linux CPU. It reads local files and needs
@@ -23,20 +23,20 @@ no model weights. [Verification contract](../specs/verifier-kit.md) ·
 
 ## Install the development wheel
 
-`vig-verify` 0.0.0 is a local development candidate. On x86-64 Linux with Python 3.10 or newer, obtain the wheel, `requirements.txt` and `verifier-install-v1.json` from the candidate build. Use a separately trusted copy of its package report to check the wheel, lock and fixture SHA-256 values before installation. The qualified native host runs Ubuntu 24.04 with SHA extensions, glibc 2.39 and the documented C++ runtime. [Candidate build instructions](../CONTRIBUTING.md#build-and-check-the-verifier-wheel) · [ELF requirements and input digests](../distribution/verifier/README.md#native-executable)
+`akashi-verify` 0.0.0 is a local development candidate. On x86-64 Linux with Python 3.10 or newer, obtain the wheel, `requirements.txt` and `verifier-install-v1.json` from the candidate build. Use a separately trusted copy of its package report to check the wheel, lock and fixture SHA-256 values before installation. The qualified native host runs Ubuntu 24.04 with SHA extensions, glibc 2.39 and the documented C++ runtime. [Candidate build instructions](../CONTRIBUTING.md#build-and-check-the-verifier-wheel) · [ELF requirements and input digests](../distribution/verifier/README.md#native-executable)
 
-Run these commands in the directory containing those three candidate files. Set `VIG_PACKAGE_REPORT` to the trusted report path. Choose a fresh, user-owned directory for the environment.
+Run these commands in the directory containing those three candidate files. Set `AKASHI_PACKAGE_REPORT` to the trusted report path. Choose a fresh, user-owned directory for the environment.
 
 ```sh
 set -e
-python3 - "$VIG_PACKAGE_REPORT" <<'PYVERIFY'
+python3 - "$AKASHI_PACKAGE_REPORT" <<'PYVERIFY'
 import hashlib, json, pathlib, sys
 
 report = json.loads(pathlib.Path(sys.argv[1]).read_bytes())
 if (report["schema_version"], report["gate"], report["status"]) != (1, "package", "passed"):
     raise SystemExit("expected a passing package report")
 for filename, field in [
-    ("vig_verify-0.0.0-py3-none-linux_x86_64.whl", "wheel_sha256"),
+    ("akashi_verify-0.0.0-py3-none-linux_x86_64.whl", "wheel_sha256"),
     ("requirements.txt", "lock_sha256"),
     ("verifier-install-v1.json", "fixture_sha256"),
 ]:
@@ -45,9 +45,9 @@ for filename, field in [
 PYVERIFY
 uv venv --no-project --python python3 .venv
 uv pip install --python .venv/bin/python --require-hashes --only-binary :all: -r requirements.txt
-uv pip install --python .venv/bin/python --no-deps ./vig_verify-0.0.0-py3-none-linux_x86_64.whl
+uv pip install --python .venv/bin/python --no-deps ./akashi_verify-0.0.0-py3-none-linux_x86_64.whl
 uv pip check --python .venv/bin/python
-.venv/bin/vig verify --help
+.venv/bin/akashi verify --help
 ```
 
 For an offline installation, stage the matching dependency wheels for your Python and platform, and add `--no-index --find-links /path/to/wheelhouse` to the requirements installation command. Verification itself reads local files.
@@ -64,7 +64,7 @@ sample = json.loads(pathlib.Path("verifier-install-v1.json").read_bytes())
 for field in ("bundle", "descriptor", "checkpoint"):
     pathlib.Path("fixture-" + field + ".json").write_text(json.dumps(sample[field]))
 result = subprocess.run([
-    ".venv/bin/vig", "verify", "fixture-bundle.json", "--descriptor", "fixture-descriptor.json",
+    ".venv/bin/akashi", "verify", "fixture-bundle.json", "--descriptor", "fixture-descriptor.json",
     "--checkpoint", "fixture-checkpoint.json", "--observed-at", sample["observed_at"], "--receipt-only",
 ], capture_output=True, text=True)
 print(result.stdout, end="")
@@ -89,7 +89,7 @@ With the wheel installed, a trusted `--runtime` JSON object containing only the 
 ```
 
 ```sh
-.venv/bin/vig verify holder.json --descriptor trusted-vig.json \
+.venv/bin/akashi verify holder.json --descriptor trusted-akashi.json \
   --checkpoint previous-sth.json --assets /path/to/f37 --runtime verifier-runtime.json
 ```
 
@@ -117,12 +117,12 @@ From a source checkout, use the locked environment. Supply the descriptor obtain
 
 ```sh
 make setup
-uv run --locked ./vig verify holder.json --descriptor trusted-vig.json \
+uv run --locked ./akashi verify holder.json --descriptor trusted-akashi.json \
   --assets /path/to/pinned-tokenizer --checkpoint previous-sth.json \
   --runtime verifier-runtime.json
 ```
 
-The bundle uses `verification` from the warranted response or opened pickup envelope, `max_tokens` from the caller, `input` containing the original messages or raw IDs, and `text` containing the displayed chat text or JSON null for raw mode. Supply the signed head as `history.sth` and the log's inclusion response as `history.inclusion`. If you have an older trusted head, pass it separately with `--checkpoint` and include the log's response in `history.consistency`. The descriptor can include retired log verification keys. Chat uses both F37 assets from `--assets` or `VIG_RENDER_ASSETS`.
+The bundle uses `verification` from the warranted response or opened pickup envelope, `max_tokens` from the caller, `input` containing the original messages or raw IDs, and `text` containing the displayed chat text or JSON null for raw mode. Supply the signed head as `history.sth` and the log's inclusion response as `history.inclusion`. If you have an older trusted head, pass it separately with `--checkpoint` and include the log's response in `history.consistency`. The descriptor can include retired log verification keys. Chat uses both F37 assets from `--assets` or `AKASHI_RENDER_ASSETS`.
 
 The optional `proof` object carries `kind`, the original 4,104-byte `statement` in lowercase hex, and `proof` in standard padded Base64. Deviation evidence includes the zero-based reply `index` and corrected token `expected`. Both kinds use a four-byte zero public output and accept an explicit `y` of `00000000`. Provide trusted native verifier paths in `--runtime` using `binary`, `manifest`, `config_dir` and `public_key_dir`. Configure `timeout_seconds`, `memory_bytes` and `max_proof_bytes` according to the verifier host. Optional `lean` settings use `checkout`, `lake`, `temp` and `timeout_seconds`. See the [proof runtime](../docs/rfcs/RFC-0006-proof-runtime.md) and [holder contract](../docs/rfcs/RFC-0008-holder-verification.md).
 

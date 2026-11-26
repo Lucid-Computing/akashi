@@ -82,7 +82,7 @@ def _signed_deviation(stamp: datetime, key: Ed25519PrivateKey) -> dict[str, obje
 
     return sign_verdict(
         {
-            "version": "vig-verdict/1",
+            "version": "akashi-verdict/1",
             "challenge_id": "12345678-1234-4123-8123-123456789abc",
             "transcript_commitment": "12" * 32,
             "outcome": "DEVIATES",
@@ -132,27 +132,27 @@ class OperationalSourceTests(TestCase):
         for role, sample, values in (
             (
                 "engine",
-                'vig_engine_startup_gate_failed{service="engine",mode="live"}',
+                'akashi_engine_startup_gate_failed{service="engine",mode="live"}',
                 (0, 1, 0),
             ),
             (
                 "engine",
-                'vig_engine_requests_total{service="engine",mode="live"}',
+                'akashi_engine_requests_total{service="engine",mode="live"}',
                 (1, 2, 3),
             ),
             (
                 "engine",
-                'vig_unwarranted_total{service="engine",mode="live",outcome="engine_error",reason="engine_error"}',
+                'akashi_unwarranted_total{service="engine",mode="live",outcome="engine_error",reason="engine_error"}',
                 (0, 1, 1),
             ),
             (
                 "auditor",
-                'vig_signed_deviations_last_5m{service="auditor",mode="live"}',
+                'akashi_signed_deviations_last_5m{service="auditor",mode="live"}',
                 (0, 1, 0),
             ),
             (
                 "sampler",
-                'vig_beacon_available{service="sampler",mode="live"}',
+                'akashi_beacon_available{service="sampler",mode="live"}',
                 (1, 0, 1),
             ),
         ):
@@ -162,7 +162,7 @@ class OperationalSourceTests(TestCase):
                     self.assertNotIn("challenge_id", body)
                     self.assertNotIn("signature", body)
         _, outage, _ = scrapes["sampler"]
-        self.assertNotIn("vig_beacon_lag_seconds", outage)
+        self.assertNotIn("akashi_beacon_lag_seconds", outage)
 
     def test_disabled_unknown_and_invalid_beacon_lag_and_readiness(self) -> None:
         enabled, latest, now = Mock(), Mock(), Mock()
@@ -171,7 +171,7 @@ class OperationalSourceTests(TestCase):
         for value, state in ((False, "disabled"), (None, "unknown")):
             enabled.return_value = value
             self.assertIn(f'state="{state}"}} 1', probe.prometheus())
-            self.assertNotIn("vig_beacon_available", probe.prometheus())
+            self.assertNotIn("akashi_beacon_available", probe.prometheus())
             self.assertEqual(_get(app, "/health/ready")[0], "503 Service Unavailable")
         latest.assert_not_called()
         enabled.return_value = True
@@ -184,7 +184,7 @@ class OperationalSourceTests(TestCase):
             latest.return_value = (info, record)
             self.assertFalse(probe.ready())
             self.assertIn('state="unknown"} 1', probe.prometheus())
-            self.assertNotIn("vig_beacon_lag_seconds", probe.prometheus())
+            self.assertNotIn("akashi_beacon_lag_seconds", probe.prometheus())
         latest.return_value = (INFO, FIRST)
         now.return_value = GENESIS + timedelta(seconds=60)
         self.assertTrue(probe.ready())
@@ -213,7 +213,7 @@ class OperationalSourceTests(TestCase):
         with self.assertRaises(ValueError):
             engine.generate((), 1)
         self.assertIn(
-            'vig_engine_requests_total{service="engine",mode="soak"} 0',
+            'akashi_engine_requests_total{service="engine",mode="soak"} 0',
             registry.prometheus(),
         )
         client.generate.side_effect = EngineUnavailable("private-diagnostic")
@@ -223,9 +223,9 @@ class OperationalSourceTests(TestCase):
             engine.generate((1,), 1)
         registry.attaching()
         text = registry.prometheus()
-        self.assertIn('vig_engine_requests_total{service="engine",mode="soak"} 1', text)
+        self.assertIn('akashi_engine_requests_total{service="engine",mode="soak"} 1', text)
         self.assertIn('reason="engine_error"} 0', text)
-        self.assertNotIn("vig_engine_startup_gate_failed", text)
+        self.assertNotIn("akashi_engine_startup_gate_failed", text)
         self.assertNotIn("private-diagnostic", text)
 
     def test_wrong_auditor_key_repeated_document_and_future_time_are_unknown(
@@ -239,7 +239,7 @@ class OperationalSourceTests(TestCase):
             mode="live", recent=reader, lookup_key=keys, clock=lambda: GENESIS
         )
         self.assertFalse(probe.ready())
-        self.assertNotIn("vig_signed_deviations", probe.prometheus())
+        self.assertNotIn("akashi_signed_deviations", probe.prometheus())
         keys.return_value = signer.public_key().public_bytes_raw()
         self.assertTrue(probe.ready())
         keys.assert_called_with("auditor", "fixture")
@@ -251,18 +251,18 @@ class OperationalSourceTests(TestCase):
             reader.return_value = rows
             self.assertFalse(probe.ready())
             text = probe.prometheus()
-            self.assertNotIn("vig_signed_deviations", text)
+            self.assertNotIn("akashi_signed_deviations", text)
             self.assertIn(
-                'vig_observation_coverage{service="auditor",mode="live"} 0', text
+                'akashi_observation_coverage{service="auditor",mode="live"} 0', text
             )
             self.assertNotIn("private-diagnostic", text)
         reader.side_effect = OSError("private-diagnostic")
         self.assertFalse(probe.ready())
-        self.assertNotIn("vig_signed_deviations", probe.prometheus())
+        self.assertNotIn("akashi_signed_deviations", probe.prometheus())
         reader.side_effect = None
         reader.return_value = []
         self.assertTrue(probe.ready())
         self.assertIn(
-            'vig_signed_deviations_last_5m{service="auditor",mode="live"} 0',
+            'akashi_signed_deviations_last_5m{service="auditor",mode="live"} 0',
             probe.prometheus(),
         )

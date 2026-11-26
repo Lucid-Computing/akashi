@@ -48,7 +48,7 @@ class RouterDemoOutputTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    os.getenv("VIG_RENDER_ASSETS") or os.getenv("VIG_REQUIRE_ROUTER_ASSETS") == "1",
+    os.getenv("AKASHI_RENDER_ASSETS") or os.getenv("AKASHI_REQUIRE_ROUTER_ASSETS") == "1",
     "requires pinned renderer assets",
 )
 class RouterHolderTests(unittest.TestCase):

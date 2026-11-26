@@ -150,7 +150,7 @@ def _gpu(path: Path, pattern: str) -> str:
 def physical(root: Path, config: Json, env: Mapping[str, str]) -> Primary:
     _private_dir(root)
     previous, fresh, ep, spool, verifier = (
-        Path(env["VIG_M4_" + k])
+        Path(env["AKASHI_M4_" + k])
         for k in (
             "PRIMARY_READY",
             "FRESH_READY",
@@ -160,7 +160,7 @@ def physical(root: Path, config: Json, env: Mapping[str, str]) -> Primary:
         )
     )
     require(
-        Path(env["VIG_M4_ROOT"]) == root
+        Path(env["AKASHI_M4_ROOT"]) == root
         and root.is_absolute()
         and fresh == root / "gateway/ready.json"
         and ep == root / "engine-endpoint.json"
@@ -715,7 +715,7 @@ def _ready(t: Path, ports: dict[str, int], c: Json, p: Primary) -> bool:
     ):
         return False
     code, served = response(
-        f"http://127.0.0.1:{ports['gateway']}", "/.well-known/vig.json", **read
+        f"http://127.0.0.1:{ports['gateway']}", "/.well-known/akashi.json", **read
     )
     if code != 200 or served != desc:
         return False

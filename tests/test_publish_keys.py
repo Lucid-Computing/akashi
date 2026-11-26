@@ -12,11 +12,11 @@ class PublishKeysTests(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            target = Path(directory, "vig.json")
+            target = Path(directory, "akashi.json")
             target.write_bytes(b"previous snapshot")
             archive = PublicKeyArchive(Path(directory, "keys.sqlite"))
             base: dict[str, object] = {
-                "version": "vig/1",
+                "version": "akashi/1",
                 "window": 1024,
                 "log": {
                     "log_id": "a" * 64,
@@ -59,12 +59,12 @@ class PublishKeysTests(unittest.TestCase):
 
     def test_unknown_fields_do_not_reach_static_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            target = Path(directory, "vig.json")
+            target = Path(directory, "akashi.json")
             target.write_bytes(b"previous")
             archive = PublicKeyArchive(Path(directory, "keys.sqlite"))
             archive.rotate("log", "l", bytes(range(32)))
             archive.rotate("auditor", "a", bytes(range(1, 33)))
-            base: dict[str, object] = {"version": "vig/1", "log": {}}
+            base: dict[str, object] = {"version": "akashi/1", "log": {}}
             additions: tuple[dict[str, object], ...] = (
                 {"authorization": "canary"},
                 {"log": {"token_ids": [1, 2]}},

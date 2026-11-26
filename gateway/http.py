@@ -82,7 +82,7 @@ class ServingApp:
                 "405 Method Not Allowed", [("Allow", "POST"), ("Content-Length", "0")]
             )
             return [b""]
-        control = environ.get("vig.request_control")
+        control = environ.get("akashi.request_control")
         if not isinstance(control, RequestControl):
             control = RequestControl(self.serving.queue, self.request_timeout)
         status = HTTPStatus.OK
@@ -134,7 +134,7 @@ class ServingApp:
                     completion.body, ensure_ascii=False, separators=(",", ":")
                 ).encode()
                 completion.check_release()
-                headers.append(("x-vig-receipt", completion.receipt_header))
+                headers.append(("x-akashi-receipt", completion.receipt_header))
         except PolicyError as exc:
             status = HTTPStatus(exc.status)
             error = exc.as_dict()

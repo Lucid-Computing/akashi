@@ -291,10 +291,10 @@ class BaselineGateTests(unittest.TestCase):
                 m0.stream_support(root, [2])
 
     @unittest.skipUnless(
-        os.environ.get("VIG_RENDER_ASSETS"), "requires pinned tokenizer assets"
+        os.environ.get("AKASHI_RENDER_ASSETS"), "requires pinned tokenizer assets"
     )
     def test_each_original_reply_is_rebuilt_and_checked(self) -> None:
-        assets = Path(os.environ["VIG_RENDER_ASSETS"])
+        assets = Path(os.environ["AKASHI_RENDER_ASSETS"])
         renderer = ChatRenderer(assets)
         cases = m0.rows(m0.WORKLOAD)
         self.assertEqual(len({case["id"] for case in cases}), 16)

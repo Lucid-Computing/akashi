@@ -52,7 +52,7 @@ def verify_head(
     identity = _bytes(log_id)
     key_id = fields["log_key_id"]
     if (
-        fields["version"] != "vig-log/1"
+        fields["version"] != "akashi-log/1"
         or fields["log_id"] != log_id
         or not isinstance(key_id, str)
         or not key_id

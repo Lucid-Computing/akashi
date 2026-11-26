@@ -69,9 +69,9 @@ class DiscoveryTests(unittest.TestCase):
             (model["id"], model["object"], model["created"], model["owned_by"]),
             (MODEL, "model", 42, CONFIG["owned_by"]),
         )
-        status, _, descriptor = self.request("/.well-known/vig.json")
+        status, _, descriptor = self.request("/.well-known/akashi.json")
         self.assertEqual(status, 200)
-        self.assertEqual(descriptor["version"], "vig/1")
+        self.assertEqual(descriptor["version"], "akashi/1")
         self.assertEqual(descriptor["model"], model["id"])
         self.assertEqual(
             descriptor["commitment_id"],
@@ -85,7 +85,7 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(descriptor["sampling_rate"], {"live": 20, "shadow": 1000})
 
     def test_profiles_have_immutable_asset_pins(self) -> None:
-        _, _, d = self.request("/.well-known/vig.json")
+        _, _, d = self.request("/.well-known/akashi.json")
         chat = {
             "profile": "llama4-chat/1",
             "digest": "207b541a4b5c22c90d8f9630411344c45e2a9a559ff755a2d64ca880181c94e3",
@@ -107,7 +107,7 @@ class DiscoveryTests(unittest.TestCase):
         )
 
     def test_public_verification_identities_and_endpoints(self) -> None:
-        _, _, d = self.request("/.well-known/vig.json")
+        _, _, d = self.request("/.well-known/akashi.json")
         self.assertEqual(
             d["log"],
             {
@@ -160,7 +160,7 @@ class DiscoveryTests(unittest.TestCase):
                 self.assertNotIn("private-token-canary", str(raised.exception))
 
     def test_admission_receives_advertised_settings(self) -> None:
-        _, _, descriptor = self.request("/.well-known/vig.json")
+        _, _, descriptor = self.request("/.well-known/akashi.json")
         policy = Mock()
         auth = Mock()
         body = b'{"prompt":[20]}'

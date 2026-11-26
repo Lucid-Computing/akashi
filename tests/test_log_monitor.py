@@ -130,15 +130,15 @@ class MonitorTests(unittest.TestCase):
         self,
     ) -> None:
         early = self.monitor.prometheus(mode="live")
-        self.assertIn('vig_log_checkpoint_known{service="log",mode="live"} 0', early)
-        self.assertNotIn("vig_log_tree_size{", early)
+        self.assertIn('akashi_log_checkpoint_known{service="log",mode="live"} 0', early)
+        self.assertNotIn("akashi_log_tree_size{", early)
         self.issue(self.log, 0)
         self.monitor.observe(self.read)
         other = self.make_log("ops-fork")
         self.issue(other, 1)
         self.monitor.observe(self.read, head=other.head())
         metrics = self.reopen().prometheus(mode="live")
-        self.assertIn('vig_log_tree_size{service="log",mode="live"} 1', metrics)
+        self.assertIn('akashi_log_tree_size{service="log",mode="live"} 1', metrics)
         self.assertIn('kind="conflicting_history"} 1', metrics)
         self.assertNotIn(self.log.head()["signature"], metrics)
         self.assertNotIn(self.private_salt, metrics)

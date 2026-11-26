@@ -29,7 +29,7 @@ class SignedVerdictTests(unittest.TestCase):
     def test_external_preimage_historical_role_and_strict_projection(self) -> None:
         key = Ed25519PrivateKey.generate()
         doc: dict[str, Any] = {
-            "version": "vig-verdict/1",
+            "version": "akashi-verdict/1",
             "auditor_key_id": "old",
             "verified_at": "2026-11-20T00:00:00.123Z",
             "outcome": "UNAVAILABLE",
@@ -40,7 +40,7 @@ class SignedVerdictTests(unittest.TestCase):
         public = sign_verdict(doc, key)
         key.public_key().verify(
             bytes.fromhex(str(public["signature"])),
-            b"vig/verdict/1" + rfc8785.dumps(doc),
+            b"akashi/verdict/1" + rfc8785.dumps(doc),
         )
         lookup = Mock(return_value=key.public_key().public_bytes_raw())
         self.assertEqual(verify_signed(public, lookup), public)

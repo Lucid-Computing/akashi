@@ -70,7 +70,7 @@ def host_id() -> str:
     machine = Path("/etc/machine-id").read_bytes().strip()
     if len(machine) != 32 or any(c not in b"0123456789abcdef" for c in machine):
         raise ValueError("Missing Linux machine identity")
-    return hashlib.sha256(b"vig/m2-host/1" + machine).hexdigest()
+    return hashlib.sha256(b"akashi/m2-host/1" + machine).hexdigest()
 
 
 def main() -> int:

@@ -19,7 +19,7 @@ from gateway.streaming import StreamDelivery
 
 _TEXT = "💧\n\ndata: [DONE]\n\n雪"
 _EVIDENCE = {
-    "version": "vig/1",
+    "version": "akashi/1",
     "receipt": {"private_fixture": "terminal-only"},
     "prompt_token_ids": [1],
     "reply_token_ids": [2, 3],

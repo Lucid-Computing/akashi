@@ -15,26 +15,26 @@ from uuid import uuid4
 # Labels are finite deployment vocabulary. No caller-provided message, identifier or tag is serialized.
 _EVENTS = {
     ("gateway", "request"): (
-        "vig_requests_total",
+        "akashi_requests_total",
         {"served", "rejected", "unavailable", "unwarranted"},
     ),
-    ("engine", "gate"): ("vig_gates_total", {"passed", "failed"}),
+    ("engine", "gate"): ("akashi_gates_total", {"passed", "failed"}),
     ("engine", "unwarranted"): (
-        "vig_unwarranted_total",
+        "akashi_unwarranted_total",
         {"range_failure", "forced_token", "engine_error"},
     ),
-    ("log", "append"): ("vig_appends_total", {"success", "failure"}),
-    ("sampler", "beacon"): ("vig_beacon_total", {"available", "unavailable"}),
+    ("log", "append"): ("akashi_appends_total", {"success", "failure"}),
+    ("sampler", "beacon"): ("akashi_beacon_total", {"available", "unavailable"}),
     ("sampler", "selection"): (
-        "vig_selections_total",
+        "akashi_selections_total",
         {"pending", "selected", "unselected", "gap", "disabled"},
     ),
     ("prover", "proof"): (
-        "vig_proofs_total",
+        "akashi_proofs_total",
         {"success", "rejected", "timeout", "unavailable"},
     ),
     ("auditor", "verdict"): (
-        "vig_verdicts_total",
+        "akashi_verdicts_total",
         {"CONFORMS", "DEVIATES", "INCOMPLETE", "EXCUSED_RANGE", "UNAVAILABLE"},
     ),
 }
@@ -84,11 +84,11 @@ _ERRORS = {
     "UNAVAILABLE",
 }
 _STAGE_SERIES = {
-    ("engine", "prefill"): "vig_engine_seconds",
-    ("engine", "decode"): "vig_engine_seconds",
-    ("gateway", "receipt_generate"): "vig_receipt_generation_seconds",
-    ("prover", "prove"): "vig_prove_seconds",
-    ("auditor", "verify"): "vig_verify_seconds",
+    ("engine", "prefill"): "akashi_engine_seconds",
+    ("engine", "decode"): "akashi_engine_seconds",
+    ("gateway", "receipt_generate"): "akashi_receipt_generation_seconds",
+    ("prover", "prove"): "akashi_prove_seconds",
+    ("auditor", "verify"): "akashi_verify_seconds",
 }
 _REQUEST_STATUS = {
     "served": 200,
@@ -106,15 +106,15 @@ _REJECT_STATUS = {
 _TYPES = {name: "counter" for name, _ in _EVENTS.values()}
 _TYPES.update(dict.fromkeys(_STAGE_SERIES.values(), "summary"))
 _TYPES.update(
-    vig_selected_total="counter",
-    vig_engine_startup_gate_failed="gauge",
-    vig_promise_to_sth_seconds="gauge",
-    vig_escrow_gaps_total="counter",
-    vig_stage_seconds="summary",
-    vig_queue_depth="gauge",
+    akashi_selected_total="counter",
+    akashi_engine_startup_gate_failed="gauge",
+    akashi_promise_to_sth_seconds="gauge",
+    akashi_escrow_gaps_total="counter",
+    akashi_stage_seconds="summary",
+    akashi_queue_depth="gauge",
 )
 _correlation: ContextVar[str | None] = ContextVar(
-    "vig_internal_correlation", default=None
+    "akashi_internal_correlation", default=None
 )
 
 
@@ -236,18 +236,18 @@ class Telemetry:
         with self._lock:
             self._add(family, f"{family}{{{dimensions}}}", 1)
             if event.name == "gate":
-                name = "vig_engine_startup_gate_failed"
+                name = "akashi_engine_startup_gate_failed"
                 self._samples[name][f"{name}{{{labels}}}"] = int(outcome == "failed")
             elif event.name == "selection":
                 if outcome == "gap":
                     self._add(
-                        "vig_escrow_gaps_total", f"vig_escrow_gaps_total{{{labels}}}", 1
+                        "akashi_escrow_gaps_total", f"akashi_escrow_gaps_total{{{labels}}}", 1
                     )
                 elif outcome == "selected":
                     divisor = event.divisor or (20 if event.mode == "live" else 1)
                     self._add(
-                        "vig_selected_total",
-                        f'vig_selected_total{{{labels},N="{divisor}"}}',
+                        "akashi_selected_total",
+                        f'akashi_selected_total{{{labels},N="{divisor}"}}',
                         1,
                     )
         detail: dict[str, object] = {}
@@ -262,7 +262,7 @@ class Telemetry:
         if type(depth) is not int or not 0 <= depth <= float_info.max:
             raise ValueError("expected a nonnegative finite queue depth")
         with self._lock:
-            self._samples["vig_queue_depth"][f"vig_queue_depth{{{labels}}}"] = depth
+            self._samples["akashi_queue_depth"][f"akashi_queue_depth{{{labels}}}"] = depth
 
     @contextmanager
     def stage(self, service: str, phase: str, *, mode: str = "live") -> Iterator[None]:
@@ -280,7 +280,7 @@ class Telemetry:
             if not math.isfinite(duration) or duration < 0:
                 raise ValueError("invalid monotonic duration")
             suffix = f'{{{labels},phase="{phase}",outcome="{outcome}"}}'
-            families = ["vig_stage_seconds"]
+            families = ["akashi_stage_seconds"]
             named = _STAGE_SERIES.get((service, phase))
             if named is not None:
                 families.append(named)
@@ -289,7 +289,7 @@ class Telemetry:
                     self._add(family, family + "_sum" + suffix, duration)
                     self._add(family, family + "_count" + suffix, 1)
                 if service == "log" and phase == "merge" and outcome == "success":
-                    name = "vig_promise_to_sth_seconds"
+                    name = "akashi_promise_to_sth_seconds"
                     self._samples[name][f"{name}{{{labels}}}"] = duration
             self._log(
                 service,

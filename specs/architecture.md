@@ -2,7 +2,7 @@
 
 ## Overview
 
-The verified inference gateway is a multi-component system that serves LLM inference while producing cryptographic proofs of correctness. The architecture separates serving (fast path) from auditing (slow path) to maintain acceptable latency for end users.
+Akashi is a verified inference gateway: a multi-component system that serves LLM inference while producing cryptographic proofs of correctness. The architecture separates serving (fast path) from auditing (slow path) to maintain acceptable latency for end users.
 
 ## High-Level Architecture
 

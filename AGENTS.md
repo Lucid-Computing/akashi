@@ -4,7 +4,7 @@ This repository uses AI assistants during development. This document provides co
 
 ## Repository Purpose
 
-A verified inference gateway serving LLM inference with cryptographic proof of model conformance, built on FlashProve's zero-knowledge proof system.
+Akashi is a verified inference gateway serving LLM inference with cryptographic proof of model conformance, built on FlashProve's zero-knowledge proof system.
 
 ## Core Principle
 

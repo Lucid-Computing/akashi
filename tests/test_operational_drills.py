@@ -12,7 +12,7 @@ from tools.operational_drills import _series, gate
 class OperationalDrillTests(unittest.TestCase):
     def test_rejected_unbounded_sample_and_stale_success(self) -> None:
         bad = {
-            "engine": ['vig_secret{service="engine",reason="sensitive/id"} 1', "", ""],
+            "engine": ['akashi_secret{service="engine",reason="sensitive/id"} 1', "", ""],
             "sampler": ["", "", ""],
             "auditor": ["", "", ""],
         }

@@ -76,13 +76,13 @@ class RenderGoldens(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        os.environ.get("VIG_RENDER_ASSETS"),
-        "set VIG_RENDER_ASSETS for the renderer gate",
+        os.environ.get("AKASHI_RENDER_ASSETS"),
+        "set AKASHI_RENDER_ASSETS for the renderer gate",
     )
     def test_all_200_chat_and_reply_vectors(self) -> None:
         # CPU-only discovery can validate the corpus without the renderer's optional assets.
         renderer = import_module("gateway.renderer").ChatRenderer(
-            Path(os.environ["VIG_RENDER_ASSETS"])
+            Path(os.environ["AKASHI_RENDER_ASSETS"])
         )
         lines = (FIXTURES / "chat.jsonl").read_bytes().splitlines()
         self.assertEqual(len(lines), 200)

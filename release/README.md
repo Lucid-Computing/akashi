@@ -1,6 +1,6 @@
 # Qualify a local release candidate
 
-`make release-check` produces a reviewable archive for an exact Git commit. The current candidate is `vig-verify` 0.0.0, a local proof of concept using the opaque mock router and a separately running holder. The command writes files under `build/release/`. Registry publication and a v1 release are separate maintainer decisions. [Release policy](../docs/spec/09-release-and-versioning.md) · [Changelog](../CHANGELOG.md)
+`make release-check` produces a reviewable archive for an exact Git commit. The current candidate is `akashi-verify` 0.0.0, a local proof of concept using the opaque mock router and a separately running holder. The command writes files under `build/release/`. Registry publication and a v1 release are separate maintainer decisions. [Release policy](../docs/spec/09-release-and-versioning.md) · [Changelog](../CHANGELOG.md)
 
 ## Collect the five reports
 
@@ -34,12 +34,12 @@ Pin the SHA-256 of the final reviewed `manifest.json` through a trusted channel 
 
 ## Run and inspect
 
-From a clean candidate checkout, install the pinned development environment. Set `VIG_RELEASE_EVIDENCE` to the evidence directory and `VIG_RELEASE_MANIFEST_SHA256` to the independently reviewed digest. For an offline renderer run, set `VIG_RENDER_ASSETS` to the directory holding the two F37 files.
+From a clean candidate checkout, install the pinned development environment. Set `AKASHI_RELEASE_EVIDENCE` to the evidence directory and `AKASHI_RELEASE_MANIFEST_SHA256` to the independently reviewed digest. For an offline renderer run, set `AKASHI_RENDER_ASSETS` to the directory holding the two F37 files.
 
 ```sh
 make setup
-export VIG_RELEASE_EVIDENCE=/absolute/path/to/reviewed-evidence
-export VIG_RELEASE_MANIFEST_SHA256="$REVIEWED_MANIFEST_SHA256"
+export AKASHI_RELEASE_EVIDENCE=/absolute/path/to/reviewed-evidence
+export AKASHI_RELEASE_MANIFEST_SHA256="$REVIEWED_MANIFEST_SHA256"
 make release-check
 cat build/release/status.json
 ```

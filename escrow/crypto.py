@@ -8,10 +8,10 @@ from nacl.exceptions import CryptoError
 from nacl.public import PrivateKey, PublicKey, SealedBox
 from nacl.secret import Aead
 
-_RECORD_DATA = b"vig/escrow/1/data\x00"
-_RECORD_KEY = b"vig/escrow/1/key\x00"
-_TRANSFER_DATA = b"vig/escrow/1/transfer-data\x00"
-_TRANSFER_KEY = b"vig/escrow/1/transfer-key\x00"
+_RECORD_DATA = b"akashi/escrow/1/data\x00"
+_RECORD_KEY = b"akashi/escrow/1/key\x00"
+_TRANSFER_DATA = b"akashi/escrow/1/transfer-data\x00"
+_TRANSFER_KEY = b"akashi/escrow/1/transfer-key\x00"
 
 
 class EscrowCryptoError(ValueError):

@@ -110,7 +110,7 @@ def _http(
         with client.getresponse() as response:
             return (
                 response.status,
-                response.getheader("x-vig-receipt"),
+                response.getheader("x-akashi-receipt"),
                 json.loads(response.read()),
             )
 
@@ -217,7 +217,7 @@ def _serve_case(
     public: bytes,
 ) -> dict[str, Any]:
     chat = "messages" in body
-    salt = hashlib.sha256(("vig/m1/toy/1/" + name).encode("ascii")).hexdigest()
+    salt = hashlib.sha256(("akashi/m1/toy/1/" + name).encode("ascii")).hexdigest()
     # Pin the synthetic fixture salt only in this test module's process.
     with (
         _loopback(app) as port,
@@ -478,7 +478,7 @@ def _flow(asset_dir: Path, root: Path) -> dict[str, object]:
 def run_flow(asset_dir: Path) -> dict[str, object]:
     """Return only allowlisted aggregate evidence; destroy all fixture databases on exit."""
     try:
-        with tempfile.TemporaryDirectory(prefix="vig-m1-") as directory:
+        with tempfile.TemporaryDirectory(prefix="akashi-m1-") as directory:
             return _flow(asset_dir, Path(directory))
     except Exception:  # noqa: BLE001 -- HTTP payloads and database errors stay private.
         raise GateFlowError("Isolated Mode D fixture failed") from None

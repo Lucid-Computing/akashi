@@ -243,7 +243,7 @@ def gate(
                 r for r in baseline["replies"] if r["id"] == "arithmetic-apples"
             ]
             evidence = hashlib.sha256(
-                b"vig/m0/whole-reply/1"
+                b"akashi/m0/whole-reply/1"
                 + bytes.fromhex(flow["original_statement_sha256"])
                 + bytes.fromhex(flow["proof_sha256"])
             ).hexdigest()
@@ -274,8 +274,8 @@ def gate(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=os.environ.get("VIG_M2_CONFIG"))
-    parser.add_argument("--work", type=Path, default=os.environ.get("VIG_M2_WORK"))
+    parser.add_argument("--config", type=Path, default=os.environ.get("AKASHI_M2_CONFIG"))
+    parser.add_argument("--work", type=Path, default=os.environ.get("AKASHI_M2_WORK"))
     parser.add_argument("--m0", type=Path, default=ROOT / "build/gates/m0.json")
     parser.add_argument("--m1", type=Path, default=ROOT / "build/gates/m1.json")
     parser.add_argument("--output", type=Path, default=ROOT / "build/gates/m2.json")

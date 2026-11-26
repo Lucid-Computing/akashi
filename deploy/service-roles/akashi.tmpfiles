@@ -1,0 +1,13 @@
+# Private credential directories; provision the files separately.
+d /etc/akashi/keys 0711 root root -
+d /etc/akashi/keys/gateway 0700 akashi-gateway akashi-gateway -
+d /etc/akashi/keys/engine 0700 akashi-engine akashi-engine -
+d /etc/akashi/keys/proxy 0700 akashi-proxy akashi-proxy -
+d /etc/akashi/keys/log 0700 akashi-log akashi-log -
+d /etc/akashi/keys/sampler 0700 akashi-sampler akashi-sampler -
+d /etc/akashi/keys/escrow 0700 akashi-escrow akashi-escrow -
+d /etc/akashi/keys/pickup 0700 akashi-pickup akashi-pickup -
+d /etc/akashi/keys/auditor 0700 akashi-auditor akashi-auditor -
+d /etc/akashi/keys/prover 0700 akashi-prover akashi-prover -
+d /etc/akashi/keys/verifier 0700 akashi-verifier akashi-verifier -
+d /prover/keys 0700 akashi-prover akashi-prover -

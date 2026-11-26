@@ -47,7 +47,7 @@ class ReleaseArchiveTests(unittest.TestCase):
             (folder / "candidate.zip").write_bytes(b"old")
             (folder / "status.json").write_text('{"status":"passed"}')
             env = {
-                k: v for k, v in os.environ.items() if not k.startswith("VIG_RELEASE_")
+                k: v for k, v in os.environ.items() if not k.startswith("AKASHI_RELEASE_")
             }
             result = subprocess.run(
                 [sys.executable, "-m", "release.check", "--output", str(folder)],

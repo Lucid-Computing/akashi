@@ -73,7 +73,7 @@ Because the engine serves one sequence at a time, GW:
 2. Tails the engine's log stream (journald or a pipe; gateway host reads it over private link)
 3. Marks the request `unwarranted` if any ERROR line or plug-in warning appears during the request window, or if "EngineCore encountered a fatal error" appears (F18)
 
-An `unwarranted` request gets 502 and no receipt, and increments `vig_unwarranted_total{reason}`. This is a defense for the honest provider, not a security control: a malicious engine can suppress its log, and then the reply is receipted and fails audit, which is the intended outcome.
+An `unwarranted` request gets 502 and no receipt, and increments `akashi_unwarranted_total{reason}`. This is a defense for the honest provider, not a security control: a malicious engine can suppress its log, and then the reply is receipted and fails audit, which is the intended outcome.
 
 A correct reply can still be unprovable because a range condition fails at a position the engine never evaluated, padding included (F16). One count found no failure on 544 of 544 windows of a public model's 4-bit weights (F17). Audit protocol handles the case.
 

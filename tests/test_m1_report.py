@@ -17,7 +17,7 @@ class GateReports(unittest.TestCase):
             (root / "tokenizer.json").write_text("private-test-marker")
             output = root / "old.json"
             output.write_text('{"status":"passed"}')
-            with patch.dict(os.environ, {"VIG_RENDER_ASSETS": str(root)}):
+            with patch.dict(os.environ, {"AKASHI_RENDER_ASSETS": str(root)}):
                 self.assertFalse(gate(output))
             text = output.read_text()
             report = json.loads(text)

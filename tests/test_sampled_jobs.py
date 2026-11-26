@@ -206,10 +206,10 @@ class SampleBridgeTests(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        os.environ.get("VIG_RENDER_ASSETS"), "requires pinned renderer assets"
+        os.environ.get("AKASHI_RENDER_ASSETS"), "requires pinned renderer assets"
     )
     def test_chat_renders_original_and_checks_exact_display(self) -> None:
-        renderer = ChatRenderer(Path(os.environ["VIG_RENDER_ASSETS"]))
+        renderer = ChatRenderer(Path(os.environ["AKASHI_RENDER_ASSETS"]))
         good = self.material(mode="chat", renderer=renderer)
         for binding in (
             good,

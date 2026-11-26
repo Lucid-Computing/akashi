@@ -1,0 +1,11 @@
+# See specs/hardening.md, Service Accounts and Privileges.
+u akashi-gateway - "AKASHI gateway" /var/lib/akashi-gateway /usr/sbin/nologin
+u akashi-engine - "AKASHI engine" /var/lib/akashi-engine /usr/sbin/nologin
+u akashi-proxy - "AKASHI proxy" /var/lib/akashi-proxy /usr/sbin/nologin
+u akashi-log - "AKASHI log" /var/lib/akashi-log /usr/sbin/nologin
+u akashi-sampler - "AKASHI sampler" /var/lib/akashi-sampler /usr/sbin/nologin
+u akashi-escrow - "AKASHI escrow" /var/lib/akashi-escrow /usr/sbin/nologin
+u akashi-pickup - "AKASHI pickup" /var/lib/akashi-pickup /usr/sbin/nologin
+u akashi-auditor - "AKASHI auditor" /var/lib/akashi-auditor /usr/sbin/nologin
+u akashi-prover - "AKASHI prover" /var/lib/akashi-prover /usr/sbin/nologin
+u akashi-verifier - "AKASHI verifier" /var/lib/akashi-verifier /usr/sbin/nologin

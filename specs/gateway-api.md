@@ -12,7 +12,7 @@ OpenAI-compatible HTTP API from specification section 5, restricted to greedy-on
 | `POST /v1/completions` | Raw token IDs in `prompt` (render profile `raw-ids/1`) |
 | `GET /v1/models` | OpenAI model list |
 | `GET /router/models` | Provider feed for Mode R (router integration) |
-| `GET /.well-known/vig.json` | Service descriptor: commitment ID, render profile digest and files, E, T, max_tokens_cap, sampling rate, key IDs and public keys, log ID, beacon chain hash, URLs of LG, PK, CH, AU |
+| `GET /.well-known/akashi.json` | Service descriptor: commitment ID, render profile digest and files, E, T, max_tokens_cap, sampling rate, key IDs and public keys, log ID, beacon chain hash, URLs of LG, PK, CH, AU |
 
 Every other path answers 404. TLS terminates at the gateway. Mode D clients authenticate with bearer API keys; Mode R uses one key per router.
 
@@ -54,7 +54,7 @@ A reply without a receipt is outside the guarantee. The gateway MUST NOT return 
 
 ## Response Format
 
-The completion is OpenAI-compatible. `choices[0].finish_reason` is `stop` when `y` ends in E and `length` when `R = max_tokens`. The gateway adds a top-level object, and also the header `x-vig-receipt: <base64url of the receipt>` (Mode D):
+The completion is OpenAI-compatible. `choices[0].finish_reason` is `stop` when `y` ends in E and `length` when `R = max_tokens`. The gateway adds a top-level object, and also the header `x-akashi-receipt: <base64url of the receipt>` (Mode D):
 
 ```json
 {
@@ -76,7 +76,7 @@ The completion is OpenAI-compatible. `choices[0].finish_reason` is `stop` when `
     "total_tokens": 298
   },
   "verification": {
-    "version": "vig/1",
+    "version": "akashi/1",
     "receipt": {
       "log_id": "<32-byte hex>",
       "endpoint_id": "maverick-int-c7982f8a",
@@ -102,11 +102,11 @@ With `stream: true`, text deltas are decoded incrementally from `y`, SSE comment
 
 ## Service Descriptor
 
-`GET /.well-known/vig.json`:
+`GET /.well-known/akashi.json`:
 
 ```json
 {
-  "version": "vig/1",
+  "version": "akashi/1",
   "commitment_id": "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46",
   "model": "llama-4-maverick-int",
   "window": 1024,
@@ -145,7 +145,7 @@ With `stream: true`, text deltas are decoded incrementally from `y`, SSE comment
 Client sends request to gateway directly:
 1. Authenticate with bearer API key
 2. Receive reply with `verification` object in response
-3. Receive `x-vig-receipt` header
+3. Receive `x-akashi-receipt` header
 4. Keep transcript and receipt for challenges
 
 ## Mode R (Router)

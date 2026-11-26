@@ -1,6 +1,6 @@
 # Specifications
 
-Complete technical specifications for the verified inference gateway.
+Complete technical specifications for Akashi, the verified inference gateway.
 
 All specifications source their facts from `facts-register.md` and `parameters.md`. No invented numbers.
 

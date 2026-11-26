@@ -23,7 +23,7 @@ Auditors can run out of capacity or withhold files; callers need distinguishable
 
 ## Proposed Design
 
-`submit(holder: HolderKey, bundle: HolderBundle, leaf_index: int) -> ChallengeHandle`; `job(id, capability) -> ChallengeState`. Bind challenge identity and capabilities separately. Verify receipt, inclusion, original input, resolved budget, decoded text and completeness before dispatch. Incomplete otherwise-valid bundles can receive INCOMPLETE with signed evidence and no proof attempt. Holder challenges are accepted within W_challenge. A sampled verdict is due at the signed receipt’s `served_at` plus D_sampled. On-demand timing uses the D_demand target. Enforce per-holder and per-transcript limits atomically, deduplicate work by transcript and proof statement while authorizing each reader independently, and persist pending → verifying → completed transitions. Compare generated proof before signing. Sign `"vig/verdict/1" || JCS(verdict)` with Ed25519. The signed object contains version, challenge UUID, transcript commitment, outcome, bounded reason, UTC verification time, auditor key ID and optional SHA-256 proof and statement digests; public responses add the signature and omit transcript content, tokens and capabilities. Serve private artifacts only after authorization and expire together.
+`submit(holder: HolderKey, bundle: HolderBundle, leaf_index: int) -> ChallengeHandle`; `job(id, capability) -> ChallengeState`. Bind challenge identity and capabilities separately. Verify receipt, inclusion, original input, resolved budget, decoded text and completeness before dispatch. Incomplete otherwise-valid bundles can receive INCOMPLETE with signed evidence and no proof attempt. Holder challenges are accepted within W_challenge. A sampled verdict is due at the signed receipt’s `served_at` plus D_sampled. On-demand timing uses the D_demand target. Enforce per-holder and per-transcript limits atomically, deduplicate work by transcript and proof statement while authorizing each reader independently, and persist pending → verifying → completed transitions. Compare generated proof before signing. Sign `"akashi/verdict/1" || JCS(verdict)` with Ed25519. The signed object contains version, challenge UUID, transcript commitment, outcome, bounded reason, UTC verification time, auditor key ID and optional SHA-256 proof and statement digests; public responses add the signature and omit transcript content, tokens and capabilities. Serve private artifacts only after authorization and expire together.
 
 ## Alternatives Considered
 
@@ -35,7 +35,7 @@ Job persistence and private artifact retention increase operator burden.
 
 ## Migration / Rollout
 
-Publish schema vig-verdict/1 with status vocabulary from the data model; use audited test fixtures before real jobs.
+Publish schema akashi-verdict/1 with status vocabulary from the data model; use audited test fixtures before real jobs.
 
 ## Testing Strategy
 

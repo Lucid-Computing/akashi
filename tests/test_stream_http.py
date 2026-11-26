@@ -75,7 +75,7 @@ class StreamHttpTests(unittest.TestCase):
                         (reply.status, reply.getheader("content-type")),
                         (200, "text/event-stream"),
                     )
-                    self.assertIsNone(reply.getheader("x-vig-receipt"))
+                    self.assertIsNone(reply.getheader("x-akashi-receipt"))
                     raw = reply.read()
             finally:
                 conn.close()
@@ -100,8 +100,8 @@ class StreamHttpTests(unittest.TestCase):
         self.assertEqual(self.fixture.log.receipt(0)["leaf_hash"], receipt["leaf_hash"])
 
     @unittest.skipUnless(
-        os.environ.get("VIG_RENDER_ASSETS")
-        or os.environ.get("VIG_REQUIRE_STREAM_ASSETS"),
+        os.environ.get("AKASHI_RENDER_ASSETS")
+        or os.environ.get("AKASHI_REQUIRE_STREAM_ASSETS"),
         "requires pinned renderer assets",
     )
     def test_real_pinned_decoder_buffers_split_utf8_in_chat_stream(self) -> None:
@@ -194,7 +194,7 @@ class StreamHttpTests(unittest.TestCase):
     def test_consumer_rejects_partial_unwarranted_and_duplicate_termination(
         self,
     ) -> None:
-        evidence = b'data: {"verification":{"version":"vig/1","receipt":{}}}\n\n'
+        evidence = b'data: {"verification":{"version":"akashi/1","receipt":{}}}\n\n'
         done = b"data: [DONE]\n\n"
         for content in (
             done,

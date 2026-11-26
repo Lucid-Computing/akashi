@@ -55,7 +55,7 @@ class RoleTests(unittest.TestCase):
     ) -> None:
         accounts = [
             shlex.split(line)
-            for line in (ASSETS / "vig.sysusers").read_text().splitlines()
+            for line in (ASSETS / "akashi.sysusers").read_text().splitlines()
             if line.startswith("u ")
         ]
         names = {row[1] for row in accounts}
@@ -71,33 +71,33 @@ class RoleTests(unittest.TestCase):
             "prover",
             "verifier",
         ]
-        self.assertEqual(names, {f"vig-{role}" for role in roles})
+        self.assertEqual(names, {f"akashi-{role}" for role in roles})
         self.assertTrue(all(row[-1] == "/usr/sbin/nologin" for row in accounts))
-        directories = (ASSETS / "vig.tmpfiles").read_text().splitlines()
+        directories = (ASSETS / "akashi.tmpfiles").read_text().splitlines()
         for role in roles:
             self.assertIn(
-                f"d /etc/vig/keys/{role} 0700 vig-{role} vig-{role} -", directories
+                f"d /etc/akashi/keys/{role} 0700 akashi-{role} akashi-{role} -", directories
             )
 
     def test_engine_unit_requires_private_launch_and_readonly_models(self) -> None:
-        unit = (ASSETS / "vig@.service").read_text().splitlines()
-        self.assertIn("User=vig-%i", unit)
-        self.assertIn("Group=vig-%i", unit)
+        unit = (ASSETS / "akashi@.service").read_text().splitlines()
+        self.assertIn("User=akashi-%i", unit)
+        self.assertIn("Group=akashi-%i", unit)
         self.assertIn("ProtectSystem=strict", unit)
         self.assertIn("NoNewPrivileges=yes", unit)
         self.assertIn("UMask=0077", unit)
         self.assertIn(
-            "ExecStartPre=/usr/bin/python3 -I /usr/local/libexec/vig/check-keys.py %i",
+            "ExecStartPre=/usr/bin/python3 -I /usr/local/libexec/akashi/check-keys.py %i",
             unit,
         )
         engine = (
-            (ASSETS / "vig@engine.service.d/isolation.conf").read_text().splitlines()
+            (ASSETS / "akashi@engine.service.d/isolation.conf").read_text().splitlines()
         )
         self.assertIn("BindReadOnlyPaths=/models", engine)
-        self.assertIn("Requires=vig-engine-firewall.service", engine)
-        self.assertIn("After=nftables.service vig-engine-firewall.service", engine)
-        firewall = (ASSETS / "vig-engine-firewall.service").read_text().splitlines()
-        self.assertIn("ExecStart=/usr/sbin/nft -f /etc/vig/engine.nft", firewall)
+        self.assertIn("Requires=akashi-engine-firewall.service", engine)
+        self.assertIn("After=nftables.service akashi-engine-firewall.service", engine)
+        firewall = (ASSETS / "akashi-engine-firewall.service").read_text().splitlines()
+        self.assertIn("ExecStart=/usr/sbin/nft -f /etc/akashi/engine.nft", firewall)
         start = next(line for line in engine if line.startswith("ExecStart=/"))
         command = shlex.split(start.removeprefix("ExecStart="))
         self.assertEqual(command[:2], ["/usr/bin/env", "-i"])

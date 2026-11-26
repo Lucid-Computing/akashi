@@ -57,7 +57,7 @@ class PickupHttpTests(unittest.TestCase):
                 store, limiter=PerIPLimit(requests=32, period_seconds=60, max_peers=2)
             )
             bundle = {
-                "version": "vig/1",
+                "version": "akashi/1",
                 "receipt": {"fixture": _PRIVATE},
                 "prompt_token_ids": [1],
                 "reply_token_ids": [2],
@@ -155,12 +155,12 @@ class PickupHttpTests(unittest.TestCase):
                     raise RuntimeError(_PRIVATE + identifier)
                 if identifier[0] == "2":
                     return {
-                        "version": "vig-pickup/1",
+                        "version": "akashi-pickup/1",
                         "nonce": "aa" * 24,
                         "ciphertext": "bb" * 16,
                         "user": _PRIVATE,
                     }
-                return {"version": "vig-pickup/1", "nonce": ".", "ciphertext": _PRIVATE}
+                return {"version": "akashi-pickup/1", "nonce": ".", "ciphertext": _PRIVATE}
 
         capture = io.StringIO()
         with contextlib.redirect_stderr(capture):

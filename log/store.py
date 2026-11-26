@@ -229,7 +229,7 @@ class MerkleLog:
 
     def _head(self, row: sqlite3.Row) -> dict[str, object]:
         return {
-            "version": "vig-log/1",
+            "version": "akashi-log/1",
             "log_id": self._log_id,
             "log_key_id": row["key_id"],
             "tree_size": row["tree_size"],

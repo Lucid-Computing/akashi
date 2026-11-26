@@ -1,12 +1,16 @@
-# Verified Inference Gateway
+# Akashi
 
-An OpenAI-compatible inference gateway that lets a client check whether a reply matches a specific model. It signs a receipt at delivery. For a challenged or sampled reply, the auditor can produce a [FlashProve][flashprove] proof that the client can check offline on a CPU without model weights.
+An OpenAI-compatible verified inference gateway that lets a client check whether a reply matches a specific model. It signs a receipt at delivery. For a challenged or sampled reply, the auditor can produce a [FlashProve][flashprove] proof that the client can check offline on a CPU without model weights.
 
 [Try it locally](#try-it-on-a-cpu) · [Recorded proof run](docs/demo/README.md) · [Verify a reply](verifier/README.md) · [Specification](SPEC.md)
 
 [![Recorded client terminal showing the original proof accepted with exit 0 and a one-bit change rejected with exit 20](docs/demo/offline-verification.png)](docs/demo/README.md)
 
 One real request went through an opaque router to Llama 4 Maverick. The reply was `12<|eot|>`. A separate, disconnected CPU accepted the original proof and rejected a copy with one bit changed. [Commands, measurements and evidence](docs/demo/README.md)
+
+## Why Akashi?
+
+Akashi (証, ah-KAH-shee) means "proof" or "evidence" in Japanese, and 明かし means "revealing". That is what the gateway does: every answer comes with proof of which model produced it.
 
 ## Try it on a CPU
 

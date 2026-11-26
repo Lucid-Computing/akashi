@@ -87,7 +87,7 @@ Periodic commitment to the tree state, signed by the log key:
 
 ```json
 {
-  "version": "vig-log/1",
+  "version": "akashi-log/1",
   "log_id": "<32-byte hex>",
   "tree_size": 123456,
   "timestamp": "2026-11-20T10:20:00.000Z",

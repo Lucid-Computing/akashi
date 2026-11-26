@@ -67,7 +67,7 @@ class ChallengeIntake:
                 CREATE INDEX IF NOT EXISTS challenge_by_transcript ON challenge_handles(transcript,issued_us);
             """)
             identity = hmac.digest(
-                holder_hmac_key, b"vig/challenge/intake-key/1", "sha256"
+                holder_hmac_key, b"akashi/challenge/intake-key/1", "sha256"
             )
             db.execute(
                 "INSERT OR IGNORE INTO intake_identity VALUES(1,?,?)",
@@ -162,10 +162,10 @@ class ChallengeIntake:
         )
         # A private, keyed tag avoids a dictionary oracle over the deterministic proof statement.
         statement_tag = hmac.digest(
-            self._tag_key, b"vig/challenge/statement/1" + statement, "sha256"
+            self._tag_key, b"akashi/challenge/statement/1" + statement, "sha256"
         )
         owner = hmac.digest(
-            self._tag_key, b"vig/challenge/holder/1" + holder.encode(), "sha256"
+            self._tag_key, b"akashi/challenge/holder/1" + holder.encode(), "sha256"
         )
         handle = str(uuid.uuid4())
         secret = secrets.token_urlsafe(32)

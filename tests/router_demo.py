@@ -86,7 +86,7 @@ def _stream(
         code == 200
         and headers.get("content-type", "").split(";")[0] == "text/event-stream"
     )
-    require("x-vig-receipt" not in headers and str(body["user"]).encode() not in data)
+    require("x-akashi-receipt" not in headers and str(body["user"]).encode() not in data)
     # Our buffered gateway emits a comment, one display delta and one finishing
     # event. Refuse recovery from a disconnected or unwarranted stream.
     wire = data.splitlines()
@@ -167,7 +167,7 @@ def _verify(
     )
     prompt, reply = bundle["prompt_token_ids"], bundle["reply_token_ids"]
     require(
-        bundle["version"] == "vig/1"
+        bundle["version"] == "akashi/1"
         and prompt == list(renderer.render(_CHAT))
         and reply_complete(reply, _BUDGET)
         and renderer.decode(reply) == text
@@ -211,7 +211,7 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
         **{**CONFIG, "log_public_key": signer.public_key().public_bytes_raw().hex()}
     )
     clock = _Clock()
-    with tempfile.TemporaryDirectory(prefix="vig-router-") as directory:
+    with tempfile.TemporaryDirectory(prefix="akashi-router-") as directory:
         root = Path(directory).resolve()
         pickup = PickupStore(root / "pickup.db", clock=clock)
         # Independent reader connection exercises the on-disk handoff.
@@ -276,7 +276,7 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
                     "model": MODEL,
                     "max_tokens": _BUDGET,
                     "messages": _CHAT,
-                    "user": "vig-pickup/1:" + secret.hex(),
+                    "user": "akashi-pickup/1:" + secret.hex(),
                 }
                 with _router(upstream, mode) as router:
                     status, header, result = _http(router, "/v1/chat/completions", body)
@@ -284,7 +284,7 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
                         stream_secret = secrets.token_bytes(32)
                         stream_body = {
                             **body,
-                            "user": "vig-pickup/1:" + stream_secret.hex(),
+                            "user": "akashi-pickup/1:" + stream_secret.hex(),
                         }
                         displayed, evidence = _stream(
                             router, stream_body, transparent=mode == "transparent"
@@ -373,7 +373,7 @@ def run_demo(asset_dir: Path) -> dict[str, object]:
 
 def main() -> int:
     try:
-        with tempfile.TemporaryDirectory(prefix="vig-router-assets-") as directory:
+        with tempfile.TemporaryDirectory(prefix="akashi-router-assets-") as directory:
             manifest = json.loads(
                 (FIXTURES / "render-goldens/manifest.json").read_bytes()
             )

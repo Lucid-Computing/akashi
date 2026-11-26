@@ -25,10 +25,10 @@ KEY = Ed25519PrivateKey.from_private_bytes(
 LOG_ID = "bb" * 32
 KEY_ID = "key-1"
 NOW = datetime(2026, 11, 20, 10, 20, tzinfo=timezone.utc)
-LEAF = "a1144836a6630c736665f92461411e86411a00727f3e8041793745b639b0cb0c"
+LEAF = "9e4cd3ec7fbaf6b6ef84a81e3281b6a854b28443ec9ea067a75b6a5f32bfb3aa"
 PROMISE = (
-    "ff9114ef61866b7b95e1c26441b4b38d06a27f340f2e263b633314b083f66f23b"
-    "85fb1ed123e8e57c0b57537e4f0fac0fad842cc343c31e3d3e74af05373b004"
+    "175ff155f049d5fd305f5d39aaa9387da97e70412da0ceb991aa39ab24a5d8cd3"
+    "5415cdff4cf930f700c57cdd67c1e5ed65e3a5b291c0095f1be8ef1ef3c7b01"
 )
 
 
@@ -42,7 +42,7 @@ def preimage(number: int = 0) -> dict[str, object]:
         "commitment_id": "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46",
         "render_profile": "aa" * 32,
         "params_digest": "9d9f290527a6be626a8f5985b26e19b237b44872b03631811df4416fc1713178",
-        "transcript_commitment": "9234a1388156118cd6c82cd30283019a7685babccf8f2f3ea56bbd46a9314593",
+        "transcript_commitment": "5decc65412dc8650c33e7ab5b1ae498c2fcd8dc7f83909c26b0d40642ca3d73d",
         "beacon_round": 4294967297,
         "sampling_mode": "live",
         "log_key_id": KEY_ID,
@@ -76,7 +76,7 @@ def wire_hash(fields: Mapping[str, object]) -> str:
         frame.extend(value)
     number = int(str(fields["beacon_round"]))
     return hashlib.sha256(
-        b"vig/leaf/1" + fixed + number.to_bytes(8, "big") + frame
+        b"akashi/leaf/1" + fixed + number.to_bytes(8, "big") + frame
     ).hexdigest()
 
 
@@ -131,7 +131,7 @@ class MerkleStoreTests(unittest.TestCase):
         key: Ed25519PrivateKey = KEY,
         key_id: str = KEY_ID,
     ) -> None:
-        self.assertEqual(head["version"], "vig-log/1")
+        self.assertEqual(head["version"], "akashi-log/1")
         self.assertEqual(head["log_id"], LOG_ID)
         self.assertEqual(head["log_key_id"], key_id)
         self.assertEqual(head["tree_size"], size)

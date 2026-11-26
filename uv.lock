@@ -1600,7 +1600,7 @@ wheels = [
 ]
 
 [[package]]
-name = "verified-inference-gateway"
+name = "akashi"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [

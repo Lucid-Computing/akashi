@@ -72,12 +72,12 @@ class EscrowCryptoTests(unittest.TestCase):
         context = hashlib.sha256(self.metadata).digest()
         transient_key = crypto_aead_xchacha20poly1305_ietf_decrypt(
             self.key_slot[24:],
-            b"vig/escrow/1/key\0" + context,
+            b"akashi/escrow/1/key\0" + context,
             self.key_slot[:24],
             self.wrapping_key,
         )
         sealed = SealedBox(self.auditor).decrypt(slot)
-        self.assertEqual(sealed[:-32], b"vig/escrow/1/transfer-key\0" + context)
+        self.assertEqual(sealed[:-32], b"akashi/escrow/1/transfer-key\0" + context)
         self.assertNotEqual(sealed[-32:], transient_key)
         self.assertNotEqual(sent[:24], self.ciphertext[:24])
         self.assertEqual(

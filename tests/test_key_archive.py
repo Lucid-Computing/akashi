@@ -62,9 +62,9 @@ class KeyArchiveTests(unittest.TestCase):
         # Verify the already-signed promise bytes with an independent Ed25519 implementation.
         message = b"PromiseReceipt" + bytes.fromhex(
             "bb" * 32
-            + "a1144836a6630c736665f92461411e86411a00727f3e8041793745b639b0cb0c"
+            + "9e4cd3ec7fbaf6b6ef84a81e3281b6a854b28443ec9ea067a75b6a5f32bfb3aa"
         )
-        signature = "ff9114ef61866b7b95e1c26441b4b38d06a27f340f2e263b633314b083f66f23b85fb1ed123e8e57c0b57537e4f0fac0fad842cc343c31e3d3e74af05373b004"
+        signature = "175ff155f049d5fd305f5d39aaa9387da97e70412da0ceb991aa39ab24a5d8cd35415cdff4cf930f700c57cdd67c1e5ed65e3a5b291c0095f1be8ef1ef3c7b01"
         inputs = [
             [reopened.lookup("log", "key-1").hex(), message.hex(), signature],
             [reopened.lookup("log", "key-2").hex(), message.hex(), signature],
