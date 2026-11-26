@@ -8,47 +8,47 @@ All metrics are private (not publicly exposed). Metric names below are proposed 
 
 ```
 # Request handling
-vig_requests_total{status="200|400|429|502|503"}
-vig_queue_depth
-vig_engine_seconds{phase="prefill|decode"}
+akashi_requests_total{status="200|400|429|502|503"}
+akashi_queue_depth
+akashi_engine_seconds{phase="prefill|decode"}
 
 # Integrity
-vig_unwarranted_total{reason="range_failure|forced_token|engine_error"}
+akashi_unwarranted_total{reason="range_failure|forced_token|engine_error"}
 ```
 
 ### Log Metrics
 
 ```
 # Merkle log
-vig_log_tree_size
-vig_promise_to_sth_seconds  # Time from promise to STH inclusion
+akashi_log_tree_size
+akashi_promise_to_sth_seconds  # Time from promise to STH inclusion
 
 # Receipt generation
-vig_receipt_generation_seconds
+akashi_receipt_generation_seconds
 ```
 
 ### Sampling Metrics
 
 ```
 # Beacon and selection
-vig_beacon_lag_seconds  # Time behind latest beacon round
-vig_selected_total{N="1|20|1000"}
-vig_escrow_gaps_total  # Transcripts expired before beacon
-vig_escrow_age_seconds  # Age of oldest transcript in escrow
+akashi_beacon_lag_seconds  # Time behind latest beacon round
+akashi_selected_total{N="1|20|1000"}
+akashi_escrow_gaps_total  # Transcripts expired before beacon
+akashi_escrow_age_seconds  # Age of oldest transcript in escrow
 ```
 
 ### Auditor Metrics
 
 ```
 # Proof generation
-vig_prove_seconds
-vig_verify_seconds
-vig_verdicts_total{result="CONFORMS|DEVIATES|INCOMPLETE|UNDEFINED_SERVED|EXCUSED_RANGE|ESCROW_GAP|ERROR"}
-vig_overdue_total  # Proofs past deadline
+akashi_prove_seconds
+akashi_verify_seconds
+akashi_verdicts_total{result="CONFORMS|DEVIATES|INCOMPLETE|UNDEFINED_SERVED|EXCUSED_RANGE|ESCROW_GAP|ERROR"}
+akashi_overdue_total  # Proofs past deadline
 
 # Prover resource usage
-vig_prover_gpu_utilization
-vig_prover_host_memory_bytes
+akashi_prover_gpu_utilization
+akashi_prover_host_memory_bytes
 ```
 
 ## Alerts
@@ -59,17 +59,17 @@ From specification section 18. Alert thresholds below are proposed initial value
 
 ```yaml
 - alert: EngineStartupGateFailure
-  expr: vig_engine_startup_gate_failed > 0
+  expr: akashi_engine_startup_gate_failed > 0
   severity: critical
   description: Engine failed float64 check, tensor verification, or canary
 
 - alert: DeviationDetected
-  expr: increase(vig_verdicts_total{result="DEVIATES"}[5m]) > 0
+  expr: increase(akashi_verdicts_total{result="DEVIATES"}[5m]) > 0
   severity: critical
   description: Provider served incorrect output
 
 - alert: LeanVerifierDisagreement
-  expr: vig_verifier_disagreement > 0
+  expr: akashi_verifier_disagreement > 0
   severity: critical
   description: cp_verify and Lean verifier disagree on a proof
 ```
@@ -78,22 +78,22 @@ From specification section 18. Alert thresholds below are proposed initial value
 
 ```yaml
 - alert: PromiseToSTHExceedsMMD
-  expr: vig_promise_to_sth_seconds > 10
+  expr: akashi_promise_to_sth_seconds > 10
   severity: high
   description: Merkle log not keeping up with MMD (10s)
 
 - alert: BeaconLagHigh
-  expr: vig_beacon_lag_seconds > 60
+  expr: akashi_beacon_lag_seconds > 60
   severity: high
   description: Sampler falling behind beacon
 
 - alert: EscrowGap
-  expr: increase(vig_escrow_gaps_total[1h]) > 0
+  expr: increase(akashi_escrow_gaps_total[1h]) > 0
   severity: high
   description: Transcripts expired before beacon selection
 
 - alert: SampledCasePastDeadline
-  expr: vig_overdue_total{trigger="sampled"} > 0
+  expr: akashi_overdue_total{trigger="sampled"} > 0
   severity: high
   description: Sampled proof not delivered within 24h
 ```
@@ -102,17 +102,17 @@ From specification section 18. Alert thresholds below are proposed initial value
 
 ```yaml
 - alert: QueueFull
-  expr: vig_queue_depth >= 4
+  expr: akashi_queue_depth >= 4
   severity: medium
   description: Gateway queue at capacity, returning 429
 
 - alert: UnwarrantedReplyRate
-  expr: rate(vig_unwarranted_total[1h]) > 0.01
+  expr: rate(akashi_unwarranted_total[1h]) > 0.01
   severity: medium
   description: Unexpected unwarranted replies (>1% of requests)
 
 - alert: HighProofLatency
-  expr: histogram_quantile(0.95, vig_prove_seconds) > 120
+  expr: histogram_quantile(0.95, akashi_prove_seconds) > 120
   severity: medium
   description: p95 proof time above 2 minutes
 ```

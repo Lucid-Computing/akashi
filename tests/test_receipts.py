@@ -1,4 +1,4 @@
-"""VIG/1 vectors generated independently with Node.js 24 crypto.
+"""AKASHI/1 vectors generated independently with Node.js 24 crypto.
 
 Inputs below follow docs/spec/03-data-model.md's binary frames and the
 PromiseReceipt domain from specs/receipt-log.md. Node Buffer.writeUInt32LE
@@ -26,8 +26,8 @@ C = "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46"
 PROFILE = "aa" * 32
 SALT = bytes(range(32)).hex()
 PARAMS = "9d9f290527a6be626a8f5985b26e19b237b44872b03631811df4416fc1713178"
-TRANSCRIPT = "9234a1388156118cd6c82cd30283019a7685babccf8f2f3ea56bbd46a9314593"
-LEAF = "a1144836a6630c736665f92461411e86411a00727f3e8041793745b639b0cb0c"
+TRANSCRIPT = "5decc65412dc8650c33e7ab5b1ae498c2fcd8dc7f83909c26b0d40642ca3d73d"
+LEAF = "9e4cd3ec7fbaf6b6ef84a81e3281b6a854b28443ec9ea067a75b6a5f32bfb3aa"
 RECEIPT: dict[str, object] = {
     "log_id": LOG_ID,
     "endpoint_id": "maverick-int-c7982f8a",
@@ -41,8 +41,8 @@ RECEIPT: dict[str, object] = {
     "beacon_round": 4294967297,
     "sampling_mode": "live",
     "promise_sig": (
-        "ff9114ef61866b7b95e1c26441b4b38d06a27f340f2e263b633314b083f66f23b"
-        "85fb1ed123e8e57c0b57537e4f0fac0fad842cc343c31e3d3e74af05373b004"
+        "175ff155f049d5fd305f5d39aaa9387da97e70412da0ceb991aa39ab24a5d8cd3"
+        "5415cdff4cf930f700c57cdd67c1e5ed65e3a5b291c0095f1be8ef1ef3c7b01"
     ),
     "log_key_id": KEY_ID,
     "salt": SALT,

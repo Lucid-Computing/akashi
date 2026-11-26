@@ -273,7 +273,7 @@ class DeliveryCommitter:
             # The pickup database must not carry a public-log index beside its opaque ID.
             binding_tag = hmac.digest(
                 attempt._secret,
-                b"vig/pickup/reservation/1" + bytes.fromhex(digest),
+                b"akashi/pickup/reservation/1" + bytes.fromhex(digest),
                 "sha256",
             ).hex()
             _commit_step(
@@ -313,7 +313,7 @@ class DeliveryCommitter:
             "Invalid log promise signature",
         )
         verification: dict[str, object] = {
-            "version": "vig/1",
+            "version": "akashi/1",
             "receipt": receipt,
             "prompt_token_ids": private["prompt_token_ids"],
             "reply_token_ids": private["reply_token_ids"],

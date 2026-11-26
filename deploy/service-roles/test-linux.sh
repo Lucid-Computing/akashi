@@ -8,42 +8,42 @@ stage="$sandbox/root"
 mkdir -p "$stage/etc" "$stage/usr/lib"/{sysusers.d,tmpfiles.d,systemd/system}
 printf 'root:x:0:0:root:/root:/bin/sh\n' > "$stage/etc/passwd"
 printf 'root:x:0:\n' > "$stage/etc/group"
-install -m644 vig.sysusers "$stage/usr/lib/sysusers.d/vig.conf"
-install -m644 vig.tmpfiles "$stage/usr/lib/tmpfiles.d/vig.conf"
+install -m644 akashi.sysusers "$stage/usr/lib/sysusers.d/akashi.conf"
+install -m644 akashi.tmpfiles "$stage/usr/lib/tmpfiles.d/akashi.conf"
 systemd-sysusers --root="$stage"
 systemd-tmpfiles --root="$stage" --create
 for role in gateway engine proxy log sampler escrow pickup auditor prover verifier; do
-    entry=$(awk -F: -v user="vig-$role" '$1==user {print $3 ":" $4}' "$stage/etc/passwd")
+    entry=$(awk -F: -v user="akashi-$role" '$1==user {print $3 ":" $4}' "$stage/etc/passwd")
     [[ "$entry" != 0:* && -n "$entry" ]]
-    [[ $(stat -c '%u:%g %a' "$stage/etc/vig/keys/$role") == "$entry 700" ]]
+    [[ $(stat -c '%u:%g %a' "$stage/etc/akashi/keys/$role") == "$entry 700" ]]
 done
-prover_uid=$(stat -c %u "$stage/etc/vig/keys/prover")
+prover_uid=$(stat -c %u "$stage/etc/akashi/keys/prover")
 [[ $(stat -c '%u %a' "$stage/prover/keys") == "$prover_uid 700" ]]
 
 # Verify the actual units against host utilities and a harmless stand-in for
 # the operator-supplied daemon. systemd-analyze does not launch services.
 units="$sandbox/units"
 mkdir "$units"
-cp vig@.service vig-retention@.service "$units/"
-cp -R vig-retention@prover.service.d "$units/"
-sed -i 's|/opt/vig/venv/bin/python|/usr/bin/python3|' "$units/vig-retention@.service"
-cp vig-engine-firewall.service "$units/"
-cp -R vig@*.service.d "$units/"
-sed -i 's|^ExecStart=/usr/local/libexec/vig/%i$|ExecStart=/usr/bin/true|' "$units/vig@.service"
-sed -i 's|^ExecStop=/usr/local/libexec/vig/stop-prover$|ExecStop=/usr/bin/true|' "$units/vig@prover.service.d/isolation.conf"
+cp akashi@.service akashi-retention@.service "$units/"
+cp -R akashi-retention@prover.service.d "$units/"
+sed -i 's|/opt/akashi/venv/bin/python|/usr/bin/python3|' "$units/akashi-retention@.service"
+cp akashi-engine-firewall.service "$units/"
+cp -R akashi@*.service.d "$units/"
+sed -i 's|^ExecStart=/usr/local/libexec/akashi/%i$|ExecStart=/usr/bin/true|' "$units/akashi@.service"
+sed -i 's|^ExecStop=/usr/local/libexec/akashi/stop-prover$|ExecStop=/usr/bin/true|' "$units/akashi@prover.service.d/isolation.conf"
 for role in engine log proxy prover; do
-    cp "$units/vig@.service" "$units/vig@$role.service"
+    cp "$units/akashi@.service" "$units/akashi@$role.service"
 done
 for role in auditor engine pickup prover; do
-    cp "$units/vig-retention@.service" "$units/vig-retention@$role.service"
+    cp "$units/akashi-retention@.service" "$units/akashi-retention@$role.service"
 done
-SYSTEMD_UNIT_PATH="$units:" systemd-analyze verify "$units"/vig-retention@{auditor,engine,pickup,prover}.service "$units/vig-engine-firewall.service" "$units"/vig@{engine,log,proxy,prover}.service
+SYSTEMD_UNIT_PATH="$units:" systemd-analyze verify "$units"/akashi-retention@{auditor,engine,pickup,prover}.service "$units/akashi-engine-firewall.service" "$units"/akashi@{engine,log,proxy,prover}.service
 
 # Resolve the proxy's UID from the isolated account database before loading the
 # real rule into its own network namespace; host NSS contains no test accounts.
-proxy_uid=$(stat -c %u "$stage/etc/vig/keys/proxy")
-proxy_gid=$(stat -c %g "$stage/etc/vig/keys/proxy")
-sed "s/\"vig-proxy\"/$proxy_uid/g" engine.nft > "$sandbox/engine.nft"
+proxy_uid=$(stat -c %u "$stage/etc/akashi/keys/proxy")
+proxy_gid=$(stat -c %g "$stage/etc/akashi/keys/proxy")
+sed "s/\"akashi-proxy\"/$proxy_uid/g" engine.nft > "$sandbox/engine.nft"
 unshare --net -- bash -eu -c '
     ip link set lo up
     nft -f "$1"

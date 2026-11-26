@@ -39,7 +39,7 @@ From specification section 21. These are unresolved technical questions to be cl
 
 ### OQ3: Router Header Forwarding
 
-**Question**: Does the router forward the `verification` field or `x-vig-*` headers to clients?
+**Question**: Does the router forward the `verification` field or `x-akashi-*` headers to clients?
 
 **How to close**: Test at M4
 

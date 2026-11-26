@@ -50,15 +50,15 @@ If beacon unavailable, transcripts wait; the hard cap ends in deletion and an `e
 
 ### Sealed Pickup
 
-The holder generates a fresh 32-byte secret and sets the request's `user` field to `vig-pickup/1:` followed by its lowercase hex encoding. The gateway and forwarding router see these inputs. The pickup store retains only the lookup digest and authenticated ciphertext for `W_pickup`. Consult [RFC-0010](../docs/rfcs/RFC-0010-router-pickup.md#proposed-design) for the wire contract and [parameters](parameters.md#service-parameters) for expiry.
+The holder generates a fresh 32-byte secret and sets the request's `user` field to `akashi-pickup/1:` followed by its lowercase hex encoding. The gateway and forwarding router see these inputs. The pickup store retains only the lookup digest and authenticated ciphertext for `W_pickup`. Consult [RFC-0010](../docs/rfcs/RFC-0010-router-pickup.md#proposed-design) for the wire contract and [parameters](parameters.md#service-parameters) for expiry.
 
 ```text
 frame(b) = u32le(len(b)) || b
-k = SHA256("vig/pickup/v1" || holder_secret || frame(JCS(messages))
+k = SHA256("akashi/pickup/v1" || holder_secret || frame(JCS(messages))
            || u32le(budget) || frame(UTF8(reply_text)))
 pickup_id = SHA256("id" || k)
 key = HKDF-SHA256(ikm=k, salt=absent, info="enc", length=32)
-aad = UTF8("vig-pickup/1") || pickup_id
+aad = UTF8("akashi-pickup/1") || pickup_id
 ciphertext_with_tag = XChaCha20-Poly1305(key, fresh_nonce24, JCS(verification), aad)
 ```
 
@@ -111,10 +111,10 @@ Transcripts transit the gateway and (if selected) the auditor. Deploy components
 
 Retention compliance metrics:
 
-- `vig_escrow_age_seconds`: Age of oldest transcript in escrow (alert if > 300s)
-- `vig_challenge_age_days`: Age of oldest challenged transcript (alert if > 30d)
-- `vig_pickup_age_days`: Age of oldest sealed receipt (alert if > 7d)
-- `vig_escrow_expired_total`: Count of transcripts expired before beacon (should be 0)
+- `akashi_escrow_age_seconds`: Age of oldest transcript in escrow (alert if > 300s)
+- `akashi_challenge_age_days`: Age of oldest challenged transcript (alert if > 30d)
+- `akashi_pickup_age_days`: Age of oldest sealed receipt (alert if > 7d)
+- `akashi_escrow_expired_total`: Count of transcripts expired before beacon (should be 0)
 
 ## Related Specifications
 

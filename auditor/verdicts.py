@@ -218,7 +218,7 @@ class VerdictStore:
         reason = "deadline_missed" if missed_at is not None else row["reason"]
         stamp = missed_at if missed_at is not None else row["completed_us"]
         doc: dict[str, object] = {
-            "version": "vig-verdict/1",
+            "version": "akashi-verdict/1",
             "challenge_id": subject,
             "transcript_commitment": row["t"],
             "outcome": outcome,

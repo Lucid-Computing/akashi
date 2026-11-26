@@ -52,7 +52,7 @@ def handler(
             body = self.rfile.read(int(self.headers["Content-Length"]))
             status, media, data = callback(body, self.headers.get("Authorization"))
             self.send_response(status)
-            self.send_header("x-vig-receipt", "synthetic")
+            self.send_header("x-akashi-receipt", "synthetic")
             self.send_header("Retry-After", "2")
             self.send_header("Content-Type", media)
             self.send_header("Content-Length", str(len(data)))
@@ -138,7 +138,7 @@ class MockRouterTests(unittest.TestCase):
                 self.assertEqual(
                     json.loads(raw)["choices"], json.loads(response)["choices"]
                 )
-                self.assertEqual("x-vig-receipt" in headers, mode == "transparent")
+                self.assertEqual("x-akashi-receipt" in headers, mode == "transparent")
                 self.assertEqual(
                     "verification" in json.loads(raw), mode == "transparent"
                 )

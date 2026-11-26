@@ -111,7 +111,7 @@ def inspect_wheel(path: Path) -> dict[str, Any]:
         )
         metadata = BytesParser().parsebytes(wheel.read(f"{info}/METADATA"))
         require(
-            metadata["Name"] == "vig-verify"
+            metadata["Name"] == "akashi-verify"
             and metadata["Version"] == conf["project"]["version"],
             "Wheel identity mismatch",
         )
@@ -177,7 +177,7 @@ def clean_install(uv: str, wheel: Path, lock: Path, folder: Path) -> dict[str, A
         k: v
         for k, v in os.environ.items()
         if k not in {"VIRTUAL_ENV", "PYTHONHOME", "PYTHONPATH"}
-        and not k.startswith("VIG_")
+        and not k.startswith("AKASHI_")
     }
     env["PYTHONNOUSERSITE"] = "1"
     venv = folder / "install"
@@ -221,7 +221,7 @@ def clean_install(uv: str, wheel: Path, lock: Path, folder: Path) -> dict[str, A
     )
     if native_host:
         run([uv, "pip", "check", "--python", str(python)])
-    cli = str(venv / "bin/vig")
+    cli = str(venv / "bin/akashi")
     run([cli, "verify", "--help"])
     fixture = json.loads(FIXTURE.read_bytes())
     for key in ("bundle", "descriptor", "checkpoint"):

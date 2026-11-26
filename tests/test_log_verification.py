@@ -14,7 +14,7 @@ LOG_ID = "ab" * 32
 # Node crypto.sign(null, message, RFC 8032 test key) over the size-7 and
 # size-9 Go roots. message starts with ASCII STH, raw log ID and a u64 BE size.
 HEAD7: dict[str, object] = {
-    "version": "vig-log/1",
+    "version": "akashi-log/1",
     "log_id": LOG_ID,
     "log_key_id": "old",
     "tree_size": 7,
@@ -55,7 +55,7 @@ class LogVerificationTests(unittest.TestCase):
                     head,
                 )
             for field, value in (
-                ("version", "vig-log/2"),
+                ("version", "akashi-log/2"),
                 ("log_id", "de" * 32),
                 ("log_key_id", "only-auditor"),
                 ("log_key_id", "new"),

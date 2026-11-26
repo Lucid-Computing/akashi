@@ -174,7 +174,7 @@ class DeliveryCommitTests(unittest.TestCase):
                 evidence["pickup_id"],
                 hmac.digest(
                     secret,
-                    b"vig/pickup/reservation/1" + bytes.fromhex(actual["leaf_hash"]),
+                    b"akashi/pickup/reservation/1" + bytes.fromhex(actual["leaf_hash"]),
                     "sha256",
                 ).hex(),
                 NOW.replace(microsecond=123000) + timedelta(days=7),

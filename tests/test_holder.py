@@ -93,7 +93,7 @@ class HolderTests(unittest.TestCase):
         }
         return {
             "verification": {
-                "version": "vig/1",
+                "version": "akashi/1",
                 "receipt": receipt,
                 "prompt_token_ids": list(prompt),
                 "reply_token_ids": list(reply),
@@ -256,7 +256,7 @@ class HolderTests(unittest.TestCase):
         trusted.write_text(json.dumps(self.trusted))
         command = [
             sys.executable,
-            str(Path(__file__).resolve().parents[1] / "vig"),
+            str(Path(__file__).resolve().parents[1] / "akashi"),
             "verify",
             str(bundle),
             "--descriptor",
@@ -304,10 +304,10 @@ class HolderTests(unittest.TestCase):
             )
 
     @unittest.skipUnless(
-        os.getenv("VIG_RENDER_ASSETS"), "requires pinned chat renderer"
+        os.getenv("AKASHI_RENDER_ASSETS"), "requires pinned chat renderer"
     )
     def test_chat_uses_holder_messages_and_display(self) -> None:
-        assets = Path(os.environ["VIG_RENDER_ASSETS"])
+        assets = Path(os.environ["AKASHI_RENDER_ASSETS"])
         bundle = self.bundle(chat=ChatRenderer(assets))
         self.assertEqual(
             verify(bundle, self.trusted, assets=assets, receipt_only=True).outcome,
@@ -327,7 +327,7 @@ class HolderTests(unittest.TestCase):
         descriptor = self.root / "descriptor.json"
         path.write_text(json.dumps(bundle))
         descriptor.write_text(json.dumps(self.trusted))
-        cli = [sys.executable, str(Path(__file__).resolve().parents[1] / "vig")]
+        cli = [sys.executable, str(Path(__file__).resolve().parents[1] / "akashi")]
         for args, code, kind in (
             ([], 64, "USAGE"),
             (

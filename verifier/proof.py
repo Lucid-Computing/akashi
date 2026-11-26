@@ -143,7 +143,7 @@ class NativeVerifier:
         parent = Path(tempfile.gettempdir())
         with (
             trusted_directory(parent),
-            tempfile.TemporaryDirectory(prefix="vig-verify-", dir=parent) as private,
+            tempfile.TemporaryDirectory(prefix="akashi-verify-", dir=parent) as private,
         ):
             yield Path(private)
 

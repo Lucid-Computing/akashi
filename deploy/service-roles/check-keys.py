@@ -27,9 +27,9 @@ if __name__ == "__main__":
     try:
         role = sys.argv[1]
         uid = os.geteuid()
-        if uid == 0 or pwd.getpwuid(uid).pw_name != f"vig-{role}":
+        if uid == 0 or pwd.getpwuid(uid).pw_name != f"akashi-{role}":
             raise ValueError("unexpected service account")
-        check_directory(Path("/etc/vig/keys") / role, uid)
+        check_directory(Path("/etc/akashi/keys") / role, uid)
         if role == "prover":
             check_directory(Path("/prover/keys"), uid, prover_keys=True)
     except (IndexError, KeyError, OSError, ValueError):

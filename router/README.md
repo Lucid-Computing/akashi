@@ -6,7 +6,7 @@ From the repository root, run the demo on a CPU.
 make setup demo-router
 ```
 
-The demo starts a loopback router in a separate process, a gateway with the pinned chat renderer and mock engine, an encrypted escrow, a signed Merkle log and the SQLite-backed sealed pickup service. The gateway writes envelopes into a private temporary database. A separate reader serves them over the rate-limited, no-store pickup endpoint. It fetches two digest-checked public tokenizer files on demand. For an offline run, set `VIG_RENDER_ASSETS` to the directory containing the pinned `tokenizer.json` and `tokenizer_config.json`.
+The demo starts a loopback router in a separate process, a gateway with the pinned chat renderer and mock engine, an encrypted escrow, a signed Merkle log and the SQLite-backed sealed pickup service. The gateway writes envelopes into a private temporary database. A separate reader serves them over the rate-limited, no-store pickup endpoint. It fetches two digest-checked public tokenizer files on demand. For an offline run, set `AKASHI_RENDER_ASSETS` to the directory containing the pinned `tokenizer.json` and `tokenizer_config.json`.
 
 | Router mode | What the holder observes |
 | --- | --- |

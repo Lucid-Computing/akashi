@@ -130,5 +130,5 @@ def primary_host_matches(evidence: Path) -> bool:
     machine = Path("/etc/machine-id").read_bytes().strip()
     if len(machine) != 32 or any(c not in b"0123456789abcdef" for c in machine):
         return False
-    value = hashlib.sha256(b"vig-m0-host-v1\0" + machine).hexdigest()
+    value = hashlib.sha256(b"akashi-m0-host-v1\0" + machine).hexdigest()
     return evidence.read_text().strip() == value

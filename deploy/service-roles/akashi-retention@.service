@@ -1,0 +1,23 @@
+[Unit]
+Description=Expire private verified inference state (%i)
+After=akashi@%i.service
+
+[Service]
+User=akashi-%i
+Group=akashi-%i
+UMask=0077
+WorkingDirectory=/opt/akashi/source
+StateDirectory=akashi-%i
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+EnvironmentFile=/etc/akashi/retention-%i.conf
+ExecStart=/opt/akashi/venv/bin/python -E -s -m operations.retention --interval-seconds ${AKASHI_RETENTION_INTERVAL_SECONDS} %i $AKASHI_RETENTION_PATHS
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

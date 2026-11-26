@@ -105,34 +105,34 @@ class TelemetryTests(unittest.TestCase):
             (
                 "gateway",
                 "request",
-                "vig_requests_total",
+                "akashi_requests_total",
                 ("served", "unwarranted", "unavailable", "rejected"),
             ),
-            ("engine", "gate", "vig_gates_total", ("passed", "failed")),
+            ("engine", "gate", "akashi_gates_total", ("passed", "failed")),
             (
                 "engine",
                 "unwarranted",
-                "vig_unwarranted_total",
+                "akashi_unwarranted_total",
                 ("range_failure", "forced_token", "engine_error"),
             ),
-            ("log", "append", "vig_appends_total", ("success", "failure")),
-            ("sampler", "beacon", "vig_beacon_total", ("available", "unavailable")),
+            ("log", "append", "akashi_appends_total", ("success", "failure")),
+            ("sampler", "beacon", "akashi_beacon_total", ("available", "unavailable")),
             (
                 "sampler",
                 "selection",
-                "vig_selections_total",
+                "akashi_selections_total",
                 ("pending", "unselected", "disabled", "gap", "selected"),
             ),
             (
                 "prover",
                 "proof",
-                "vig_proofs_total",
+                "akashi_proofs_total",
                 ("success", "rejected", "timeout", "unavailable"),
             ),
             (
                 "auditor",
                 "verdict",
-                "vig_verdicts_total",
+                "akashi_verdicts_total",
                 ("CONFORMS", "DEVIATES", "INCOMPLETE", "EXCUSED_RANGE", "UNAVAILABLE"),
             ),
         )
@@ -146,7 +146,7 @@ class TelemetryTests(unittest.TestCase):
                     1,
                 )
         self.assertEqual(
-            self.metric("vig_escrow_gaps_total", service="sampler", mode="live"), 1
+            self.metric("akashi_escrow_gaps_total", service="sampler", mode="live"), 1
         )
 
     def test_documented_gate_and_deviation_alert_selectors(self) -> None:
@@ -154,12 +154,12 @@ class TelemetryTests(unittest.TestCase):
             self.tel.emit(
                 Event(service="engine", name="gate", outcome=state, mode="live")
             )
-            self.assertEqual(self.metric("vig_engine_startup_gate_failed"), expected)
+            self.assertEqual(self.metric("akashi_engine_startup_gate_failed"), expected)
         for verdict in ("DEVIATES", "CONFORMS", "DEVIATES"):
             self.tel.emit(
                 Event(service="auditor", name="verdict", outcome=verdict, mode="live")
             )
-        self.assertEqual(self.metric("vig_verdicts_total", result="DEVIATES"), 2)
+        self.assertEqual(self.metric("akashi_verdicts_total", result="DEVIATES"), 2)
         self.tel.emit(
             Event(
                 service="gateway",
@@ -169,7 +169,7 @@ class TelemetryTests(unittest.TestCase):
                 mode="live",
             )
         )
-        self.assertEqual(self.metric("vig_requests_total", status="429"), 1)
+        self.assertEqual(self.metric("akashi_requests_total", status="429"), 1)
         self.tel.emit(
             Event(
                 service="engine",
@@ -179,7 +179,7 @@ class TelemetryTests(unittest.TestCase):
             )
         )
         self.assertEqual(
-            self.metric("vig_unwarranted_total", reason="range_failure"), 1
+            self.metric("akashi_unwarranted_total", reason="range_failure"), 1
         )
 
     def test_selection_divisor_labels_are_bounded(self) -> None:
@@ -192,7 +192,7 @@ class TelemetryTests(unittest.TestCase):
                 divisor=1000,
             )
         )
-        self.assertEqual(self.metric("vig_selected_total", N="1000"), 1)
+        self.assertEqual(self.metric("akashi_selected_total", N="1000"), 1)
         with self.assertRaises(ValueError):
             self.tel.emit(
                 Event(
@@ -265,14 +265,14 @@ class TelemetryTests(unittest.TestCase):
                 "phase": "decode",
                 "outcome": outcome,
             }
-            self.assertEqual(self.metric("vig_stage_seconds_count", **labels), 1)
-            self.assertEqual(self.metric("vig_stage_seconds_sum", **labels), total)
+            self.assertEqual(self.metric("akashi_stage_seconds_count", **labels), 1)
+            self.assertEqual(self.metric("akashi_stage_seconds_sum", **labels), total)
 
     def test_depth_is_a_bounded_gauge(self) -> None:
         for depth in (3, 1, 0):
             self.tel.set_depth("gateway", depth, mode="live")
             self.assertEqual(
-                self.metric("vig_queue_depth", service="gateway", mode="live"), depth
+                self.metric("akashi_queue_depth", service="gateway", mode="live"), depth
             )
         for invalid in (-1, True, float("nan")):
             with (
@@ -305,7 +305,7 @@ class TelemetryTests(unittest.TestCase):
         self.assertEqual(len(self.logs), 120)
         self.assertEqual(
             self.metric(
-                "vig_requests_total", service="gateway", mode="live", outcome="served"
+                "akashi_requests_total", service="gateway", mode="live", outcome="served"
             ),
             120,
         )

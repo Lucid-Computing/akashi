@@ -115,7 +115,7 @@ def verify(
     result = VerificationResult(10, "RECEIPT_INVALID")
     try:
         if (
-            descriptor["version"] != "vig/1"
+            descriptor["version"] != "akashi/1"
             or descriptor["commitment_id"] != COMMITMENT
             or descriptor["window"] != WINDOW
             or descriptor["beacon"]["chain_hash"] != CHAIN_HASH
@@ -126,7 +126,7 @@ def verify(
             return result
         verification = bundle["verification"]
         receipt = verification["receipt"]
-        if verification["version"] != "vig/1" or receipt["commitment_id"] != COMMITMENT:
+        if verification["version"] != "akashi/1" or receipt["commitment_id"] != COMMITMENT:
             return result
         key_id = receipt["log_key_id"]
         verify_promise(

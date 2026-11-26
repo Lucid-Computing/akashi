@@ -8,7 +8,7 @@ Token = uint32 in [0, vocabulary_size)
 Transcript = {profile, prompt: Token[], reply: Token[], max_tokens: uint32}
 HolderBundle = {verification, max_tokens, input: Message[] | Token[],
                 text: string | null, proof?: ProofArtifact}
-Verification = {version: "vig/1", receipt: Receipt,
+Verification = {version: "akashi/1", receipt: Receipt,
                  prompt_token_ids: Token[], reply_token_ids: Token[],
                  pickup_id?: Digest}
 Receipt = {log_id, endpoint_id, request_id, served_at, commitment_id,
@@ -27,9 +27,9 @@ Use unsigned 64-bit big-endian for rounds and tree sizes, lowercase canonical UU
 
 ```text
 H_params = SHA256(u32le(max_tokens))
-t = SHA256("vig/transcript/1" || C || R || H_params || salt
+t = SHA256("akashi/transcript/1" || C || R || H_params || salt
            || frame(u32le_vector(x)) || frame(u32le_vector(y)))
-leaf_hash = SHA256("vig/leaf/1" || log_id || C || R || H_params || t
+leaf_hash = SHA256("akashi/leaf/1" || log_id || C || R || H_params || t
                    || u64be(beacon_round) || frame(utc_timestamp)
                    || frame(utf8(endpoint_id)) || frame(utf8(request_id))
                    || frame(utf8(log_key_id)) || frame(utf8(sampling_mode)))

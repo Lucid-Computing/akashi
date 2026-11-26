@@ -1,4 +1,4 @@
-"""Public vig/1 discovery routes and the configuration shared with admission."""
+"""Public akashi/1 discovery routes and the configuration shared with admission."""
 
 from __future__ import annotations
 
@@ -126,7 +126,7 @@ class ServiceConfig:
             "digest": hashlib.sha256(b"raw-ids/1").hexdigest(),
         }
         return {
-            "version": "vig/1",
+            "version": "akashi/1",
             "model": self.model,
             "commitment_id": "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46",
             "window": 1024,
@@ -177,12 +177,12 @@ class DiscoveryApp:
                 "seed",
             ],
             "constraints": {"temperature": [0], "top_p": [1], "n": [1]},
-            "description": "Greedy integer-model inference. See /.well-known/vig.json for verification.",
+            "description": "Greedy integer-model inference. See /.well-known/akashi.json for verification.",
         }
         self._routes = {
             "/router/models": json.dumps({"models": [feed]}).encode(),
             "/v1/models": json.dumps({"object": "list", "data": [model]}).encode(),
-            "/.well-known/vig.json": json.dumps(config.descriptor()).encode(),
+            "/.well-known/akashi.json": json.dumps(config.descriptor()).encode(),
         }
 
     def __call__(

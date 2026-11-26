@@ -1,1 +1,1 @@
-"""Offline release controls for the verified inference gateway."""
+"""Offline release controls for Akashi, the verified inference gateway."""

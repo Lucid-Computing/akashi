@@ -16,7 +16,7 @@ If gateway, auditor, and client use different tokenizers or chat templates, they
 
 ## Render Profile
 
-Published in `.well-known/vig.json`:
+Published in `.well-known/akashi.json`:
 
 ```json
 {
@@ -154,7 +154,7 @@ Profile name includes version: `llama4-chat/1`.
 If chat template changes (e.g., updated Llama 4.1 format), a new profile is published:
 - New digest computed
 - New tokenizer files (or same files with different template)
-- New `.well-known/vig.json` with updated profile
+- New `.well-known/akashi.json` with updated profile
 
 Old receipts remain valid (they bind the old digest). Auditor fetches the correct tokenizer for each receipt's profile.
 

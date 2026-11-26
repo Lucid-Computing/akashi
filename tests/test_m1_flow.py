@@ -22,11 +22,11 @@ class M1FlowTests(unittest.TestCase):
         self.assertEqual(str(caught.exception), "Isolated Mode D fixture failed")
 
     @unittest.skipUnless(
-        os.environ.get("VIG_RENDER_ASSETS"), "requires pinned renderer assets"
+        os.environ.get("AKASHI_RENDER_ASSETS"), "requires pinned renderer assets"
     )
     def test_public_evidence_matches_full_fixture(self) -> None:
         self.assertEqual(
-            run_flow(Path(os.environ["VIG_RENDER_ASSETS"])),
+            run_flow(Path(os.environ["AKASHI_RENDER_ASSETS"])),
             {
                 "mode": "D",
                 "engine": "mock",
@@ -45,7 +45,7 @@ class M1FlowTests(unittest.TestCase):
         )
 
     @unittest.skipUnless(
-        os.environ.get("VIG_RENDER_ASSETS"), "requires pinned renderer assets"
+        os.environ.get("AKASHI_RENDER_ASSETS"), "requires pinned renderer assets"
     )
     def test_external_client_rejects_changed_shadow_decision(self) -> None:
         original = Selections.page
@@ -61,10 +61,10 @@ class M1FlowTests(unittest.TestCase):
             patch.object(Selections, "page", changed),
             self.assertRaises(GateFlowError),
         ):
-            run_flow(Path(os.environ["VIG_RENDER_ASSETS"]))
+            run_flow(Path(os.environ["AKASHI_RENDER_ASSETS"]))
 
     @unittest.skipUnless(
-        os.environ.get("VIG_RENDER_ASSETS"), "requires pinned renderer assets"
+        os.environ.get("AKASHI_RENDER_ASSETS"), "requires pinned renderer assets"
     )
     def test_worker_evidence_must_bind_exact_private_statement(self) -> None:
         with (
@@ -73,4 +73,4 @@ class M1FlowTests(unittest.TestCase):
             ),
             self.assertRaises(GateFlowError),
         ):
-            run_flow(Path(os.environ["VIG_RENDER_ASSETS"]))
+            run_flow(Path(os.environ["AKASHI_RENDER_ASSETS"]))

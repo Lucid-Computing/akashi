@@ -148,13 +148,13 @@ class EngineProxyTests(unittest.TestCase):
             cls.port = int(reserve.getsockname()[1])
         environment = dict(
             os.environ,
-            VIG_PROXY_LISTEN=f"127.0.0.1:{cls.port}",
-            VIG_PROXY_CONNECT_TIMEOUT="5s",
-            VIG_PROXY_IO_TIMEOUT="5s",
-            VIG_PROXY_CERT=str(cls.directory / "server.pem"),
-            VIG_GATEWAY_CA=str(cls.directory / "ca.pem"),
-            VIG_GATEWAY_CERT_SHA256=fingerprint,
-            VIG_ENGINE_PORT=str(cls.backend.server_port),
+            AKASHI_PROXY_LISTEN=f"127.0.0.1:{cls.port}",
+            AKASHI_PROXY_CONNECT_TIMEOUT="5s",
+            AKASHI_PROXY_IO_TIMEOUT="5s",
+            AKASHI_PROXY_CERT=str(cls.directory / "server.pem"),
+            AKASHI_GATEWAY_CA=str(cls.directory / "ca.pem"),
+            AKASHI_GATEWAY_CERT_SHA256=fingerprint,
+            AKASHI_ENGINE_PORT=str(cls.backend.server_port),
         )
         subprocess.run(
             [HAPROXY, "-c", "-f", str(CONFIG)], env=environment, check=True, timeout=10

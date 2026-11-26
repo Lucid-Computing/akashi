@@ -39,7 +39,7 @@ Returns:
       "top_p": [1],
       "n": [1]
     },
-    "description": "Llama 4 Maverick 17B integer model with ZK proofs. Greedy decoding only. Verification receipts available. See https://.../.well-known/vig.json"
+    "description": "Llama 4 Maverick 17B integer model with ZK proofs. Greedy decoding only. Verification receipts available. See https://.../.well-known/akashi.json"
   }]
 }
 ```
@@ -47,14 +47,14 @@ Returns:
 Router should:
 1. Parse constraints and reject requests that violate them before forwarding
 2. Display constraints in model selection UI
-3. Link to `.well-known/vig.json` for verification details
+3. Link to `.well-known/akashi.json` for verification details
 
 ### Service Descriptor
 
 Router fetches once and caches:
 
 ```
-GET /.well-known/vig.json
+GET /.well-known/akashi.json
 ```
 
 Contains:
@@ -97,7 +97,7 @@ Gateway returns completion with `verification` object.
 
 **Option A: Transparent forwarding**
 
-Router forwards entire response including `verification` and `x-vig-receipt` header to client. Client can verify immediately.
+Router forwards entire response including `verification` and `x-akashi-receipt` header to client. Client can verify immediately.
 
 **Option B: Opaque forwarding**
 
@@ -107,7 +107,7 @@ Router strips `verification` before forwarding to client. Client fetches receipt
 
 ### Pattern 1: Inline (Transparent Router)
 
-Client receives `verification` object in response body and `x-vig-receipt` header.
+Client receives `verification` object in response body and `x-akashi-receipt` header.
 
 Advantages:
 - Immediate verification
@@ -199,7 +199,7 @@ Client using router should:
 1. Fetch router's model list
 2. Find models with "verification" or "proof" in description
 3. Check model constraints
-4. Read `.well-known/vig.json` from verification URL
+4. Read `.well-known/akashi.json` from verification URL
 
 ### Verification
 

@@ -91,23 +91,23 @@ def _series(scrapes: dict[str, list[str]]) -> list[dict[str, str]]:
         if len(readings) != 3:
             raise ValueError("Incomplete private role observations")
         base = f'service="{role}",mode="live"'
-        allowed = {f"vig_observation_coverage{{{base}}}"}
+        allowed = {f"akashi_observation_coverage{{{base}}}"}
         if role == "engine":
             allowed.update(
                 {
-                    f"vig_engine_startup_gate_failed{{{base}}}",
-                    f"vig_engine_requests_total{{{base}}}",
-                    f'vig_unwarranted_total{{{base},outcome="engine_error",reason="engine_error"}}',
+                    f"akashi_engine_startup_gate_failed{{{base}}}",
+                    f"akashi_engine_requests_total{{{base}}}",
+                    f'akashi_unwarranted_total{{{base},outcome="engine_error",reason="engine_error"}}',
                 }
             )
         elif role == "auditor":
-            allowed.add(f"vig_signed_deviations_last_5m{{{base}}}")
+            allowed.add(f"akashi_signed_deviations_last_5m{{{base}}}")
         else:
             allowed.update(
-                {f"vig_beacon_available{{{base}}}", f"vig_beacon_lag_seconds{{{base}}}"}
+                {f"akashi_beacon_available{{{base}}}", f"akashi_beacon_lag_seconds{{{base}}}"}
             )
             allowed.update(
-                f'vig_sampling_coverage{{{base},state="{state}"}}'
+                f'akashi_sampling_coverage{{{base},state="{state}"}}'
                 for state in ("available", "disabled", "unknown")
             )
         for i, reading in enumerate(readings):
@@ -134,20 +134,20 @@ def _rules_test(series: list[dict[str, str]]) -> dict[str, Any]:
     ]
     normal.append(_check("UnwarrantedReplyRate", "1m", True))
     shape = [
-        ('vig_beacon_lag_seconds{service="sampler",mode="live"}', "60 61 60"),
-        ('vig_observation_coverage{service="auditor",mode="live"}', "1 0 1"),
-        ('vig_observation_coverage{service="sampler",mode="live"}', "1 0 1"),
+        ('akashi_beacon_lag_seconds{service="sampler",mode="live"}', "60 61 60"),
+        ('akashi_observation_coverage{service="auditor",mode="live"}', "1 0 1"),
+        ('akashi_observation_coverage{service="sampler",mode="live"}', "1 0 1"),
         (
-            'vig_sampling_coverage{service="sampler",mode="live",state="disabled"}',
+            'akashi_sampling_coverage{service="sampler",mode="live",state="disabled"}',
             "0 1 0",
         ),
-        ('up{job="vig-private",instance="fixture"}', "1 0 1"),
+        ('up{job="akashi-private",instance="fixture"}', "1 0 1"),
         (
-            'vig_log_checkpoint_known{job="vig-private",instance="fixture",service="log",mode="live"}',
+            'akashi_log_checkpoint_known{job="akashi-private",instance="fixture",service="log",mode="live"}',
             "1 stale 1",
         ),
         (
-            'vig_log_incidents_total{service="log",mode="live",kind="omitted_promise"}',
+            'akashi_log_incidents_total{service="log",mode="live",kind="omitted_promise"}',
             "0 1 1+0x6",
         ),
     ]
@@ -161,7 +161,7 @@ def _rules_test(series: list[dict[str, str]]) -> dict[str, Any]:
             "PrivateScrapeUnavailable",
             f"{minute}m",
             minute == 1,
-            job="vig-private",
+            job="akashi-private",
             instance="fixture",
         )
         for minute in range(3)
@@ -230,7 +230,7 @@ def gate(output: Path) -> bool:
                             {
                                 "name": "queries",
                                 "rules": [
-                                    {"record": f"vig_drill_panel_{i}", "expr": expr}
+                                    {"record": f"akashi_drill_panel_{i}", "expr": expr}
                                     for i, expr in enumerate(targets)
                                 ],
                             }

@@ -1,6 +1,6 @@
 # Native verifier provenance
 
-The `vig-verify` 0.0.0 development wheel includes the offline holder CLI and the CPU verification inputs for Maverick commitment `c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46`. The Python modules and native files are enumerated in the wheel build metadata. [Wheel contents](pyproject.toml) · [Holder installation](../../verifier/README.md#install-the-development-wheel)
+The `akashi-verify` 0.0.0 development wheel includes the offline holder CLI and the CPU verification inputs for Maverick commitment `c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46`. The Python modules and native files are enumerated in the wheel build metadata. [Wheel contents](pyproject.toml) · [Holder installation](../../verifier/README.md#install-the-development-wheel)
 
 ## Native executable
 

@@ -5,6 +5,6 @@ RENDERER_PROJECT ?= .
 
 test-renderer-goldens:
 	@set -eu; \
-	: "$${VIG_RENDER_ASSETS:?set VIG_RENDER_ASSETS to the pinned tokenizer asset directory}"; \
+	: "$${AKASHI_RENDER_ASSETS:?set AKASHI_RENDER_ASSETS to the pinned tokenizer asset directory}"; \
 	project=$$(cd "$(RENDERER_PROJECT)" && pwd); \
 	PYTHONPATH="$$project:$$(pwd)" uv run --locked --project "$$project" python tests/test_render_goldens.py

@@ -56,13 +56,13 @@ class ProfileTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    os.environ.get("VIG_RENDER_ASSETS"),
-    "set VIG_RENDER_ASSETS to the pinned tokenizer directory",
+    os.environ.get("AKASHI_RENDER_ASSETS"),
+    "set AKASHI_RENDER_ASSETS to the pinned tokenizer directory",
 )
 class ChatTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.assets = Path(os.environ["VIG_RENDER_ASSETS"])
+        cls.assets = Path(os.environ["AKASHI_RENDER_ASSETS"])
         cls.renderer = ChatRenderer(cls.assets)
 
     assets: Path

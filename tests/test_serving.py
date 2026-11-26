@@ -98,7 +98,7 @@ class ServingTests(unittest.TestCase):
                     "HTTP_AUTHORIZATION": authorization,
                     "CONTENT_LENGTH": str(len(data)),
                     "wsgi.input": io.BytesIO(data),
-                    "vig.request_control": control,
+                    "akashi.request_control": control,
                 },
                 start,
             )
@@ -117,7 +117,7 @@ class ServingTests(unittest.TestCase):
             result["usage"],
             {"prompt_tokens": 2, "completion_tokens": 2, "total_tokens": 4},
         )
-        encoded = headers["x-vig-receipt"]
+        encoded = headers["x-akashi-receipt"]
         receipt = json.loads(
             base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
         )
@@ -133,10 +133,10 @@ class ServingTests(unittest.TestCase):
         self.assertNotIn("salt", self.log.receipt(0))
 
     @unittest.skipUnless(
-        os.getenv("VIG_RENDER_ASSETS"), "requires pinned renderer assets"
+        os.getenv("AKASHI_RENDER_ASSETS"), "requires pinned renderer assets"
     )
     def test_real_chat_http_with_pinned_renderer(self) -> None:
-        assets = Path(os.environ["VIG_RENDER_ASSETS"])
+        assets = Path(os.environ["AKASHI_RENDER_ASSETS"])
         renderer = ChatRenderer(assets)
         self.serving.renderer = renderer
         with make_server(
@@ -181,7 +181,7 @@ class ServingTests(unittest.TestCase):
                 self.serving.engine = cast(Engine, injection)
                 actual, headers, reply = self.post()
                 self.assertEqual(actual, status)
-                self.assertNotIn("x-vig-receipt", headers)
+                self.assertNotIn("x-akashi-receipt", headers)
                 self.assertNotIn("verification", reply)
         self.append.assert_not_called()
 
@@ -198,7 +198,7 @@ class ServingTests(unittest.TestCase):
         self.append.side_effect = append
         status, headers, reply = self.post(control=control)
         self.assertNotEqual(status, 200)
-        self.assertNotIn("x-vig-receipt", headers)
+        self.assertNotIn("x-akashi-receipt", headers)
         self.assertNotIn("verification", reply)
         self.assertEqual(self.log.head()["tree_size"], 1)
 
@@ -220,7 +220,7 @@ class ServingTests(unittest.TestCase):
                     (status, body["error"]["code"], headers["Retry-After"]),
                     (429, "queue_full", "2"),
                 )
-                self.assertNotIn("x-vig-receipt", headers)
+                self.assertNotIn("x-akashi-receipt", headers)
             finally:
                 for control in controls:
                     control.cancel()
@@ -243,7 +243,7 @@ class ServingTests(unittest.TestCase):
             self.append.return_value = fault
             status, headers, result = self.post()
             self.assertEqual(status, 500)
-            self.assertNotIn("x-vig-receipt", headers)
+            self.assertNotIn("x-akashi-receipt", headers)
             self.assertNotIn("verification", result)
             self.assertNotIn("private text", str(result))
 
@@ -264,7 +264,7 @@ class ServingTests(unittest.TestCase):
         self.assertTrue(start.call_args.args[0].startswith("401"))
         stream.read.assert_not_called()
         self.assertEqual(
-            self.post({**self.body, "user": "vig-pickup/1:" + ("a0" * 32)})[0], 400
+            self.post({**self.body, "user": "akashi-pickup/1:" + ("a0" * 32)})[0], 400
         )
         self.append.assert_not_called()
 

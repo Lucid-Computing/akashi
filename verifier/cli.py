@@ -47,7 +47,7 @@ def _object(path: Path) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    cli = Parser(prog="vig")
+    cli = Parser(prog="akashi")
     cmd = cli.add_subparsers(dest="command", required=True).add_parser(
         "verify", help=__doc__
     )
@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
         "--descriptor",
         type=Path,
         required=True,
-        help="separately trusted vig/1 descriptor",
+        help="separately trusted akashi/1 descriptor",
     )
     cmd.add_argument(
         "--checkpoint", type=Path, help="holder's previously trusted signed head"
@@ -70,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     cmd.add_argument(
         "--assets",
         type=Path,
-        default=os.environ.get("VIG_RENDER_ASSETS"),
+        default=os.environ.get("AKASHI_RENDER_ASSETS"),
         help="pinned chat tokenizer files",
     )
     cmd.add_argument(

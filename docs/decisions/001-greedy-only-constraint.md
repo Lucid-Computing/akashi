@@ -15,7 +15,7 @@ LLM inference can operate in multiple modes:
 2. **Sampling-based**: Sample from probability distribution (temperature>0, top-p, top-k)
 3. **Beam search**: Maintain multiple candidate sequences
 
-The verified inference gateway must prove that served outputs match model execution. However, proving correctness depends on determinism:
+Akashi must prove that served outputs match model execution. However, proving correctness depends on determinism:
 - Greedy decoding is fully deterministic (given fixed weights and input)
 - Sampling-based methods are inherently non-deterministic
 - Beam search can be deterministic but is complex
@@ -27,7 +27,7 @@ Zero-knowledge proof systems like FlashProve can prove deterministic computation
 
 ## Decision
 
-The verified inference gateway will **only support greedy decoding** (temperature=0.0). All sampling-based parameters (temperature≠0, top-p, top-k, etc.) will be rejected with a clear error message.
+Akashi will **only support greedy decoding** (temperature=0.0). All sampling-based parameters (temperature≠0, top-p, top-k, etc.) will be rejected with a clear error message.
 
 This constraint applies to:
 - Initial exploration (M0-M4)

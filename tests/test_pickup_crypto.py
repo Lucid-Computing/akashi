@@ -40,7 +40,7 @@ class PickupCryptoTests(unittest.TestCase):
         budget_bytes = self.budget.to_bytes(4, "little")
         self.assertEqual(budget_bytes.hex(), self.v["budget_u32le_hex"])
         preimage = (
-            b"vig/pickup/v1"
+            b"akashi/pickup/v1"
             + self.secret
             + frame(bytes.fromhex(self.v["messages_jcs_hex"]))
             + budget_bytes
@@ -57,7 +57,7 @@ class PickupCryptoTests(unittest.TestCase):
         prk = hmac.digest(bytes(32), k, "sha256")
         key = hmac.digest(prk, b"enc\x01", "sha256")
         self.assertEqual(key.hex(), self.v["encryption_key_hex"])
-        aad = b"vig-pickup/1" + digest
+        aad = b"akashi-pickup/1" + digest
         self.assertEqual(aad.hex(), self.v["aad_hex"])
         ciphertext = bytes.fromhex(self.envelope["ciphertext"])
         self.assertEqual(ciphertext[-16:].hex(), self.v["tag_hex"])
@@ -176,7 +176,7 @@ class PickupCryptoTests(unittest.TestCase):
             return data.hex()
 
         invalid: dict[str, Any] = {
-            "unknown version": {**self.envelope, "version": "vig-pickup/2"},
+            "unknown version": {**self.envelope, "version": "akashi-pickup/2"},
             "non-object": list(self.envelope),
             **{
                 f"missing {k}": {i: v for i, v in self.envelope.items() if i != k}
@@ -213,7 +213,7 @@ class PickupCryptoTests(unittest.TestCase):
             "missing receipt": {
                 k: v for k, v in self.verification.items() if k != "receipt"
             },
-            "bad version": {**self.verification, "version": "vig/2"},
+            "bad version": {**self.verification, "version": "akashi/2"},
             "nonobject receipt": {**self.verification, "receipt": []},
             "nonarray prompt": {**self.verification, "prompt_token_ids": "0"},
             "boolean ID": {**self.verification, "reply_token_ids": [True]},
@@ -235,7 +235,7 @@ class PickupCryptoTests(unittest.TestCase):
         payloads = {
             "conflicting embedded ID": original.replace(inner_id, b"00" * 32),
             "noncanonical JSON": b" " + original,
-            "duplicate member": b'{"version":"vig/1",' + original[1:],
+            "duplicate member": b'{"version":"akashi/1",' + original[1:],
             "invalid UTF-8": b"\xff",
             "invalid JSON": b"{",
             "wrong shape": b"[]",
@@ -283,14 +283,14 @@ class PickupCryptoTests(unittest.TestCase):
             self.assertIsNone(parse_holder_secret(ordinary))
         text = self.v["holder_secret_hex"]
         for reserved in (
-            "vig-pickup/2:" + text,
-            "vig-pickup/1",
-            "vig-pickup/1:",
-            "vig-pickup/1:" + text.upper(),
-            "vig-pickup/1:" + text[2:],
-            "vig-pickup/1:" + text + "00",
-            "vig-pickup/1:" + text + "\n",
-            "vig-pickup/1:" + "xx" + text[2:],
+            "akashi-pickup/2:" + text,
+            "akashi-pickup/1",
+            "akashi-pickup/1:",
+            "akashi-pickup/1:" + text.upper(),
+            "akashi-pickup/1:" + text[2:],
+            "akashi-pickup/1:" + text + "00",
+            "akashi-pickup/1:" + text + "\n",
+            "akashi-pickup/1:" + "xx" + text[2:],
         ):
             with self.subTest(prefix=reserved[:13]), self.assertRaises(PickupError):
                 parse_holder_secret(reserved)

@@ -110,7 +110,7 @@ class PrivateOperationsDrill(unittest.TestCase):
         result = subprocess.run(
             [
                 sys.executable,
-                str(_ROOT / "vig"),
+                str(_ROOT / "akashi"),
                 "verify",
                 str(evidence),
                 "--descriptor",

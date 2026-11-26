@@ -1,5 +1,5 @@
 [project]
-name = "vig-verify"
+name = "akashi-verify"
 version = "0.0.0"
 description = "Offline verification of signed inference receipts and FlashProve evidence"
 requires-python = ">=3.10"
@@ -21,11 +21,11 @@ dependencies = [
 ]
 
 [project.scripts]
-vig = "verifier.cli:main"
+akashi = "verifier.cli:main"
 
 [project.urls]
-Source = "https://github.com/AbdelStark/verified-inference-gateway"
-Documentation = "https://github.com/AbdelStark/verified-inference-gateway/tree/main/verifier"
+Source = "https://github.com/Lucid-Computing/akashi"
+Documentation = "https://github.com/Lucid-Computing/akashi/tree/main/verifier"
 
 [build-system]
 requires = ["hatchling==1.33.0"]

@@ -53,7 +53,7 @@ def _public_section(value: object, fields: set[str]) -> None:
 
 
 def _check_base(descriptor: Mapping[str, object]) -> None:
-    if descriptor.keys() - _PUBLIC_FIELDS or descriptor.get("version") != "vig/1":
+    if descriptor.keys() - _PUBLIC_FIELDS or descriptor.get("version") != "akashi/1":
         raise ValueError("unexpected discovery version or fields")
     for name, value in descriptor.items():
         if name in _SECTIONS:
@@ -78,7 +78,7 @@ def publish(
     _check_base(descriptor)
     log_section = descriptor.get("log")
     if not isinstance(log_section, dict):
-        raise TypeError("expected a log object in the vig/1 discovery descriptor")
+        raise TypeError("expected a log object in the akashi/1 discovery descriptor")
     directory = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY)
     try:
         # Serialize snapshot reads and publication to prevent a slow writer reverting a rotation.
@@ -123,7 +123,7 @@ def main() -> None:
     parser.add_argument(
         "archive", type=Path, help="operator-maintained verification key archive"
     )
-    parser.add_argument("output", type=Path, help="public /.well-known/vig.json file")
+    parser.add_argument("output", type=Path, help="public /.well-known/akashi.json file")
     args = parser.parse_args()
     if not args.archive.is_file():
         parser.error("public key archive is missing")

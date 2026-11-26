@@ -415,7 +415,7 @@ def check_spool_publication(state: Path, spool: Path) -> None:
     ):
         # Continuous cp_prove only considers <64 lowercase hex>.req in in/.
         # An empty probe has neither a request's name nor any private material.
-        name = ".vig-publication-" + secrets.token_hex(16)
+        name = ".akashi-publication-" + secrets.token_hex(16)
         fd = os.open(name, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600, dir_fd=src)
         owner = src
         try:

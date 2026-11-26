@@ -32,7 +32,7 @@ args = sys.argv[1:]
 spool = Path(args[args.index('-spool')+1])
 stop = spool/'stop'
 (home/'started').write_text(json.dumps({'args': args, 'gpu': os.environ.get('CUDA_VISIBLE_DEVICES'),
-    'leak': os.environ.get('VIG_FIXTURE_PRIVATE'), 'loader': os.environ.get('LD_PRELOAD')}))
+    'leak': os.environ.get('AKASHI_FIXTURE_PRIVATE'), 'loader': os.environ.get('LD_PRELOAD')}))
 if (home/'exit').exists(): sys.exit(7)
 while not (home/'finish-startup').exists(): time.sleep(0.003)
 if stop.exists():
@@ -115,7 +115,7 @@ class ProverRuntimeTests(unittest.TestCase):
 
     def test_pinned_command_clean_environment_and_stop_during_startup(self) -> None:
         with patch.dict(
-            os.environ, {"VIG_FIXTURE_PRIVATE": "private", "LD_PRELOAD": "private"}
+            os.environ, {"AKASHI_FIXTURE_PRIVATE": "private", "LD_PRELOAD": "private"}
         ):
             process = self.start_fixture()
         self.checked_host.assert_called_once_with(1)

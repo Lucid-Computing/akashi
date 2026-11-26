@@ -63,7 +63,7 @@ class Binding:
         """Canonical AEAD context shared with the auditor, including the hard deadline."""
         return json.dumps(
             [
-                "vig/escrow/1",
+                "akashi/escrow/1",
                 self.leaf_hash,
                 self.transcript_commitment,
                 self.served_at,
@@ -143,14 +143,14 @@ class EscrowStore:
         private_database_file(self._path)
         self._wrap = wrapping_key
         self._recipient = auditor_public_key
-        self._retry_key = hmac.digest(wrapping_key, b"vig/escrow/1/retry-key", "sha256")
+        self._retry_key = hmac.digest(wrapping_key, b"akashi/escrow/1/retry-key", "sha256")
         self.clock = clock
         self.changed = Wakeup(self._path)
         with self._transaction() as db:
             for ddl in _SCHEMA:
                 db.execute(ddl)
             identity = hmac.digest(
-                wrapping_key, b"vig/escrow/1/wrapping-key-id", "sha256"
+                wrapping_key, b"akashi/escrow/1/wrapping-key-id", "sha256"
             )
             db.execute(
                 "INSERT OR IGNORE INTO config VALUES(1,?,?)",

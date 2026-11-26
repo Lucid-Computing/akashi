@@ -92,7 +92,7 @@ class M2ReferenceTests(unittest.TestCase):
         ) as read:
             self.assertEqual(
                 m2_reference.host_id(),
-                hashlib.sha256(b"vig/m2-host/1" + machine).hexdigest(),
+                hashlib.sha256(b"akashi/m2-host/1" + machine).hexdigest(),
             )
         read.assert_called_once_with(Path("/etc/machine-id"))
         for invalid in (b"", b"uninitialized", b"G" * 32, machine + b"0"):

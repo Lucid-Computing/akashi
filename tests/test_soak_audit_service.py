@@ -149,7 +149,7 @@ class SoakAuditTests(unittest.TestCase):
             return json.dumps(
                 sign_verdict(
                     {
-                        "version": "vig-verdict/1",
+                        "version": "akashi-verdict/1",
                         "outcome": "UNAVAILABLE",
                         "reason": "selection_gap",
                         "verified_at": "2026-11-20T00:00:00.000Z",

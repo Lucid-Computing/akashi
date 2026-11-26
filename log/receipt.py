@@ -98,7 +98,7 @@ def transcript_commitment(
     """Bind both token vectors with independent byte-length frames and the holder's salt."""
     params = bytes.fromhex(params_digest(max_tokens))
     return hashlib.sha256(
-        b"vig/transcript/1"
+        b"akashi/transcript/1"
         + _octets(commitment_id, 32, "commitment_id")
         + _octets(render_profile, 32, "render_profile")
         + params
@@ -144,7 +144,7 @@ def leaf_hash(fields: Mapping[str, object]) -> str:
     except UnicodeEncodeError:
         raise ValueError("invalid UTF-8 in leaf metadata") from None
     return hashlib.sha256(
-        b"vig/leaf/1" + fixed + struct.pack(">Q", beacon_round) + framed
+        b"akashi/leaf/1" + fixed + struct.pack(">Q", beacon_round) + framed
     ).hexdigest()
 
 

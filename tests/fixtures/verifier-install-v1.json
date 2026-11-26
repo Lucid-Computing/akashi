@@ -14,11 +14,11 @@
       "sth": {
         "log_id": "abababababababababababababababababababababababababababababababab",
         "log_key_id": "log-test-01",
-        "root_hash": "78c97ea0cb92f200bf81e8a6bd4dca6ad74f65170118f42358fa2bb27792f8de",
-        "signature": "e631e173ac4b3526ad990ce0c620d0af6419bac681319214ae62fc65b5e6a45f3c87c79c3fa67d1112a85a3a693c172bc6449ba60adba11627191f4716e3ba0c",
+        "root_hash": "91641abfd1b2d4721ddb11b1cea9d2e094046ba77baeebf28201d0a7f30f0fc3",
+        "signature": "49aa29fa1a777ab85966c8999fb60cd02ae9e127f0baa1fca94920ccce1582f4b288affe7f80d701d9b0bdf3b8441297f365dc83c932637b614b2adfa4794e07",
         "timestamp": "2026-11-20T09:00:00.000Z",
         "tree_size": 1,
-        "version": "vig-log/1"
+        "version": "akashi-log/1"
       }
     },
     "input": [
@@ -36,33 +36,33 @@
         "beacon_round": 34120617,
         "commitment_id": "c7982f8a090b5e47c2f04e3b10bda65600d53322480cdd8f3ded328529271f46",
         "endpoint_id": "test-holder",
-        "leaf_hash": "0a6650685d079516e3e8cb9a31952ea5ca8154a5a7e24d0b0d9f843a92044d87",
+        "leaf_hash": "e1aa81f029286e4db92fa85c0daeddda993d23d2d324766b516823124912c7c4",
         "log_id": "abababababababababababababababababababababababababababababababab",
         "log_key_id": "log-test-01",
         "params_digest": "26b25d457597a7b0463f9620f666dd10aa2c4373a505967c7c8d70922a2d6ece",
-        "promise_sig": "d097ff186ca2c8c6f507212fb4c75add07b6b392d9106b1a53b99feffab01d6f7d7bab8c41342e4fb3d88c9254e4a21da1320d810d7af98196d02389ca736f03",
+        "promise_sig": "58d8a805768b1348847f5225364f6a69369f95221e8becf348236bf84837e1d09cb5251079a2a3ec089c5772e01d13a65d1433134e2cc3938bbd7267a9a52706",
         "render_profile": "71aba540e25cdccec27d83c08bbae1e5eeaa4c1dec4181e28913c8f60970f9fa",
         "request_id": "a7376c2f-6850-44b1-9301-1320a5a1e701",
         "salt": "0101010101010101010101010101010101010101010101010101010101010101",
         "sampling_mode": "live",
         "served_at": "2026-11-20T09:00:00.000Z",
-        "transcript_commitment": "4e463c28648da89ffe5899bb5ac6031077d375a59ac2bd349e69d498499a8b73"
+        "transcript_commitment": "683615c04e32513352dcc4e9b116a9a6e23897d27631791d5745bc52057a90cb"
       },
       "reply_token_ids": [
         2,
         3
       ],
-      "version": "vig/1"
+      "version": "akashi/1"
     }
   },
   "checkpoint": {
     "log_id": "abababababababababababababababababababababababababababababababab",
     "log_key_id": "log-test-01",
     "root_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "signature": "0fdef2cf93105eebbf52ca43337612fce97cf5a2ae917bc32eabb6178ff299d14fb39c5551648bf56a0ba728bea99c4044e3be1879541a9ec0e2bde9ba2d320a",
+    "signature": "0604ee6b504e1853cc45d7f9fba20c555be861e0441def7fbe99dae4c1248a89dd1cb4d65ed33a039e875193d260d8959a646436a0f86363e259f831fa786d06",
     "timestamp": "2026-11-20T09:00:00.000Z",
     "tree_size": 0,
-    "version": "vig-log/1"
+    "version": "akashi-log/1"
   },
   "descriptor": {
     "audit_url": "https://audit.example.org/audit/v1/",
@@ -83,7 +83,7 @@
     "log": {
       "log_id": "abababababababababababababababababababababababababababababababab",
       "log_key_id": "log-test-01",
-      "log_public_key": "72683023fb647dbb194d6db6725ff0081c58d1168dcfc3f326295745cae99082",
+      "log_public_key": "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
       "url": "https://log.example.org/log/v1/"
     },
     "max_tokens_cap": 64,
@@ -115,7 +115,7 @@
       "live": 20,
       "shadow": 1000
     },
-    "version": "vig/1",
+    "version": "akashi/1",
     "window": 1024
   },
   "observed_at": "2026-11-20T09:00:00+00:00",

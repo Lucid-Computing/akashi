@@ -77,7 +77,7 @@ class AuditJobs:
                 "SELECT key_tag,recipient FROM intake_identity"
             ).fetchone()
             if stored is None or tuple(stored) != (
-                hmac.digest(holder_hmac_key, b"vig/challenge/intake-key/1", "sha256"),
+                hmac.digest(holder_hmac_key, b"akashi/challenge/intake-key/1", "sha256"),
                 bytes(self._key.public_key),
             ):
                 raise ValueError(
@@ -275,7 +275,7 @@ class AuditJobs:
                 ):
                     raise ValueError("Invalid sampled budget")
                 tag = hmac.digest(
-                    self._tags, b"vig/challenge/statement/1" + statement, "sha256"
+                    self._tags, b"akashi/challenge/statement/1" + statement, "sha256"
                 )
                 encoded = json.dumps(
                     {
@@ -426,7 +426,7 @@ class AuditJobs:
                     )
                     tag = hmac.digest(
                         self._tags,
-                        b"vig/challenge/statement/1" + build_statement(prompt, reply),
+                        b"akashi/challenge/statement/1" + build_statement(prompt, reply),
                         "sha256",
                     )
                     if (
@@ -483,7 +483,7 @@ class AuditJobs:
             raise ValueError("Invalid private job evidence") from None
         tag = hmac.digest(
             self._tags,
-            b"vig/challenge/statement/1" + build_statement(claim.prompt, claim.reply),
+            b"akashi/challenge/statement/1" + build_statement(claim.prompt, claim.reply),
             "sha256",
         )
         if (

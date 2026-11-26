@@ -43,7 +43,7 @@ def terminal_evidence(lines: Iterable[bytes]) -> dict[str, Any]:
                 evidence = event["verification"]
                 if (
                     not isinstance(evidence, dict)
-                    or evidence.get("version") != "vig/1"
+                    or evidence.get("version") != "akashi/1"
                     or not isinstance(evidence.get("receipt"), dict)
                 ):
                     raise IncompleteStream("Delivery was unwarranted")

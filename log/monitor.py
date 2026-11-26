@@ -1,4 +1,4 @@
-"""Independent, durable observation of signed VIG histories and held promises."""
+"""Independent, durable observation of signed AKASHI histories and held promises."""
 
 import hashlib
 import json
@@ -169,18 +169,18 @@ class LogMonitor:
         if not counts.keys() <= set(kinds):
             raise ValueError("Unknown stored monitor incident")
         lines = [
-            "# TYPE vig_log_checkpoint_known gauge",
-            f"vig_log_checkpoint_known{{{params}}} {int(tip is not None)}",
-            "# TYPE vig_log_tree_size gauge",
+            "# TYPE akashi_log_checkpoint_known gauge",
+            f"akashi_log_checkpoint_known{{{params}}} {int(tip is not None)}",
+            "# TYPE akashi_log_tree_size gauge",
         ]
         if tip is not None:
             if type(tip[0]) is not int or tip[0] < 0:
                 raise ValueError("Invalid monitor checkpoint")
-            lines.append(f"vig_log_tree_size{{{params}}} {tip[0]}")
-        lines.append("# TYPE vig_log_incidents_total counter")
+            lines.append(f"akashi_log_tree_size{{{params}}} {tip[0]}")
+        lines.append("# TYPE akashi_log_incidents_total counter")
         for kind in kinds:
             lines.append(
-                f'vig_log_incidents_total{{{params},kind="{kind}"}} {counts.get(kind, 0)}'
+                f'akashi_log_incidents_total{{{params},kind="{kind}"}} {counts.get(kind, 0)}'
             )
         return "\n".join(lines) + "\n"
 

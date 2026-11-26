@@ -82,7 +82,7 @@ class HealthTests(unittest.TestCase):
             headers["Content-Type"], "text/plain; version=0.0.4; charset=utf-8"
         )
         self.assertEqual(body, self.registry.prometheus().encode())
-        self.assertIn(b"vig_escrow_gaps_total{", body)
+        self.assertIn(b"akashi_escrow_gaps_total{", body)
         self.assertEqual(self.get("/health/unknown")[0], "404 Not Found")
         self.assertEqual(self.get("/health/ready", "POST")[0], "405 Method Not Allowed")
         self.gates.assert_not_called()

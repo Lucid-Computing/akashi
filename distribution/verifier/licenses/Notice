@@ -1,4 +1,4 @@
-vig-verify
+akashi-verify
 Built with Llama. Model provenance: Llama 4 Maverick 17B-128E Instruct,
 Unsloth's UD-Q4_K_XL conversion and the configuration and public verification
 key produced by the FlashProve F4 rebuild.

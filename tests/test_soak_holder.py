@@ -94,7 +94,7 @@ class SoakHolderTests(unittest.TestCase):
         self.options: dict[str, Any] = {
             "state": str(self.base / "holder.db"),
             "descriptor": str(descriptor),
-            "assets": os.environ.get("VIG_RENDER_ASSETS", str(self.base)),
+            "assets": os.environ.get("AKASHI_RENDER_ASSETS", str(self.base)),
             "runtime": str(self.runtime),
             "router_origin": "http://127.0.0.1:1",
             "inference_bearer": "chat-only",
@@ -216,7 +216,7 @@ class SoakHolderTests(unittest.TestCase):
         subject, transcript = str(uuid4()), "ab" * 32
         statement = build_statement((1, 3), (4, 5))
         fields: dict[str, object] = {
-            "version": "vig-verdict/1",
+            "version": "akashi-verdict/1",
             "challenge_id": subject,
             "transcript_commitment": transcript,
             "auditor_key_id": self.config.auditor_key_id,
@@ -290,7 +290,7 @@ class SoakHolderTests(unittest.TestCase):
             self.assertEqual(state["verdict_reason"], "padding_range")
             self.assertNotIn("proof_sha256", state)
 
-    @unittest.skipUnless(os.getenv("VIG_RENDER_ASSETS"), "requires pinned F37 assets")
+    @unittest.skipUnless(os.getenv("AKASHI_RENDER_ASSETS"), "requires pinned F37 assets")
     def test_opaque_router_receipt_challenge_and_native_checker_boundary(self) -> None:
         assets = Path(self.options["assets"])
         clock = lambda: self.now
@@ -348,7 +348,7 @@ class SoakHolderTests(unittest.TestCase):
                 if verdict_mode == "completed":
                     obj["verdict"] = sign_verdict(
                         {
-                            "version": "vig-verdict/1",
+                            "version": "akashi-verdict/1",
                             "challenge_id": handle["challenge_id"],
                             "transcript_commitment": verification["receipt"][
                                 "transcript_commitment"

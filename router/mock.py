@@ -235,7 +235,7 @@ class Forwarder(BaseHTTPRequestHandler):
                     self.send_header("Cache-Control", "no-store")
                     for name, value in result.getheaders():
                         if name.lower() == "retry-after" or (
-                            transparent and name.lower().startswith("x-vig-")
+                            transparent and name.lower().startswith("x-akashi-")
                         ):
                             self.send_header(name, value)
                     if payload is not None:

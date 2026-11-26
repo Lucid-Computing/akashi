@@ -1,4 +1,4 @@
-# Verified Inference Gateway v1
+# Akashi v1
 
 A holder can check that a delivered reply was bound to a public log and can independently verify an audit against one committed integer model. The prototype combines post-delivery sampling with holder challenges. A promise, an inclusion check, and a verified proof convey different evidence.
 

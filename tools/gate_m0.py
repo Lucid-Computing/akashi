@@ -218,7 +218,7 @@ def measure_cases(
                 "reply_tokens": len(reply),
                 "proof_bytes": len(proof),
                 "evidence_sha256": hashlib.sha256(
-                    b"vig/m0/whole-reply/1"
+                    b"akashi/m0/whole-reply/1"
                     + hashlib.sha256(statement).digest()
                     + hashlib.sha256(proof).digest()
                 ).hexdigest(),
@@ -507,7 +507,7 @@ def gate(config_path: Path | None, output: Path) -> bool:
     stage = "configuration"
     try:
         if config_path is None:
-            raise EvidenceError("set VIG_M0_CONFIG to the private run configuration")
+            raise EvidenceError("set AKASHI_M0_CONFIG to the private run configuration")
         config = document(config_path)
         require(
             type(config["schema_version"]) is int and config["schema_version"] == 1,
@@ -567,7 +567,7 @@ def gate(config_path: Path | None, output: Path) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, default=os.environ.get("VIG_M0_CONFIG"))
+    parser.add_argument("--config", type=Path, default=os.environ.get("AKASHI_M0_CONFIG"))
     parser.add_argument("--output", type=Path, default=Path("build/gate-m0.json"))
     args = parser.parse_args()
     return 0 if gate(args.config, args.output) else 1

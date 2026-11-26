@@ -1,0 +1,20 @@
+[Unit]
+Description=Akashi verified inference gateway (%i)
+
+[Service]
+User=akashi-%i
+Group=akashi-%i
+UMask=0077
+StateDirectory=akashi-%i
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/akashi-%i
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ExecStartPre=/usr/bin/python3 -I /usr/local/libexec/akashi/check-keys.py %i
+ExecStart=/usr/local/libexec/akashi/%i
+
+[Install]
+WantedBy=multi-user.target

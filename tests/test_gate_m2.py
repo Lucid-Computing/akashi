@@ -136,7 +136,7 @@ class M2GateTests(unittest.TestCase):
                             "prompt_tokens": case["prompt_tokens"],
                             "reply_tokens": 1,
                             "evidence_sha256": hashlib.sha256(
-                                b"vig/m0/whole-reply/1"
+                                b"akashi/m0/whole-reply/1"
                                 + bytes.fromhex("a8" * 32 + _DIGEST)
                             ).hexdigest(),
                             "proof_bytes": 123,

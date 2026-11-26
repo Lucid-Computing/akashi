@@ -54,7 +54,7 @@ def _bundle(log: MerkleLog, index: int) -> dict[str, Any]:
         "text": None,
         "max_tokens": 1,
         "verification": {
-            "version": "vig/1",
+            "version": "akashi/1",
             "receipt": receipt,
             "prompt_token_ids": prompt,
             "reply_token_ids": reply,

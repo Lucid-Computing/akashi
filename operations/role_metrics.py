@@ -79,13 +79,13 @@ class EngineMetrics:
             passed, initialized = self._passed, self._initialized
             requests, failures = self._requests, self._unwarranted
         labels = self._labels
-        text = _gauge("vig_observation_coverage", labels, int(passed is not None))
+        text = _gauge("akashi_observation_coverage", labels, int(passed is not None))
         if passed is not None:
-            text += _gauge("vig_engine_startup_gate_failed", labels, int(not passed))
+            text += _gauge("akashi_engine_startup_gate_failed", labels, int(not passed))
         if initialized:
-            text += f"# TYPE vig_engine_requests_total counter\nvig_engine_requests_total{{{labels}}} {requests}\n"
+            text += f"# TYPE akashi_engine_requests_total counter\nakashi_engine_requests_total{{{labels}}} {requests}\n"
             # The real stream reader gives us one integrity bit, without a verified fault subtype.
-            text += f'# TYPE vig_unwarranted_total counter\nvig_unwarranted_total{{{labels},outcome="engine_error",reason="engine_error"}} {failures}\n'
+            text += f'# TYPE akashi_unwarranted_total counter\nakashi_unwarranted_total{{{labels},outcome="engine_error",reason="engine_error"}} {failures}\n'
         return text
 
 
@@ -135,17 +135,17 @@ class BeaconMetrics:
         enabled, lag = self._observe()
         labels = self._labels
         available = lag is not None
-        text = _gauge("vig_observation_coverage", labels, int(available))
+        text = _gauge("akashi_observation_coverage", labels, int(available))
         state = (
             "available" if available else "disabled" if enabled is False else "unknown"
         )
-        text += "# TYPE vig_sampling_coverage gauge\n"
+        text += "# TYPE akashi_sampling_coverage gauge\n"
         for label in ("available", "disabled", "unknown"):
-            text += f'vig_sampling_coverage{{{labels},state="{label}"}} {int(state == label)}\n'
+            text += f'akashi_sampling_coverage{{{labels},state="{label}"}} {int(state == label)}\n'
         if enabled is True:
-            text += _gauge("vig_beacon_available", labels, int(available))
+            text += _gauge("akashi_beacon_available", labels, int(available))
         if lag is not None:
-            text += _gauge("vig_beacon_lag_seconds", labels, lag)
+            text += _gauge("akashi_beacon_lag_seconds", labels, lag)
         return text
 
 
@@ -192,7 +192,7 @@ class SignedVerdictMetrics:
     def prometheus(self) -> str:
         count = self._deviations()
         labels = self._labels
-        text = _gauge("vig_observation_coverage", labels, int(count is not None))
+        text = _gauge("akashi_observation_coverage", labels, int(count is not None))
         if count is not None:
-            text += _gauge("vig_signed_deviations_last_5m", labels, count)
+            text += _gauge("akashi_signed_deviations_last_5m", labels, count)
         return text

@@ -65,7 +65,7 @@ def _write(path: Path, report: Mapping[str, object]) -> None:
 
 
 def _assets(directory: Path, manifest: dict[str, Any]) -> Path:
-    supplied = os.environ.get("VIG_RENDER_ASSETS")
+    supplied = os.environ.get("AKASHI_RENDER_ASSETS")
     root = Path(supplied) if supplied else directory
     for name in ("tokenizer.json", "tokenizer_config.json"):
         if not supplied:
@@ -136,7 +136,7 @@ def gate(output: Path) -> bool:
             stage = "renderer_assets"
             assets = _assets(Path(tmp), manifest)
             # unittest decorators in the existing renderer suites inspect this variable at import.
-            with patch.dict(os.environ, {"VIG_RENDER_ASSETS": str(assets)}):
+            with patch.dict(os.environ, {"AKASHI_RENDER_ASSETS": str(assets)}):
                 for stage, modules in VECTORS.items():
                     suite = unittest.defaultTestLoader.loadTestsFromNames(list(modules))
                     result = unittest.TextTestRunner(

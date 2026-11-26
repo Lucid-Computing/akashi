@@ -22,7 +22,7 @@ With the prover (requires GPU):
 
 ### Step 1: Verify Receipt Signature
 
-Given receipt with `promise_sig`, log public key from `.well-known/vig.json`:
+Given receipt with `promise_sig`, log public key from `.well-known/akashi.json`:
 
 ```python
 def verify_receipt_signature(receipt, log_public_key):
@@ -68,7 +68,7 @@ Fetch consistency proof from `GET /log/v1/consistency?from={old}&to={new}`, veri
 
 ### Step 5: Verify Render
 
-Download tokenizer from `.well-known/vig.json`, decode reply token IDs, compare to expected text.
+Download tokenizer from `.well-known/akashi.json`, decode reply token IDs, compare to expected text.
 
 ### Step 6: Verify Model Conformance (Optional)
 
@@ -141,7 +141,7 @@ This defends against:
 Python package with a pinned, reproducibly built `cp_verify` binary per platform (x86-64 Linux with SHA extensions).
 
 ```bash
-pip install vig-verify
+pip install akashi-verify
 ```
 
 Includes:
@@ -157,7 +157,7 @@ Includes:
 ### Mode D (Direct)
 
 ```python
-from vig_verify import Verifier
+from akashi_verify import Verifier
 
 v = Verifier.from_well_known("https://.../")
 response = requests.post("https://.../v1/chat/completions", ...)

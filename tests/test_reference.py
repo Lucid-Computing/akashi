@@ -156,14 +156,14 @@ class ReferenceTests(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    os.environ.get("VIG_FLASHPROVE_SOURCE"),
+    os.environ.get("AKASHI_FLASHPROVE_SOURCE"),
     "requires pinned FlashProve checkout and CPU PyTorch environment",
 )
 class UpstreamReferenceTests(unittest.TestCase):
     def setUp(self) -> None:
         # First case in upstream's recorded_values.tsv was independently evaluated.
         self.tiny = (
-            Path(os.environ["VIG_FLASHPROVE_SOURCE"])
+            Path(os.environ["AKASHI_FLASHPROVE_SOURCE"])
             / "integrations/vllm/integer_model/tests/configurations/tiny_without_clamps"
         )
         for name, digest in (

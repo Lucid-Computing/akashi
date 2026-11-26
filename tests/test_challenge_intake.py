@@ -93,7 +93,7 @@ class ChallengeIntakeTests(unittest.TestCase):
         assert isinstance(size, int)
         return {
             "verification": {
-                "version": "vig/1",
+                "version": "akashi/1",
                 "receipt": receipt,
                 "prompt_token_ids": list(prompt),
                 "reply_token_ids": list(reply),
