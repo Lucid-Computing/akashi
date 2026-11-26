@@ -60,3 +60,21 @@ pre.code { overflow-x: auto; }
 /* a column head over numbers: right aligned, in the head's own type */
 .record thead th.ak-r { text-align: right; }
 .ak-pair { align-items: start; }
+
+/* the overview: how it works, in three steps, each a live number and a way in */
+.steps { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 2px solid var(--rule-strong); border-bottom: 1px solid var(--rule); }
+.steps > li + li { border-top: 1px solid var(--rule); }
+.steps a { display: grid; grid-template-rows: auto auto 1fr auto; gap: var(--space-4); height: 100%; padding: var(--space-5) var(--space-5) var(--space-5) 0; }
+.steps .val { font-size: clamp(34px, 5cqi, 64px); line-height: .9; }
+.steps .w { color: var(--fg-mist); max-width: 30ch; }
+.steps .go { color: var(--fg); transition: color var(--dur-quick); }
+.steps a:hover .go, .steps a:focus-visible .go { color: var(--signal); }
+@container main (min-width: 760px) {
+  .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .steps > li + li { border-top: 0; border-left: 1px solid var(--rule); }
+  .steps > li + li a { padding-left: var(--space-5); }
+  .steps a { min-height: 248px; }
+}
+
+/* the log, in one live line under the traffic head */
+.log-line .sq { --p: 1; }

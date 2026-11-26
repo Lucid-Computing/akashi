@@ -44,34 +44,32 @@
       <ul>
         <li><a href="#sampling" data-route="sampling"><i class="sq" aria-hidden="true"></i><b>04</b> · Sampling<span class="n">1/20</span></a></li>
         <li><a href="#challenges" data-route="challenges"><i class="sq" aria-hidden="true"></i><b>05</b> · Challenges<span class="n" id="nav-open"></span></a></li>
-        <li><a href="#log" data-route="log"><i class="sq" aria-hidden="true"></i><b>06</b> · Log</a></li>
       </ul>
       <h2>Use</h2>
       <ul>
-        <li><a href="#playground" data-route="playground"><i class="sq" aria-hidden="true"></i><b>07</b> · Playground</a></li>
-        <li><a href="#verify" data-route="verify"><i class="sq" aria-hidden="true"></i><b>08</b> · Verify</a></li>
+        <li><a href="#playground" data-route="playground"><i class="sq" aria-hidden="true"></i><b>06</b> · Playground</a></li>
+        <li><a href="#verify" data-route="verify"><i class="sq" aria-hidden="true"></i><b>07</b> · Verify</a></li>
       </ul>
       <p class="app-foot"><span class="led-by">Led by <b>Lucid Computing</b></span>Sample data · v0.1</p>
     </nav>
 
     <main class="app-main" id="main" tabindex="-1">
 
-      <!-- 01 Overview -->
+      <!-- 01 Overview: the mechanism in three steps, each with its live number, then what is happening now -->
       <section data-screen="overview" aria-labelledby="t-overview" hidden>
         <header class="screen-head">
           <p class="mono"><b>01</b> · Overview <span class="tag">Sample data</span><span class="state" data-state="pending" data-loading hidden>Loading</span></p>
           <h1 class="tt" id="t-overview">Network</h1>
-          <p class="sent">Each reply is signed and logged before it is delivered. A public beacon picks one in 20 to prove. Anyone holding a receipt can ask for a proof of the rest.</p>
-          <div class="actions"><a class="btn small" href="#verify">Verify a reply</a><a class="btn small solid" href="#playground">Send a request</a></div>
+          <p class="sent">Every reply comes with a receipt. Any reply can be proved against the model that was meant to produce it.</p>
+          <div class="actions"><a class="btn small solid" href="#playground">Send a request</a></div>
         </header>
         <div class="block">
-          <div class="block-head"><p class="mono"><b>Last hour</b> · the whole network</p><p class="mono">Sample · not real figures</p></div>
-          <div class="facts">
-            <div class="keyfact"><p class="mono"><b>01</b> · Replies logged</p><p class="val" data-value data-k="logged">0</p><p class="mono">Sample · last 60 min</p></div>
-            <div class="keyfact"><p class="mono"><b>02</b> · Selected by beacon</p><p class="val" data-value data-k="selected">0</p><p class="mono">Sample · 1 in 20</p></div>
-            <div class="keyfact"><p class="mono"><b>03</b> · Proved conformant</p><p class="val" data-value data-k="proved">0</p><p class="mono">Sample · FlashProve</p></div>
-            <div class="keyfact"><p class="mono"><b>04</b> · Deviations proved</p><p class="val" data-value data-k="deviations">0</p><p class="mono">Sample · by challenge</p></div>
-          </div>
+          <div class="block-head"><h2 class="mono"><b>How it works</b> · the last hour, live</h2><p class="mono">Sample · not real figures</p></div>
+          <ol class="steps">
+            <li><a href="#traffic"><p class="mono"><b>01</b> · Signed and logged</p><p class="val" data-value data-k="logged">0</p><p class="w">Replies delivered. Each was signed and written to a public log before you saw it.</p><span class="mono go">Traffic <span aria-hidden="true">&#8594;</span></span></a></li>
+            <li><a href="#sampling"><p class="mono"><b>02</b> · Sampled and proved</p><p class="val" data-value data-k="proved">0</p><p class="w">Replies a public beacon picked, one in 20, and proved against their model.</p><span class="mono go">Sampling <span aria-hidden="true">&#8594;</span></span></a></li>
+            <li><a href="#challenges"><p class="mono"><b>03</b> · Open to challenge</p><p class="val" data-value data-k="challenged">0</p><p class="w">Challenges filed by holders and regulators. Any receipt can be challenged.</p><span class="mono go">Challenges <span aria-hidden="true">&#8594;</span></span></a></li>
+          </ol>
         </div>
         <div class="blocks two">
           <div class="block">
@@ -82,11 +80,6 @@
             <div class="block-head"><h2 class="mono"><b>Latest verdicts</b></h2><a class="btn quiet small" href="#challenges">Challenges</a></div>
             <ul class="rows" id="ov-verdicts"></ul>
           </div>
-        </div>
-        <div class="block">
-          <div class="block-head"><h2 class="mono"><b>Models</b> · by traffic</h2><a class="btn quiet small" href="#models">All models</a></div>
-          <div class="scroll-x"><table class="record rows-link" id="ov-models"><caption class="vh">Models by traffic, sample data</caption>
-            <thead><tr><th scope="col">Model</th><th scope="col" class="ak-r">Replies</th><th scope="col" class="ak-r wide-only">Proved</th><th scope="col">Record</th></tr></thead><tbody></tbody></table></div>
         </div>
       </section>
 
@@ -135,7 +128,8 @@
         <header class="screen-head">
           <p class="mono"><b>03</b> · Traffic <span class="tag">Sample data</span></p>
           <h1 class="tt" id="t-traffic">Traffic</h1>
-          <p class="sent">Every reply the network delivered, as the log records it. Prompts and replies are never public: only their commitments are.</p>
+          <p class="sent">Every reply the network delivered, as the public log records it. Prompts and replies stay private: only their commitments are public.</p>
+          <p class="mono log-line"><i class="sq" aria-hidden="true"></i><b>Log</b> · <span id="log-size">0</span> leaves · head signed <span id="log-head">00:00:00</span> UTC · 3 of 3 monitors agree</p>
         </header>
         <div class="block">
           <div class="toolbar">
@@ -153,8 +147,8 @@
             <input class="input small search" id="t-q" type="search" placeholder="Request, model or operator" autocomplete="off" spellcheck="false">
           </div>
           <div class="scroll-x"><table class="record rows-link" id="traffic-t"><caption class="vh">Traffic, sample data</caption>
-            <thead><tr><th scope="col">Request</th><th scope="col">Model</th><th scope="col" class="wide-only">Operator</th><th scope="col" class="ak-r">Tokens</th><th scope="col" class="ak-r">Delivered, UTC</th><th scope="col" class="ak-r wide-only">Beacon round</th><th scope="col">State</th></tr></thead><tbody></tbody></table></div>
-          <div class="ak-more"><button class="btn small" type="button" id="t-more">Show 60 more</button></div>
+            <thead><tr><th scope="col">Request</th><th scope="col">Model</th><th scope="col" class="wide-only">Operator</th><th scope="col" class="ak-r">Delivered, UTC</th><th scope="col">State</th></tr></thead><tbody></tbody></table></div>
+          <div class="ak-more"><button class="btn small" type="button" id="t-more">Show more</button></div>
         </div>
       </section>
 
@@ -189,14 +183,13 @@
         <header class="screen-head">
           <p class="mono"><b>04</b> · Sampling <span class="tag">Sample data</span></p>
           <h1 class="tt" id="t-sampling">Sampling</h1>
-          <p class="sent">A receipt fixes a beacon round that has not happened yet. When the round is published, anyone can recompute which replies it selected. The operator could not know in advance.</p>
+          <p class="sent">Each receipt names a beacon round that has not happened yet. When it does, anyone can recompute which replies it picked. The operator cannot know in advance.</p>
         </header>
         <div class="block">
-          <div class="facts">
+          <div class="facts" style="--facts: 3">
             <div class="keyfact"><p class="mono"><b>01</b> · Rate</p><p class="val">1/20</p><p class="mono">Descriptor · live rate</p></div>
-            <div class="keyfact"><p class="mono"><b>02</b> · Replies decided</p><p class="val" data-k="decided">0</p><p class="mono">Sample · last 60 min</p></div>
-            <div class="keyfact"><p class="mono"><b>03</b> · Selected</p><p class="val" data-k="selected">0</p><p class="mono" data-k="share">Sample</p></div>
-            <div class="keyfact"><p class="mono"><b>04</b> · Proved</p><p class="val" data-k="provedOf">0</p><p class="mono">Sample · of selected</p></div>
+            <div class="keyfact"><p class="mono"><b>02</b> · Selected</p><p class="val" data-k="selected">0</p><p class="mono" data-k="share">Sample</p></div>
+            <div class="keyfact"><p class="mono"><b>03</b> · Proved</p><p class="val" data-k="provedOf">0</p><p class="mono">Sample · of selected</p></div>
           </div>
         </div>
         <div class="block">
@@ -207,23 +200,16 @@
           </figure>
         </div>
         <div class="block">
-          <div class="block-head"><h2 class="mono"><b>Recompute it</b> · the latest decided reply</h2><a class="btn quiet small" id="rc-open" href="#traffic">Open the request</a></div>
+          <div class="block-head"><h2 class="mono"><b>Recompute it</b> · the latest selected reply</h2><a class="btn quiet small" id="rc-open" href="#traffic">Open the request</a></div>
           <ol class="receipt" id="recompute"></ol>
         </div>
-        <div class="blocks two">
-          <div class="block">
-            <div class="block-head"><h2 class="mono"><b>By minute</b></h2><p class="mono">Sample · UTC</p></div>
-            <div class="scroll-x"><table class="record keep" id="windows"><caption class="vh">Selection by minute, sample data</caption>
-              <thead><tr><th scope="col">Minute</th><th scope="col" class="ak-r">Replies</th><th scope="col" class="ak-r">Selected</th><th scope="col" class="ak-r">Proved</th></tr></thead><tbody></tbody></table></div>
-          </div>
-          <div class="block">
-            <div class="block-head"><h2 class="mono"><b>What the rate buys</b></h2><p class="mono">Computed from the sample</p></div>
+        <div class="block">
+          <div class="block-head"><h2 class="mono"><b>What one in 20 buys</b></h2><p class="mono">Computed from the rate</p></div>
             <div class="ak-odds">
               <p class="sent" id="odds-sent"></p>
               <p class="val" id="odds-val">0%</p>
               <label class="ak-range"><span class="mono">Replies an operator changes</span><input type="range" id="odds-n" min="1" max="200" value="20" aria-describedby="odds-sent"><b class="mono" id="odds-n-v">20</b></label>
             </div>
-          </div>
         </div>
       </section>
 
@@ -336,36 +322,11 @@
         </div>
       </section>
 
-      <!-- 06 Log -->
-      <section data-screen="log" aria-labelledby="t-log" hidden>
-        <header class="screen-head">
-          <p class="mono"><b>06</b> · Log <span class="tag">Sample data</span></p>
-          <h1 class="tt" id="t-log">The log</h1>
-          <p class="sent">Every reply is a leaf before it is delivered. Monitors check that each signed head extends the last, so no reply can be dropped or rewritten unseen.</p>
-        </header>
-        <div class="block">
-          <div class="facts">
-            <div class="keyfact"><p class="mono"><b>01</b> · Tree size</p><p class="val num" data-k="size">0</p><p class="mono">Sample · leaves</p></div>
-            <div class="keyfact"><p class="mono"><b>02</b> · Latest head</p><p class="val num" data-k="age">0 s</p><p class="mono">Sample · age</p></div>
-            <div class="keyfact"><p class="mono"><b>03</b> · Monitors</p><p class="val">3/3</p><p class="mono">Sample · agree</p></div>
-            <div class="keyfact"><p class="mono"><b>04</b> · Log key</p><p class="val">LOG 1</p><p class="mono">Sample · Ed25519</p></div>
-          </div>
-        </div>
-        <div class="block">
-          <div class="block-head"><h2 class="mono"><b>Signed tree heads</b></h2><p class="mono">One a minute and after each write</p></div>
-          <div class="scroll-x"><table class="record" id="sth-t"><caption class="vh">Signed tree heads, sample data</caption>
-            <thead><tr><th scope="col" class="ak-r">Tree size</th><th scope="col">Root hash</th><th scope="col" class="ak-r">Signed, UTC</th><th scope="col" class="wide-only">Signature</th><th scope="col">Monitors</th></tr></thead><tbody></tbody></table></div>
-        </div>
-        <div class="block">
-          <div class="block-head"><h2 class="mono"><b>Monitors</b> · run by others</h2></div>
-          <ul class="rows" id="monitors"></ul>
-        </div>
-      </section>
 
-      <!-- 07 Playground -->
+      <!-- 06 Playground -->
       <section data-screen="playground" aria-labelledby="t-playground" hidden>
         <header class="screen-head">
-          <p class="mono"><b>07</b> · Playground <span class="tag">Sample data</span></p>
+          <p class="mono"><b>06</b> · Playground <span class="tag">Sample data</span></p>
           <h1 class="tt" id="t-playground">Playground</h1>
           <p class="sent">Send a chat as you would to any OpenAI-compatible API. The reply comes back with a receipt you hold. In this preview no model runs: replies are sample text.</p>
         </header>
@@ -412,10 +373,10 @@
         </div>
       </section>
 
-      <!-- 08 Verify -->
+      <!-- 07 Verify -->
       <section data-screen="verify" aria-labelledby="t-verify" hidden>
         <header class="screen-head">
-          <p class="mono"><b>08</b> · Verify <span class="tag">Sample data</span></p>
+          <p class="mono"><b>07</b> · Verify <span class="tag">Sample data</span></p>
           <h1 class="tt" id="t-verify">Verify offline</h1>
           <p class="sent">Check a receipt and its proof on your own machine, without the model weights and without asking the operator. In this preview the checks are simulated.</p>
         </header>
