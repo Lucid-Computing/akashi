@@ -6,12 +6,11 @@ Open `app/index.html` in a browser. No build step, no server, no network access.
 
 | Screen | Address | What it shows |
 | --- | --- | --- |
-| Overview | `#overview` | The last hour across the network, live traffic, latest verdicts, models |
+| Overview | `#overview` | How it works in three live steps (logged, sampled and proved, challenged), then live traffic and verdicts |
 | Models | `#models`, `#model/<id>` | Each model's commitment, operators, record and an OpenAI-compatible call |
-| Traffic | `#traffic`, `#request/<id>` | Every logged reply, and one reply's receipt: model, log, beacon, selection, proof |
+| Traffic | `#traffic`, `#request/<id>` | Every logged reply with the log's live size, and one reply's receipt: model, log, beacon, selection, proof |
 | Sampling | `#sampling` | One in 20 selected by a public beacon, the selection lattice, a selection recomputed |
 | Challenges | `#challenges`, `#file`, `#challenge/<id>` | Holders, regulators and third parties asking for a proof, and each challenge's lifecycle |
-| Log | `#log` | Signed tree heads and the monitors that check them |
 | Playground | `#playground` | Send a chat, get a sample reply and a receipt you hold |
 | Verify | `#verify` | Offline checks of a bundle, including one with a changed bit |
 

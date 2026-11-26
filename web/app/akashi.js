@@ -83,28 +83,16 @@
   const verdictRow = (v) => v.r
     ? `<li><a class="row" href="${v.c ? '#challenge/' + v.c.id : '#request/' + v.r.short}">${reqStateHTML(v.r)}<span class="row-t">${esc(v.how)} <span class="muted">· ${esc(shortModel(v.r.model))}</span></span><span class="mono"><b>${v.r.short}</b> · ${hms(v.t)}</span></a></li>`
     : `<li><a class="row" href="#challenge/${v.c.id}">${stateHTML('idle', 'Refused')}<span class="row-t">${esc(v.how)} <span class="muted">· invalid receipt</span></span><span class="mono"><b>${v.c.ref}</b> · ${hms(v.t)}</span></a></li>`;
-  function modelRecord(m, t = S.now()) {
-    if (m.rebuilding) return stateHTML('pending', 'Rebuilding');
-    const dev = S.requests.some((r) => r.model === m.id && r.at <= t && S.stateOf(r, t) === 'deviation');
-    return dev ? stateHTML('failed', 'Deviation proved') : stateHTML('verified', 'All conformant');
-  }
   function overview(screen, fresh) {
-    const t = S.now(), st = hourStats(t);
-    const vals = [N(st.logged), N(st.selected), N(st.proved), N(st.deviations)];
+    const t = S.now(), st = hourStats(t), chl = S.challenges.filter((c) => c.at <= t && c.at > t - HOUR).length;
+    const vals = [N(st.logged), N(st.selProved), N(chl)];
     if (!loaded.has('overview')) {
       loaded.add('overview');
       const l = App.loading(screen); setTimeout(() => l.done(vals), 500);
-    } else ['logged', 'selected', 'proved', 'deviations'].forEach((k, i) => setVal(screen, k, vals[i]));
-    const live = visible(t).slice(-6).reverse();
-    $('#ov-live').innerHTML = live.map(liveRow).join('');
+    } else ['logged', 'proved', 'challenged'].forEach((k, i) => setVal(screen, k, vals[i]));
+    $('#ov-live').innerHTML = visible(t).slice(-5).reverse().map(liveRow).join('');
     if (fresh) $$('#ov-live .row .mono b').slice(0, fresh).forEach((el) => T.cipherText(el, el.textContent, { out: false }));
-    $('#ov-verdicts').innerHTML = verdicts(t).slice(0, 6).map(verdictRow).join('');
-    $('#ov-models tbody').innerHTML = S.MODELS.filter((m) => !m.rebuilding).map((m) => {
-      const rs = S.requests.filter((r) => r.model === m.id && r.at <= t && r.at > t - HOUR);
-      return `<tr data-href="#model/${m.id}"><th scope="row"><a href="#model/${m.id}">${esc(m.name)}</a></th>
-        <td class="n" data-label="Replies">${N(rs.length)}</td><td class="n wide-only" data-label="Proved">${N(rs.filter((r) => S.stateOf(r, t) === 'conformant').length)}</td>
-        <td class="s" data-label="Record">${modelRecord(m, t)}</td></tr>`;
-    }).join('');
+    $('#ov-verdicts').innerHTML = verdicts(t).slice(0, 5).map(verdictRow).join('');
   }
 
   /* ---------- 02 models ---------- */
@@ -160,7 +148,7 @@
   document.getElementById('model-copy').addEventListener('click', (e) => App.copy($('#model-code').textContent, e.currentTarget));
 
   /* ---------- 03 traffic ---------- */
-  const tStep = matchMedia('(max-width: 700px)').matches ? 20 : 60;   // stacked rows on a phone: fewer at a time
+  const tStep = matchMedia('(max-width: 700px)').matches ? 15 : 30;   // stacked rows on a phone: fewer at a time
   let tFilter = 'all', tQuery = '', tLimit = tStep;
   const tMatch = (r) => {
     const s = S.stateOf(r);
@@ -174,20 +162,24 @@
     <th scope="row"><a href="#request/${r.short}">${r.short}</a></th>
     <td class="what" data-label="Model">${esc(shortModel(r.model))}</td>
     <td class="v wide-only" data-label="Operator">${S.op(r.op).name.replace('Operator ', 'OP ')}</td>
-    <td class="n" data-label="Tokens">${N(r.pt + r.rt)}</td>
     <td class="n" data-label="Delivered, UTC">${hms(r.at)}</td>
-    <td class="n wide-only" data-label="Beacon round">${N(r.round)}</td>
     <td class="s">${reqStateHTML(r)}</td></tr>`;
   function traffic(screen, modelId) {
     if (modelId && S.model(modelId)) { tQuery = modelId; $('#t-q').value = modelId; }
     const all = visible().filter(tMatch).reverse(), list = all.slice(0, tLimit);
     $('#traffic-t tbody').innerHTML = list.length ? list.map((r) => trafficRow(r)).join('')
-      : `<tr><td class="none" colspan="7">No reply matches. <button class="btn quiet small" type="button" id="t-clear">Show all traffic</button></td></tr>`;
+      : `<tr><td class="none" colspan="5">No reply matches. <button class="btn quiet small" type="button" id="t-clear">Show all traffic</button></td></tr>`;
     $('#t-count').textContent = `${N(list.length)} of ${N(all.length)} · sample`;
     $('#t-more').hidden = all.length <= tLimit;
+    logLine();
     const clear = $('#t-clear'); if (clear) clear.onclick = () => { tQuery = ''; $('#t-q').value = ''; setTFilter('all'); };
   }
+  function logLine() {
+    const size = $('#log-size'), head = $('#log-head'); if (!size) return;
+    size.textContent = N(S.treeSize()); head.textContent = hms(Math.floor(S.now() / 60e3) * 60e3);
+  }
   function trafficTick(added) {
+    logLine();
     const rows = added.filter(tMatch).reverse();
     if (!rows.length) return;
     const tb = $('#traffic-t tbody'); if ($('td.none', tb)) { traffic(); return; }
@@ -263,13 +255,9 @@
     }
     $('#req-kv').innerHTML = [
       ['Request ID', `<span class="hash">${r.id}</span>`],
-      ['Served at', `<span class="hash">${iso(r.at)}</span>`],
-      ['Endpoint', `<span class="hash">${m.id}-int-${m.commitment.slice(0, 8)}</span>`],
       ['Leaf hash', copyHTML(r.lh, 'leaf hash')],
       ['Transcript commitment', copyHTML(digest(r, 'transcript'), 'transcript commitment')],
-      ['Params digest', `<span class="hash">${digest(r, 'params')}</span>`],
-      ['Promise signature', copyHTML(S.hex(128, 'sig ' + r.leaf), 'promise signature')],
-      ['Log key', '<span class="mono"><b>LOG KEY 1</b> · Ed25519</span>'],
+      ['Log signature', copyHTML(S.hex(128, 'sig ' + r.leaf), 'log signature')],
     ].map(([a, b]) => `<div><dt>${a}</dt><dd>${b}</dd></div>`).join('');
     wireCopy(screen);
   }
@@ -277,7 +265,7 @@
   /* ---------- 04 sampling ---------- */
   let lattice = null, oddsN = 20;
   const LEGEND = [['awaiting', 'Awaiting beacon'], ['unselected', 'Not selected'], ['proving', 'Proving'], ['challenged', 'Challenged'], ['conformant', 'Conformant'], ['deviation', 'Deviation']];
-  function latestDecided(t = S.now()) { for (let i = S.requests.length - 1; i >= 0; i--) { const r = S.requests[i]; if (r.at <= t && t >= S.roundTime(r.round)) return r; } return null; }
+  function latestDecided(t = S.now()) { for (let i = S.requests.length - 1; i >= 0; i--) { const r = S.requests[i]; if (r.at <= t && r.sel && t >= S.roundTime(r.round)) return r; } return null; }
   let rcShown = null;
   function recompute() {
     const r = latestDecided(); if (!r || r === rcShown) return; rcShown = r;
@@ -298,8 +286,8 @@
   }
   function sampling(screen) {
     const t = S.now(), st = hourStats(t);
-    setVal(screen, 'decided', N(st.decided)); setVal(screen, 'selected', N(st.selected));
-    setVal(screen, 'share', `Sample · ${pct(st.selected / Math.max(1, st.decided))} of decided`);
+    setVal(screen, 'selected', N(st.selected));
+    setVal(screen, 'share', `Sample · of ${N(st.decided)} decided`);
     setVal(screen, 'provedOf', `${N(st.selProved)}/${N(st.selected)}`);
     if (!lattice) {
       lattice = AkashiFigure.selection('#lattice', { cells: (n) => { const now = S.now(), v = []; for (let i = S.requests.length - 1; i >= 0 && v.length < n; i--) { const r = S.requests[i]; if (r.at <= now) v.push({ leaf: r.leaf, s: S.stateOf(r, now) }); } return v.reverse(); } });
@@ -310,12 +298,6 @@
     $('#lattice').setAttribute('aria-label', `A lattice of the latest logged replies, one cell each. Of the last 400, ${aw} await their beacon round and ${sel} were selected for proof. Sample data.`);
     $('#lat-caption').textContent = `Round ${N(S.roundAt(t))} · ${hms(t)} UTC`;
     recompute();
-    const mins = [];
-    for (let k = 1; k <= 8; k++) {
-      const a = Math.floor(t / 60e3) * 60e3 - k * 60e3, rs = S.requests.filter((r) => r.at >= a && r.at < a + 60e3);
-      mins.push(`<tr><th scope="row">${hm(a)}</th><td class="n">${N(rs.length)}</td><td class="n">${N(rs.filter((r) => r.sel).length)}</td><td class="n">${N(rs.filter((r) => S.stateOf(r, t) === 'conformant').length)}</td></tr>`);
-    }
-    $('#windows tbody').innerHTML = mins.join('');
     odds();
   }
   $('#odds-n').addEventListener('input', (e) => { oddsN = +e.target.value; odds(); });
@@ -436,23 +418,6 @@
     return `${s.toFixed(0)} S OF ABOUT ${(S.PROOF_MS / 1000).toFixed(0)} S`;
   }
 
-  /* ---------- 06 log ---------- */
-  let headsMinute = 0;
-  const MONITORS = [['Monitor A', 'run by an independent auditor'], ['Monitor B', 'run by a regulator'], ['Monitor C', 'run by a holder']];
-  function log(screen, force) {
-    const t = S.now();
-    setVal(screen, 'size', N(S.treeSize()));
-    setVal(screen, 'age', Math.floor((t % 60e3) / 1000) + ' s');
-    const minute = Math.floor(t / 60e3);
-    if (minute === headsMinute && !force) return;
-    headsMinute = minute;
-    const hs = S.heads(12);
-    $('#sth-t tbody').innerHTML = hs.map((h) => `<tr><th scope="row" class="n">${N(h.size)}</th><td class="v" data-label="Root hash"><span class="hash">${cut(h.root, 10, 6)}</span></td>
-      <td class="n" data-label="Signed, UTC">${hms(h.t)}</td><td class="v wide-only" data-label="Signature"><span class="hash">${cut(h.sig, 10, 6)}</span></td>
-      <td class="s">${stateHTML('verified', '3 of 3 agree')}</td></tr>`).join('');
-    $('#monitors').innerHTML = MONITORS.map(([n, w], i) => `<li><div class="row">${stateHTML('verified', 'Consistent')}<span class="row-t">${n} <span class="muted">· ${w} · sample</span></span><span class="mono"><b>${N(hs[0].size)}</b> · ${hms(hs[0].t + (i + 1) * 2100)}</span></div></li>`).join('');
-  }
-
   /* ---------- 07 playground ---------- */
   const PRESETS = [
     ['What is 7 + 5? Answer with the number only.', '12'],
@@ -555,6 +520,7 @@
   function verify(screen, id) {
     const r = id && S.find(id);
     if (r && r !== vReq) loadBundle(r);
+    else if (!vReq) $('#v-sample').click();
     else if (!$('#v-steps').children.length) resetChecks();
   }
   $('#v-sample').addEventListener('click', () => {
@@ -634,12 +600,12 @@
   /* ---------- start ---------- */
   const router = App.routes({
     overview: (s) => overview(s), models, model, traffic: (s, m) => traffic(s, m), request, sampling,
-    challenges, file, challenge, log: (s) => log(s, true), playground, verify,
+    challenges, file, challenge, playground, verify,
   }, {
     home: 'overview',
     parent: { model: 'models', request: 'traffic', file: 'challenges', challenge: 'challenges' },
     title: (name, args) => ({ overview: 'Network', models: 'Models', model: S.model(args[0]) ? S.model(args[0]).name : 'Model', traffic: 'Traffic', request: 'Request ' + (args[0] || ''),
-      sampling: 'Sampling', challenges: 'Challenges', file: 'File a challenge', challenge: 'Challenge ' + (args[0] || ''), log: 'Log', playground: 'Playground', verify: 'Verify' }[name]) + ' · Akashi · Sample',
+      sampling: 'Sampling', challenges: 'Challenges', file: 'File a challenge', challenge: 'Challenge ' + (args[0] || ''), playground: 'Playground', verify: 'Verify' }[name]) + ' · Akashi · Sample',
   });
   navCounts();
 
@@ -649,7 +615,6 @@
     else if (cur === 'traffic') trafficTick(added);
     else if (cur === 'sampling') sampling(scr);
     else if (cur === 'challenges') challenges(scr);
-    else if (cur === 'log') log(scr);
     else if (cur === 'request' && shownReq && S.stateOf(shownReq) !== shownReqState) request(scr, shownReq.short);
     else if (cur === 'challenge' && shownChl) {
       const g = S.stage(shownChl);
