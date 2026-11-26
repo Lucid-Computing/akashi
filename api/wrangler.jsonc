@@ -1,0 +1,21 @@
+// The Akashi platform on Cloudflare: one Worker serves the web preview (../web) and the API (src/).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "akashi",
+  "account_id": "55b12adfea92ffa1eada43ead398c34d",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "routes": [{ "pattern": "akashi.lucidcomputing.ai", "custom_domain": true }],
+  "assets": { "directory": "../web", "run_worker_first": ["/api/*"] },
+  "d1_databases": [{ "binding": "DB", "database_name": "akashi", "database_id": "fe800ee7-c4b7-4513-b8e0-82da45ed31b5", "migrations_dir": "migrations" }],
+  // Each minute: settle jobs whose leases ran out, and drive the mock GPUs.
+  "triggers": { "crons": ["* * * * *"] },
+  "vars": {
+    // Deployment choices, not spec values. A lease must outlast one proof (58.8 s, F23) and the cron's minute.
+    "LEASE_MS": "600000",
+    "MAX_ATTEMPTS": "3",
+    // Mock H100s run by the cron. Set to "0" once real GPU workers hold PROVER_TOKEN.
+    "MOCK_GPUS": "2"
+  },
+  "observability": { "enabled": true }
+}
