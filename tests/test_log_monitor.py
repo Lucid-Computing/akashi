@@ -238,3 +238,52 @@ class MonitorTests(unittest.TestCase):
             finally:
                 http.shutdown()
                 thread.join()
+
+    @unittest.skipUnless(shutil.which("openssl"), "requires OpenSSL for test-only TLS")
+    def test_deeply_nested_log_response_is_malformed_and_raises_a_coverage_alert(
+        self,
+    ) -> None:
+        make_certificates(self.root, cast(str, shutil.which("openssl")))
+        tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls.load_cert_chain(self.root / "proxy.pem", self.root / "proxy.key")
+        nested = b"[" * 65536  # nests too deeply for json on Python 3.10 to 3.14
+
+        def hostile(env: dict[str, Any], start_response: Any) -> list[bytes]:
+            start_response("200 OK", [("Content-Type", "application/json")])
+            return [nested]
+
+        with make_server(
+            "127.0.0.1", 0, cast(Any, hostile), handler_class=Quiet
+        ) as http:
+            http.socket = tls.wrap_socket(http.socket, server_side=True)
+            thread = threading.Thread(
+                target=http.serve_forever, kwargs={"poll_interval": 0.02}, daemon=True
+            )
+            thread.start()
+            try:
+                read = LogReader(
+                    f"https://127.0.0.1:{http.server_port}/log/v1/",
+                    timeout=2,
+                    max_response_bytes=65536,
+                    context=ssl.create_default_context(
+                        cafile=str(self.root / "ca.pem")
+                    ),
+                )
+                with self.assertRaisesRegex(ValueError, "nests too deeply"):
+                    read("sth")
+                self.monitor.hold(self.issue(self.log))
+                self.now += timedelta(seconds=11)
+                stop = threading.Event()
+                alerts: list[dict[str, Any]] = []
+
+                def emit(report: dict[str, Any]) -> None:
+                    alerts.append(report)
+                    stop.set()
+
+                self.monitor.run(read, stop, interval=0.01, emit=emit)
+                self.assertEqual(
+                    [a["kind"] for a in alerts], ["observation_unavailable"]
+                )
+            finally:
+                http.shutdown()
+                thread.join()
