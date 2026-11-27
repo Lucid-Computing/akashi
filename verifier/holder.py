@@ -167,8 +167,6 @@ def verify(
         if prompt != raw_ids(verification["prompt_token_ids"]):
             return result
         result = VerificationResult(10, "RECEIPT_INVALID")
-        if verification["reply_token_ids"] == []:
-            return VerificationResult(13, "INCOMPLETE")
         reply = raw_ids(verification["reply_token_ids"])
         if receipt["transcript_commitment"] != transcript_commitment(
             COMMITMENT, profile, budget, receipt["salt"], prompt, reply

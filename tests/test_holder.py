@@ -176,6 +176,16 @@ class HolderTests(unittest.TestCase):
         self.assertEqual(verify(self.bundle((2,)), self.trusted).exit_code, 13)
         self.assertEqual(verify(self.bundle((200001, 3)), self.trusted).exit_code, 13)
 
+    def test_empty_reply_cannot_match_a_signed_transcript(self) -> None:
+        # A receipt never commits to an empty reply, so an emptied copy is invalid
+        # evidence, not an incomplete reply, whatever else the bundle carries.
+        bundle = self.bundle()
+        bundle["verification"]["reply_token_ids"] = []
+        self.assertEqual(verify(bundle, self.trusted, now=self.now).exit_code, 10)
+        del bundle["history"]
+        bundle["text"] = "anything"
+        self.assertEqual(verify(bundle, self.trusted, now=self.now).exit_code, 10)
+
     def test_checkpoint_and_inclusion_are_independent(self) -> None:
         first = self.bundle()
         old = first["history"]["sth"]
