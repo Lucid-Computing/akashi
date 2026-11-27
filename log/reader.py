@@ -82,3 +82,5 @@ class LogReader:
                 return json.loads(data.decode("utf-8"), object_pairs_hook=unique)
         except HTTPException:
             raise OSError("Log read unavailable") from None
+        except RecursionError:
+            raise ValueError("Public log response nests too deeply") from None
