@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The holder verifier rejects a bundle whose reply token list is empty as an invalid receipt (exit 10). No receipt commits to an empty reply, so such a bundle is not an incomplete reply (exit 13). [Exit codes](verifier/README.md)
 - Rename the project to Akashi. The repository moved to `Lucid-Computing/akashi`. The CLI is now `akashi`, the wheel `akashi-verify`, the environment prefix `AKASHI_`, and the service units and paths `akashi*`. Protocol domains, the `x-akashi-receipt` header, `/.well-known/akashi.json` and the `akashi-pickup/1` envelope replace their `vig` forms. Receipts, pickups and verdicts made under the old domains no longer verify, and the reference vectors were regenerated. [Data model](docs/spec/03-data-model.md)
 - Document the recorded Maverick request and both offline CLI verdicts with exact measurement boundaries and machine-readable evidence. [Recorded demo](docs/demo/README.md)
 - Give contributors a CPU quickstart and issue forms that direct vulnerability reports to the private security channel. [Quickstart](README.md#try-it) · [Security reporting](SECURITY.md)
