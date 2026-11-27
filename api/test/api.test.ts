@@ -49,6 +49,15 @@ describe("challenges", () => {
     expect(jobs?.n).toBe(1);
   });
 
+  it("lists the whole part of a fractional limit", async () => {
+    for (let i = 0; i < 3; i++) expect((await challenge(uuid())).status).toBe(201);
+    for (const [limit, count] of [["2.5", 2], ["1.5", 1]] as const) {
+      const r = await get(`challenges?limit=${limit}`);
+      expect(r.status).toBe(200);
+      expect((await r.json<{ challenges: unknown[] }>()).challenges).toHaveLength(count);
+    }
+  });
+
   it("holds 10 challenges per key per hour", async () => {
     const key = "one-busy-holder-key";
     for (let i = 0; i < 10; i++) expect((await challenge(uuid(), key)).status).toBe(201);

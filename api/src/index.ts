@@ -50,7 +50,8 @@ async function api(req: Request, env: Env, path: string[]): Promise<Response> {
   const route = `${req.method} ${path.join("/")}`;
 
   if (route === "GET challenges") {
-    const limit = Math.min(100, Math.max(1, Number(new URL(req.url).searchParams.get("limit")) || 20));
+    // SQLite refuses a fractional LIMIT, so take the whole part after clamping.
+    const limit = Math.floor(Math.min(100, Math.max(1, Number(new URL(req.url).searchParams.get("limit")) || 20)));
     return json({ challenges: await recent(env.DB, limit) });
   }
   if (req.method === "GET" && path[0] === "challenges" && path.length === 2) {
